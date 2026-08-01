@@ -51,6 +51,7 @@ function setLang(lang) {
   if (!$("screen-result").classList.contains("hidden") && session) renderResult();
   if (!$("screen-calendar").classList.contains("hidden")) renderCalendar();
   if (!$("screen-stats").classList.contains("hidden")) renderStats();
+  if (!$("screen-mirror").classList.contains("hidden")) Live.rerender();
 }
 
 /* ---------- streak ---------- */
@@ -80,18 +81,70 @@ function bestStreak() {
   return best;
 }
 
-/* ---------- home ---------- */
+/* ---------- home ----------
+   Two different homes from the same markup: the child only ever sees the one
+   button that matters, the parent gets the watching tools instead. */
 function renderHome() {
+  const parent = Store.isParent();
   const day = data.days[todayStr()];
-  $("home-greeting").textContent = t("hello");
+
+  $("home-greeting").textContent = parent
+    ? t("parent_hello").replace("{name}", Store.watches().toUpperCase())
+    : t("hello").replace("{name}", Store.deviceUser().toUpperCase());
   $("streak-count").textContent = currentStreak();
+
   let status = t("today_todo");
   if (day && day.done100) status = t("today_done");
   else if (day && day.solved > 0) status = t("today_partial");
+  if (parent) {
+    status = liveBusy ? Store.watches().toUpperCase() + " " + t("live_busy")
+                      : Store.watches().toUpperCase() + " " + t("live_idle");
+  }
   $("home-status").textContent = status;
+
+  // the child practises; the parent watches and reviews
+  $("btn-start").classList.toggle("hidden", parent);
+  $("btn-watch").classList.toggle("hidden", !parent);
+  $("nav-row").classList.toggle("hidden", !parent);
 }
 
 /* ---------- task flow ---------- */
+/* 5… 4… 3… 2… 1… — the ring empties while the number pops, then we're off. */
+function runCountdown(then) {
+  const CIRC = 327;
+  const numEl = $("count-number"), arc = $("count-progress");
+  let n = 5;
+
+  arc.style.transition = "none";
+  arc.style.stroke = "";
+  arc.style.strokeDashoffset = "0";
+  $("count-label").textContent = t("get_ready");
+  show("screen-count");
+  Live.push("count");
+  void arc.offsetWidth;                       // let the reset land before animating
+  arc.style.transition = "stroke-dashoffset 1s linear, stroke .4s ease";
+
+  const beat = () => {
+    numEl.className = "count-number";
+    void numEl.offsetWidth;
+    if (n > 0) {
+      numEl.textContent = n;
+      numEl.classList.add("tick");
+      arc.style.strokeDashoffset = String(CIRC * (1 - (n - 1) / 5));
+      if (n <= 2) arc.style.stroke = "var(--amber)";
+      n--;
+      setTimeout(beat, 1000);
+    } else {
+      numEl.textContent = "🚀";
+      numEl.classList.add("go");
+      arc.style.stroke = "var(--green)";
+      $("count-label").textContent = t("go");
+      setTimeout(then, 800);
+    }
+  };
+  beat();
+}
+
 function startTask() {
   session = {
     questions: Engine.buildTask(taskCount, data),
@@ -101,9 +154,11 @@ function startTask() {
     lastSec: null
   };
   session.queue = session.questions.map((_, i) => i);
-  startTimer();
-  renderQuestion();
-  show("screen-task");
+  runCountdown(() => {
+    startTimer();
+    renderQuestion();
+    show("screen-task");
+  });
 }
 
 function currentQ() {
@@ -125,6 +180,7 @@ function renderQuestion() {
     b.onclick = () => answer(i, b);
     box.appendChild(b);
   });
+  Live.push("task");
 }
 
 function answer(i, btn) {
@@ -142,6 +198,7 @@ function answer(i, btn) {
     if (correct) q.solved = true;
   }
 
+  Live.push("task");                     // let the parent see the pick land
   setTimeout(advance, correct ? 600 : 900);
 }
 
@@ -262,6 +319,7 @@ function renderResult() {
   }
 
   $("btn-retry").classList.toggle("hidden", allSolved);
+  Live.push("result");
 
   // fire confetti once, right when the task becomes perfect
   if (allSolved && session.celebrate) {
@@ -421,23 +479,51 @@ async function tryLogin() {
   if (result === "ok") {
     $("login-error").classList.add("hidden");
     data = Store.load();                    // may have just been merged with the cloud
-    openDoor(goHome);
+    openDoor(() => {
+      goHome();
+      if (Store.isParent()) startParentWatch();
+    });
   } else {
     denyDoor(result === "offline" ? "login_offline" : "login_err");
     $("login-pass").select();
   }
 }
 
+/* ---------- parent watching ---------- */
+let liveBusy = false;
+
+/* The parent keeps a quiet eye on the child from the home screen, and the
+   mirror opens by itself the moment the child starts. */
+function startParentWatch() {
+  Live.startWatching((state, age) => {
+    const wasBusy = liveBusy;
+    liveBusy = Live.isBusy(state, age);
+    if (isOn("screen-mirror")) Live.render(state, age);
+    else if (isOn("screen-home")) {
+      renderHome();
+      if (liveBusy && !wasBusy) openMirror(state, age);   // the child just began
+    }
+  }, 2500);
+}
+
+function openMirror(state, age) {
+  if (state) Live.render(state, age);
+  show("screen-mirror");
+}
+
 /* ---------- wiring ---------- */
 function goHome() {
   stopTimer();
   session = null;
+  if (!Store.isParent()) Live.push("home");
   renderHome();
   show("screen-home");
 }
 
 function goLogin() {
   stopTimer();
+  Live.stopWatching();
+  liveBusy = false;
   session = null;
   resetDoor();
   show("screen-login");
@@ -456,8 +542,16 @@ document.addEventListener("DOMContentLoaded", () => {
     if (e.key === "Enter") tryLogin();
   });
 
+  // the logo is the way back everywhere
+  $("btn-brand").addEventListener("click", () => {
+    if (!Store.isLoggedIn()) return goLogin();
+    if (session && isOn("screen-task") && !confirm(t("quit_confirm"))) return;
+    goHome();
+  });
+
   // home
   $("btn-start").addEventListener("click", startTask);
+  $("btn-watch").addEventListener("click", () => openMirror());
   $("btn-calendar").addEventListener("click", () => { calMonth = new Date(); renderCalendar(); show("screen-calendar"); });
   $("btn-stats").addEventListener("click", () => { renderStats(); show("screen-stats"); });
   $("btn-logout").addEventListener("click", () => { Store.logout(); goLogin(); });
@@ -470,14 +564,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // result
   $("btn-retry").addEventListener("click", startRetry);
-  $("btn-home").addEventListener("click", goHome);
 
   // calendar nav
   $("cal-prev").addEventListener("click", () => { calMonth.setMonth(calMonth.getMonth() - 1); renderCalendar(); });
   $("cal-next").addEventListener("click", () => { calMonth.setMonth(calMonth.getMonth() + 1); renderCalendar(); });
-
-  // back buttons
-  document.querySelectorAll(".btn-back").forEach(b => b.addEventListener("click", goHome));
 
   document.addEventListener("visibilitychange", () => {
     if (document.hidden) { Store.pushNow(data); return; }
@@ -488,8 +578,11 @@ document.addEventListener("DOMContentLoaded", () => {
   window.addEventListener("pagehide", () => Store.pushNow(data));
 
   // entry
-  if (Store.isLoggedIn()) { goHome(); refreshFromCloud(); }
-  else goLogin();
+  if (Store.isLoggedIn()) {
+    goHome();
+    refreshFromCloud();
+    if (Store.isParent()) startParentWatch();
+  } else goLogin();
 });
 
 function isOn(id) { return !$(id).classList.contains("hidden"); }

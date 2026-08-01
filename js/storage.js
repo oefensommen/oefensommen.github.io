@@ -12,6 +12,8 @@ const Store = {
   USER_KEY: "oefensommen_user",    // username remembered for THIS device
   PASS_KEY: "oefensommen_pass",    // needed to sign each cloud call
   DIRTY_KEY: "oefensommen_dirty",  // local changes not yet pushed
+  ROLE_KEY: "oefensommen_role",    // "child" | "parent"
+  WATCH_KEY: "oefensommen_watch",  // for a parent: the child it mirrors
 
   _default() {
     return {
@@ -39,6 +41,7 @@ const Store = {
 
   save(data) {
     this.saveLocal(data);
+    if (this.isParent()) return;        // the parent side never writes history
     localStorage.setItem(this.DIRTY_KEY, "1");
     this.pushSoon(data);
   },
@@ -46,16 +49,26 @@ const Store = {
   /* ---------- device / session ---------- */
   deviceUser() { return localStorage.getItem(this.USER_KEY) || ""; },
   isLoggedIn() { return localStorage.getItem(this.DAY_KEY) === todayStr(); },
+  role() { return localStorage.getItem(this.ROLE_KEY) || "child"; },
+  isParent() { return this.role() === "parent"; },
+  watches() { return localStorage.getItem(this.WATCH_KEY) || ""; },
+  creds() {
+    return { u: localStorage.getItem(this.USER_KEY), p: localStorage.getItem(this.PASS_KEY) };
+  },
 
-  markUnlocked(user, pass) {
+  markUnlocked(user, pass, role, watches) {
     localStorage.setItem(this.DAY_KEY, todayStr());
     localStorage.setItem(this.USER_KEY, user);
     localStorage.setItem(this.PASS_KEY, pass);
+    localStorage.setItem(this.ROLE_KEY, role || "child");
+    if (watches) localStorage.setItem(this.WATCH_KEY, watches);
+    else localStorage.removeItem(this.WATCH_KEY);
   },
 
   logout() {
     // full sign-out: this device forgets the account, next login needs both fields
-    [this.DAY_KEY, this.USER_KEY, this.PASS_KEY].forEach(k => localStorage.removeItem(k));
+    [this.DAY_KEY, this.USER_KEY, this.PASS_KEY, this.ROLE_KEY, this.WATCH_KEY]
+      .forEach(k => localStorage.removeItem(k));
   },
 
   /* ---------- login ----------
@@ -64,28 +77,47 @@ const Store = {
     user = (user || "").trim();
     if (!user || !pass) return "bad";
 
+    const parentName = /-ouder$/i.test(user);
+
     if (!Cloud.configured()) {
       // local-only development mode, before the Supabase project exists
-      if (pass !== "2026") return "bad";
-      this.markUnlocked(user, pass);
+      if (pass !== (parentName ? "2020" : "2026")) return "bad";
+      this.markUnlocked(user, pass, parentName ? "parent" : "child",
+                        parentName ? user.replace(/-ouder$/i, "") : "");
       return "ok";
     }
 
     try {
-      const cloud = await Cloud.load(user, pass);
-      const merged = mergeProgress(this.load(), cloud || {});
+      let acct;
+      try {
+        acct = await Cloud.loginAccount(user, pass);
+      } catch (e) {
+        if (e.status !== 404) throw e;
+        // the live/parent SQL hasn't been installed yet — fall back to the
+        // original single-account login so the app keeps working
+        const d = await Cloud.load(user, pass);
+        acct = { role: parentName ? "parent" : "child",
+                 watches: parentName ? user.replace(/-ouder$/i, "") : null,
+                 data: d };
+      }
+      const role = (acct && acct.role) || "child";
+      const merged = role === "parent"
+        ? (acct.data || {})                                  // the child's history, read-only
+        : mergeProgress(this.load(), (acct && acct.data) || {});
       this.saveLocal(merged);
-      this.markUnlocked(user, pass);
+      this.markUnlocked(user, pass, role, (acct && acct.watches) || "");
       localStorage.removeItem(this.DIRTY_KEY);
-      // push the merge back so the other devices see it too
-      Cloud.save(user, pass, merged).catch(() => localStorage.setItem(this.DIRTY_KEY, "1"));
+      if (role !== "parent") {
+        // push the merge back so the other devices see it too
+        Cloud.save(user, pass, merged).catch(() => localStorage.setItem(this.DIRTY_KEY, "1"));
+      }
       return "ok";
     } catch (e) {
       if (e.authFailed) return "bad";
       // no network: allow in if this device already knows these credentials
       const known = localStorage.getItem(this.USER_KEY) === user &&
                     localStorage.getItem(this.PASS_KEY) === pass;
-      if (known) { this.markUnlocked(user, pass); return "ok"; }
+      if (known) { this.markUnlocked(user, pass, this.role(), this.watches()); return "ok"; }
       return "offline";
     }
   },
@@ -99,7 +131,7 @@ const Store = {
   },
 
   async pushNow(data) {
-    if (!Cloud.configured()) return;
+    if (!Cloud.configured() || this.isParent()) return;
     const u = localStorage.getItem(this.USER_KEY), p = localStorage.getItem(this.PASS_KEY);
     if (!u || !p) return;
     try {
@@ -118,9 +150,10 @@ const Store = {
     if (!u || !p) return false;
     try {
       const cloud = await Cloud.load(u, p);
-      const merged = mergeProgress(this.load(), cloud || {});
+      // the parent mirrors the child's history as-is; the child merges its own
+      const merged = this.isParent() ? (cloud || {}) : mergeProgress(this.load(), cloud || {});
       this.saveLocal(merged);
-      if (localStorage.getItem(this.DIRTY_KEY)) await this.pushNow(merged);
+      if (!this.isParent() && localStorage.getItem(this.DIRTY_KEY)) await this.pushNow(merged);
       return merged;
     } catch (e) {
       return false;

@@ -28,5 +28,12 @@ const Cloud = {
   },
 
   load(u, p) { return this.rpc("load_progress", { u, p }); },
-  save(u, p, d) { return this.rpc("save_progress", { u, p, d }); }
+  save(u, p, d) { return this.rpc("save_progress", { u, p, d }); },
+
+  /* sign in and find out whether this is the child or the parent side */
+  loginAccount(u, p) { return this.rpc("login_account", { u, p }); },
+
+  /* live mirroring: the child publishes, the parent reads */
+  pushLive(u, p, s) { return this.rpc("push_live", { u, p, s }); },
+  readLive(u, p) { return this.rpc("read_live", { u, p }); }
 };

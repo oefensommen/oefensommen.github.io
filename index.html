@@ -10,7 +10,7 @@
 <body>
 
   <header class="topbar">
-    <div class="brand">🧮 Oefensommen</div>
+    <button id="btn-brand" class="brand" title="Oefensommen">🧮 Oefensommen</button>
     <div class="topbar-right">
       <span id="timer" class="timer hidden">⏱ 0:00</span>
       <div class="flags">
@@ -56,7 +56,9 @@
         </div>
         <p id="home-status" class="status"></p>
         <button id="btn-start" class="btn primary big" data-i18n="start_task">Start de opdracht</button>
-        <div class="nav-row">
+        <button id="btn-play" class="btn play big hidden">🎮 <span data-i18n="play_btn">Spelen</span> <b id="home-play-left"></b></button>
+        <button id="btn-watch" class="btn primary big hidden">🔴 <span data-i18n="watch_live">Live meekijken</span></button>
+        <div id="nav-row" class="nav-row hidden">
           <button id="btn-calendar" class="btn ghost">📅 <span data-i18n="calendar">Kalender</span></button>
           <button id="btn-stats" class="btn ghost">📊 <span data-i18n="stats">Overzicht</span></button>
         </div>
@@ -85,10 +87,11 @@
         <h1 id="result-title"></h1>
         <p id="result-score" class="status"></p>
         <p id="result-time" class="result-time hidden"></p>
+        <p id="result-reward" class="reward-line hidden"></p>
         <div id="result-grid" class="result-grid"></div>
         <div class="btn-row">
           <button id="btn-retry" class="btn primary hidden" data-i18n="retry_btn">Verbeter je fouten</button>
-          <button id="btn-home" class="btn ghost" data-i18n="back_home">Terug naar start</button>
+          <button id="btn-play-result" class="btn play hidden">🎮 <span data-i18n="play_btn">Spelen</span></button>
         </div>
       </div>
     </section>
@@ -107,7 +110,6 @@
           <span><i class="dot partial"></i> <span data-i18n="legend_partial">geoefend</span></span>
           <span><i class="dot empty"></i> <span data-i18n="legend_empty">niet geoefend</span></span>
         </div>
-        <button class="btn ghost big btn-back" data-i18n="back_home">Terug naar start</button>
       </div>
     </section>
 
@@ -124,7 +126,31 @@
         <h3 data-i18n="per_cat">Per soort som</h3>
         <div id="cat-bars"></div>
         <p class="level-line"><span data-i18n="level">Niveau</span>: <b id="stat-level">1</b>/5</p>
-        <button class="btn ghost big btn-back" data-i18n="back_home">Terug naar start</button>
+      </div>
+    </section>
+
+    <!-- COUNTDOWN -->
+    <section id="screen-count" class="screen hidden">
+      <div class="count-stage">
+        <svg class="count-ring" viewBox="0 0 120 120">
+          <circle class="count-track" cx="60" cy="60" r="52"></circle>
+          <circle id="count-progress" class="count-arc" cx="60" cy="60" r="52"></circle>
+        </svg>
+        <div id="count-number" class="count-number">5</div>
+      </div>
+      <p id="count-label" class="count-label" data-i18n="get_ready">Klaar voor de start…</p>
+    </section>
+
+    <!-- PARENT: LIVE MIRROR -->
+    <section id="screen-mirror" class="screen hidden">
+      <div class="card">
+        <div class="mirror-head">
+          <span class="live-dot"></span>
+          <b id="mirror-who">TAK</b>
+          <span id="mirror-status" class="mirror-status"></span>
+          <span id="mirror-time" class="progress-text"></span>
+        </div>
+        <div id="mirror-body"></div>
       </div>
     </section>
 
@@ -139,6 +165,7 @@
   <script src="js/storage.js"></script>
   <script src="js/templates.js"></script>
   <script src="js/engine.js"></script>
+  <script src="js/live.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>
