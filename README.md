@@ -19,6 +19,8 @@ stopte.
   om een som te begrijpen. De app start altijd in het Nederlands.
 - **Niveau 1–5**, onzichtbaar voor het kind: twee keer foutloos → moeilijker,
   onder de 60% → makkelijker.
+- **Speeltijd als beloning**: een afgeronde dag levert minuten op voor een
+  spelletje in de app zelf — reclamevrij, want de spelletjes staan in deze repo.
 
 ## De sommen
 
@@ -32,6 +34,34 @@ meerdere formuleringen en wisselende namen, voorwerpen en getallen, dus dezelfde
 som komt niet twee keer voorbij. De foute antwoorden zijn typische denkfouten
 (verkeerde bewerking, ±10, half uur verkeerd om), geen willekeurige getallen.
 
+## Speeltijd
+
+Wie de dag afmaakt, verdient speeltijd. Hoe eerder alles goed is, hoe meer:
+
+| Klaar in | Speeltijd |
+| --- | --- |
+| ronde 1 (20 uit 20 in één keer) | 15 minuten |
+| ronde 2 | 10 minuten |
+| ronde 3 | 5 minuten |
+| elke ronde daarna | 1 minuut minder, met 1 minuut als bodem |
+
+Eén beloning per dag: een tweede opdracht op dezelfde dag mag, maar levert geen
+extra tijd op. Wat niet opgemaakt is, vervalt om middernacht.
+
+Het spelletje draait in een eigen pagina in de witte kaart (`<iframe>`), dus het
+kan niet bij de sommen of de voortgang. De klok loopt in de app, niet in het
+spel, en wordt elke tien seconden weggeschreven: een dichtgeklapte tablet levert
+geen gratis minuten op. De verbruikte tijd staat in het dagrecord en gaat mee
+met de synchronisatie, dus op de tablet gespeelde minuten zijn ook op de laptop
+op.
+
+De spelletjes zijn zelfgeschreven en staan in `games/`: geheugenspel, mollen
+meppen, blokkentoren en slang. Allemaal met de vinger te spelen — dat is de
+reden dat het geen bestaande spelletjessite is geworden: die weigeren een
+`<iframe>` (Poki, CrazyGames, ABCya) of staan vol reclame, en de Scratch-
+spelletjes die je wél mag insluiten werken bijna allemaal alleen met pijltjes-
+toetsen.
+
 ## Opzet
 
 Statische site, geen build en geen dependencies.
@@ -40,6 +70,7 @@ Statische site, geen build en geen dependencies.
 | --- | --- |
 | `index.html` | alle schermen |
 | `css/style.css` | opmaak |
+| `css/games.css` | opmaak van het spelgedeelte |
 | `js/templates.js` | de sommen (sjablonen per categorie) |
 | `js/engine.js` | bouwt een opdracht, kiest antwoorden, vertaalt teksten |
 | `js/app.js` | schermen en spelverloop |
@@ -48,6 +79,8 @@ Statische site, geen build en geen dependencies.
 | `js/config.js` | Supabase-url en anon key |
 | `js/i18n.js` | teksten NL / EN / TR |
 | `js/celebrate.js` | confetti en de emoji van de dag |
+| `js/reward.js` | verdiende speeltijd (regels, teller, teksten) |
+| `games/` | de spelletjes zelf, elk een eigen pagina |
 
 ## Zelf draaien
 

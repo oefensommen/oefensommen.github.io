@@ -1,0 +1,80 @@
+/* Speeltijd: de beloningsknop, het spelletjesmenu en het speelscherm.
+   Staat apart van style.css zodat het spelgedeelte in één bestand bij elkaar
+   blijft. Paars, zodat het duidelijk iets anders is dan de sommen. */
+:root { --fun: #7c4dff; --fun-soft: #f1ebff; }
+
+.btn.play {
+  background: linear-gradient(135deg, #7c4dff, #b06cff);
+  color: #fff;
+}
+.btn.play:hover { filter: brightness(1.06); }
+.btn.play b { font-variant-numeric: tabular-nums; opacity: .85; font-weight: 700; }
+
+.reward-line {
+  background: var(--fun-soft);
+  color: #5b31d6;
+  font-weight: 700;
+  border-radius: 12px;
+  padding: 10px 14px;
+  margin: 10px auto 0;
+  max-width: 340px;
+}
+
+.time-pill {
+  font-weight: 700; font-size: 0.9rem; color: var(--fun);
+  background: var(--fun-soft);
+  padding: 5px 11px; border-radius: 999px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* ---------- games menu ---------- */
+.games-head {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 6px;
+}
+.games-head h2 { flex: 1; font-size: 1.2rem; }
+
+.games-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 14px;
+}
+.game-tile {
+  border: 2px solid var(--line);
+  background: var(--card);
+  border-radius: 16px;
+  padding: 18px 10px 14px;
+  font-family: inherit;
+  cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  transition: border-color .15s, background .15s, transform .08s;
+}
+.game-tile:hover { border-color: var(--fun); background: var(--fun-soft); }
+.game-tile:active { transform: scale(0.97); }
+.game-tile .emoji { font-size: 2.1rem; line-height: 1; }
+.game-tile .name { font-weight: 700; font-size: 0.98rem; }
+.game-tile:disabled { opacity: .45; cursor: default; }
+.game-tile:disabled:hover { border-color: var(--line); background: var(--card); }
+
+/* ---------- play screen ---------- */
+.play-card { padding: 12px; }
+.play-head {
+  display: flex; align-items: center; gap: 10px;
+  padding: 0 2px 10px;
+}
+.play-head b { flex: 1; font-size: 1.05rem; }
+/* Every game asks for its own shape (see GAMES in js/reward.js): a memory board
+   is square, a tower is tall. The height follows from the width, with a ceiling
+   so it always fits on the screen. */
+.play-frame {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1 / 1.2;
+  max-height: min(72vh, 600px);
+  border: none;
+  border-radius: 14px;
+  background: #fff;
+}

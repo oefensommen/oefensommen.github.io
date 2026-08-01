@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Geheugenspel</title>
+  <link rel="stylesheet" href="../common.css">
+  <style>
+    /* the board keeps the shape of the grid, so the cards stay square-ish
+       whatever size the app gives the frame */
+    .g-stage { display: flex; align-items: center; justify-content: center; }
+    .board {
+      display: grid; gap: 8px;
+      width: 100%;
+      aspect-ratio: var(--c) / var(--r);
+      max-height: 100%;
+    }
+    .card { position: relative; perspective: 600px; cursor: pointer; }
+    .face {
+      position: absolute; inset: 0;
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      backface-visibility: hidden;
+      -webkit-backface-visibility: hidden;
+      transition: transform .35s ease;
+      font-size: clamp(20px, 6vw, 40px);
+    }
+    .back {
+      background: linear-gradient(135deg, #7c4dff, #b06cff);
+      color: #fff; font-size: 1.5rem; font-weight: 800;
+    }
+    .front {
+      background: var(--bg);
+      border: 2px solid var(--line);
+      transform: rotateY(180deg);
+    }
+    .card.up .back, .card.done .back { transform: rotateY(180deg); }
+    .card.up .front, .card.done .front { transform: rotateY(360deg); }
+    .card.done .front { border-color: var(--green); background: var(--green-soft); }
+    .card.done { cursor: default; }
+  </style>
+</head>
+<body>
+
+  <div class="g-wrap">
+    <div class="g-bar">
+      <span><i class="g-score-label"></i> <b class="g-score-val">0</b></span>
+      <span class="g-extra"></span>
+      <span><i class="g-best-label"></i> <b class="g-best-val">0</b></span>
+    </div>
+
+    <div class="g-stage"><div id="board" class="board"></div></div>
+
+    <div class="g-over hidden">
+      <div class="g-over-card">
+        <div class="g-over-emoji">🎈</div>
+        <b class="g-over-title"></b>
+        <p class="g-over-score"></p>
+        <button class="g-again"></button>
+      </div>
+    </div>
+  </div>
+
+  <script src="../common.js"></script>
+  <script>
+    /* Geheugenspel — find the pairs. Endless: every finished board is a new,
+       slightly bigger board. There is no losing, only the clock in the app. */
+    const EMOJI = ["🍎","🐶","🚀","⭐","🐟","🍩","🌈","🐝","🎈","🦋","🍕","🐢","🍓","🐙","🎃","🐬"];
+    const BOARDS = [{ c: 4, r: 3 }, { c: 4, r: 4 }, { c: 5, r: 4 }];
+
+    const board = document.getElementById("board");
+    let level = 0, score = 0, first = null, lock = false, left = 0;
+
+    function shuffle(a) {
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    }
+
+    function build() {
+      const cfg = BOARDS[Math.min(level, BOARDS.length - 1)];
+      const pairs = (cfg.c * cfg.r) / 2;
+      left = pairs;
+      first = null;
+      lock = false;
+
+      const picked = shuffle(EMOJI.slice()).slice(0, pairs);
+      const deck = shuffle(picked.concat(picked));
+
+      board.style.gridTemplateColumns = `repeat(${cfg.c}, 1fr)`;
+      board.style.gridTemplateRows = `repeat(${cfg.r}, 1fr)`;
+      board.style.setProperty("--c", cfg.c);
+      board.style.setProperty("--r", cfg.r);
+      board.innerHTML = "";
+      deck.forEach(e => {
+        const card = document.createElement("div");
+        card.className = "card";
+        card.dataset.e = e;
+        card.innerHTML = '<div class="face back">?</div><div class="face front">' + e + "</div>";
+        card.addEventListener("click", () => flip(card));
+        board.appendChild(card);
+      });
+
+      G.extra(G.w("level") + " " + (level + 1));
+    }
+
+    function flip(card) {
+      if (lock || card.classList.contains("up") || card.classList.contains("done")) return;
+      card.classList.add("up");
+
+      if (!first) { first = card; return; }
+
+      if (first.dataset.e === card.dataset.e) {
+        first.classList.add("done");
+        card.classList.add("done");
+        first = null;
+        score++; left--;
+        G.score(score);
+        G.record(score);
+        if (left === 0) { level++; lock = true; setTimeout(build, 700); }
+      } else {
+        const a = first;
+        first = null;
+        lock = true;
+        setTimeout(() => {
+          a.classList.remove("up");
+          card.classList.remove("up");
+          lock = false;
+        }, 750);
+      }
+    }
+
+    G.init({
+      id: "memory",
+      onRestart: () => { level = 0; score = 0; G.score(0); build(); }
+    });
+    build();
+  </script>
+</body>
+</html>

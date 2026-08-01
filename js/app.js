@@ -49,6 +49,7 @@ function setLang(lang) {
   if (!$("screen-task").classList.contains("hidden") && session) renderQuestion();
   if (!$("screen-home").classList.contains("hidden")) renderHome();
   if (!$("screen-result").classList.contains("hidden") && session) renderResult();
+  if (!$("screen-games").classList.contains("hidden")) renderGames();
   if (!$("screen-calendar").classList.contains("hidden")) renderCalendar();
   if (!$("screen-stats").classList.contains("hidden")) renderStats();
   if (!$("screen-mirror").classList.contains("hidden")) Live.rerender();
@@ -106,6 +107,11 @@ function renderHome() {
   $("btn-start").classList.toggle("hidden", parent);
   $("btn-watch").classList.toggle("hidden", !parent);
   $("nav-row").classList.toggle("hidden", !parent);
+
+  // speeltijd die vandaag verdiend is en nog niet op
+  const playLeftSec = parent ? 0 : Reward.remaining(data);
+  $("btn-play").classList.toggle("hidden", playLeftSec <= 0);
+  $("home-play-left").textContent = playLeftSec > 0 ? fmtTime(playLeftSec) : "";
 }
 
 /* ---------- task flow ---------- */
@@ -150,6 +156,7 @@ function startTask() {
     questions: Engine.buildTask(taskCount, data),
     idx: 0,
     firstPass: true,
+    round: 1,                   // 1 = eerste poging, 2+ = verbeterrondes
     queue: null,
     lastSec: null
   };
@@ -283,6 +290,8 @@ function markDone100() {
   data.days[ds] = day;
   session.nextQueue = null;
   session.celebrate = true;
+  // speeltijd verdiend: in één keer foutloos is het meeste waard
+  session.rewardMin = Reward.grant(data, session.round || 1);
   Store.save(data);
 }
 
@@ -319,6 +328,15 @@ function renderResult() {
   }
 
   $("btn-retry").classList.toggle("hidden", allSolved);
+
+  // de beloning: de melding alleen de ronde waarin hij verdiend is, de knop
+  // zolang er vandaag nog speeltijd over is
+  const earned = session.rewardMin || 0;
+  const rewardEl = $("result-reward");
+  rewardEl.textContent = earned > 0 ? t("reward_earned").replace("{m}", earned) : "";
+  rewardEl.classList.toggle("hidden", earned <= 0);
+  $("btn-play-result").classList.toggle("hidden", Reward.remaining(data) <= 0);
+
   Live.push("result");
 
   // fire confetti once, right when the task becomes perfect
@@ -333,6 +351,7 @@ function startRetry() {
   session.nextQueue = null;
   session.idx = 0;
   session.firstPass = false;
+  session.round = (session.round || 1) + 1;
   renderQuestion();
   show("screen-task");
 }
@@ -511,9 +530,85 @@ function openMirror(state, age) {
   show("screen-mirror");
 }
 
+/* ---------- speeltijd ----------
+   Het spelletje draait in een eigen pagina in de kaart (games/<id>/index.html),
+   dus het kan nooit bij de sommen of de voortgang. De klok hoort hier, niet in
+   het spel: de tijd loopt door of het nu goed of slecht gaat, en hij wordt elke
+   tien seconden weggeschreven — een dichtgeklapte tablet levert geen gratis
+   minuten op. */
+let playInt = null, playT0 = 0, playLeft = 0;
+
+function openGames() {
+  renderGames();
+  show("screen-games");
+}
+
+function renderGames() {
+  const left = Reward.remaining(data);
+  $("games-left").textContent = "🎮 " + fmtTime(left);
+  $("games-sub").textContent = left > 0 ? t("games_pick") : t("games_none");
+
+  const grid = $("games-grid");
+  grid.innerHTML = "";
+  GAMES.forEach(g => {
+    const tile = document.createElement("button");
+    tile.className = "game-tile";
+    tile.disabled = left <= 0;
+    tile.innerHTML = `<span class="emoji">${g.emoji}</span><span class="name">${t(g.key)}</span>`;
+    tile.addEventListener("click", () => startPlay(g));
+    grid.appendChild(tile);
+  });
+}
+
+function startPlay(game) {
+  playLeft = Reward.remaining(data);
+  if (playLeft <= 0) return;
+  playT0 = Date.now();
+  $("play-title").textContent = game.emoji + " " + t(game.key);
+  $("play-frame").style.aspectRatio = game.frame || "1 / 1.2";
+  $("play-frame").src = `games/${game.id}/index.html?lang=${LANG}`;
+  $("play-left").textContent = "🎮 " + fmtTime(playLeft);
+  clearInterval(playInt);
+  playInt = setInterval(tickPlay, 1000);
+  show("screen-play");
+}
+
+function tickPlay() {
+  const spent = Math.floor((Date.now() - playT0) / 1000);
+  const left = Math.max(0, playLeft - spent);
+  $("play-left").textContent = "🎮 " + fmtTime(left);
+  if (left <= 0) leavePlay();
+  else if (spent >= 10) bookPlayTime();
+}
+
+/* write the seconds played into the day record (and so into the cloud) */
+function bookPlayTime() {
+  if (!playInt) return;
+  const spent = Math.floor((Date.now() - playT0) / 1000);
+  if (spent <= 0) return;
+  playT0 += spent * 1000;
+  playLeft = Math.max(0, playLeft - spent);
+  Reward.spend(data, spent);
+  Store.save(data);
+}
+
+function stopPlay() {
+  bookPlayTime();
+  clearInterval(playInt);
+  playInt = null;
+  $("play-frame").src = "about:blank";
+}
+
+function leavePlay() {
+  stopPlay();
+  renderGames();
+  show("screen-games");
+}
+
 /* ---------- wiring ---------- */
 function goHome() {
   stopTimer();
+  stopPlay();
   session = null;
   if (!Store.isParent()) Live.push("home");
   renderHome();
@@ -565,17 +660,23 @@ document.addEventListener("DOMContentLoaded", () => {
   // result
   $("btn-retry").addEventListener("click", startRetry);
 
+  // speeltijd
+  $("btn-play").addEventListener("click", openGames);
+  $("btn-play-result").addEventListener("click", openGames);
+  $("games-back").addEventListener("click", goHome);
+  $("play-back").addEventListener("click", leavePlay);
+
   // calendar nav
   $("cal-prev").addEventListener("click", () => { calMonth.setMonth(calMonth.getMonth() - 1); renderCalendar(); });
   $("cal-next").addEventListener("click", () => { calMonth.setMonth(calMonth.getMonth() + 1); renderCalendar(); });
 
   document.addEventListener("visibilitychange", () => {
-    if (document.hidden) { Store.pushNow(data); return; }
+    if (document.hidden) { bookPlayTime(); Store.pushNow(data); return; }
     // the day may have rolled over while the app sat open → lock again (00:00 reset)
     if (!Store.isLoggedIn()) { if (!isOn("screen-login")) goLogin(); return; }
     refreshFromCloud();
   });
-  window.addEventListener("pagehide", () => Store.pushNow(data));
+  window.addEventListener("pagehide", () => { bookPlayTime(); Store.pushNow(data); });
 
   // entry
   if (Store.isLoggedIn()) {

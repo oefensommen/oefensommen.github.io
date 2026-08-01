@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <title>Oefensommen</title>
   <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/games.css">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧮</text></svg>">
 </head>
 <body>
@@ -154,6 +155,31 @@
       </div>
     </section>
 
+    <!-- GAMES: pick a game with the time earned today -->
+    <section id="screen-games" class="screen hidden">
+      <div class="card">
+        <div class="games-head">
+          <button id="games-back" class="link-btn">←</button>
+          <h2>🎮 <span data-i18n="games_title">Spelletjes</span></h2>
+          <span id="games-left" class="time-pill"></span>
+        </div>
+        <p id="games-sub" class="status"></p>
+        <div id="games-grid" class="games-grid"></div>
+      </div>
+    </section>
+
+    <!-- PLAY: the game itself, in its own page inside the card -->
+    <section id="screen-play" class="screen hidden">
+      <div class="card play-card">
+        <div class="play-head">
+          <button id="play-back" class="link-btn">←</button>
+          <b id="play-title"></b>
+          <span id="play-left" class="time-pill"></span>
+        </div>
+        <iframe id="play-frame" class="play-frame" title="spel"></iframe>
+      </div>
+    </section>
+
   </main>
 
   <div id="confetti"></div>
@@ -166,6 +192,7 @@
   <script src="js/templates.js"></script>
   <script src="js/engine.js"></script>
   <script src="js/live.js"></script>
+  <script src="js/reward.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

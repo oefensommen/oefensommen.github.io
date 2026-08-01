@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Slang</title>
+  <link rel="stylesheet" href="../common.css">
+  <style>
+    #cv { width: 100%; height: 100%; }
+    .pad {
+      display: grid;
+      grid-template-columns: repeat(3, 62px);
+      grid-template-rows: repeat(2, 46px);
+      gap: 6px;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .pad button {
+      border: 2px solid var(--line);
+      border-radius: 12px;
+      background: var(--bg);
+      color: var(--muted);
+      font: inherit; font-size: 1.15rem;
+      cursor: pointer;
+    }
+    .pad button:active { background: var(--line); transform: scale(.96); }
+    .pad .up { grid-column: 2; grid-row: 1; }
+    .pad .left { grid-column: 1; grid-row: 2; }
+    .pad .down { grid-column: 2; grid-row: 2; }
+    .pad .right { grid-column: 3; grid-row: 2; }
+  </style>
+</head>
+<body>
+
+  <div class="g-wrap">
+    <div class="g-bar">
+      <span><i class="g-score-label"></i> <b class="g-score-val">0</b></span>
+      <span class="g-extra"></span>
+      <span><i class="g-best-label"></i> <b class="g-best-val">0</b></span>
+    </div>
+
+    <div class="g-stage"><canvas id="cv"></canvas></div>
+
+    <div class="pad">
+      <button class="up" data-dx="0" data-dy="-1">▲</button>
+      <button class="left" data-dx="-1" data-dy="0">◀</button>
+      <button class="down" data-dx="0" data-dy="1">▼</button>
+      <button class="right" data-dx="1" data-dy="0">▶</button>
+    </div>
+
+    <div class="g-over hidden">
+      <div class="g-over-card">
+        <div class="g-over-emoji">🐍</div>
+        <b class="g-over-title"></b>
+        <p class="g-over-score"></p>
+        <button class="g-again"></button>
+      </div>
+    </div>
+  </div>
+
+  <script src="../common.js"></script>
+  <script>
+    /* Slang — eat the apples, get longer, do not bite yourself or the wall.
+       Steered with the four buttons, with a swipe, or with the arrow keys:
+       on a tablet the buttons are far easier for a young player than swiping. */
+    const COLS = 13, ROWS = 13;
+    const cv = document.getElementById("cv");
+
+    let ctx = null, W = 0, H = 0, cell = 0, ox = 0, oy = 0;
+    let snake = [], dir = { x: 1, y: 0 }, nextDir = dir, food = null;
+    let score = 0, tickMs = 200, alive = false, timerId = null;
+
+    function refit() {
+      const f = G.fit(cv);
+      ctx = f.ctx; W = f.w; H = f.h;
+      cell = Math.floor(Math.min(W / COLS, H / ROWS));
+      ox = Math.floor((W - cell * COLS) / 2);
+      oy = Math.floor((H - cell * ROWS) / 2);
+    }
+
+    function rnd(n) { return Math.floor(Math.random() * n); }
+
+    function placeFood() {
+      let p;
+      do { p = { x: rnd(COLS), y: rnd(ROWS) }; }
+      while (snake.some(s => s.x === p.x && s.y === p.y));
+      food = p;
+    }
+
+    function reset() {
+      refit();
+      snake = [{ x: 6, y: 6 }, { x: 5, y: 6 }, { x: 4, y: 6 }];
+      dir = { x: 1, y: 0 };
+      nextDir = dir;
+      score = 0; tickMs = 200; alive = true;
+      G.score(0);
+      placeFood();
+      clearTimeout(timerId);
+      draw();
+      timerId = setTimeout(step, tickMs);
+    }
+
+    function step() {
+      if (!alive) return;
+      dir = nextDir;
+      const head = { x: snake[0].x + dir.x, y: snake[0].y + dir.y };
+
+      // the tail tip moves away this tick, so running into it is not a crash
+      const body = snake.slice(0, -1);
+      const crash = head.x < 0 || head.y < 0 || head.x >= COLS || head.y >= ROWS ||
+                    body.some(s => s.x === head.x && s.y === head.y);
+      if (crash) { alive = false; draw(); G.over(score); return; }
+
+      snake.unshift(head);
+      if (head.x === food.x && head.y === food.y) {
+        score++;
+        G.score(score);
+        G.record(score);
+        tickMs = Math.max(95, tickMs - 5);
+        placeFood();
+      } else {
+        snake.pop();
+      }
+
+      draw();
+      timerId = setTimeout(step, tickMs);
+    }
+
+    function cellRect(p) {
+      return [ox + p.x * cell, oy + p.y * cell, cell, cell];
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, W, H);
+
+      // playing field
+      ctx.fillStyle = "#eef1f7";
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(ox, oy, cell * COLS, cell * ROWS, 12);
+      else ctx.rect(ox, oy, cell * COLS, cell * ROWS);
+      ctx.fill();
+
+      // apple
+      if (food) {
+        const [fx, fy] = cellRect(food);
+        ctx.font = Math.floor(cell * 0.78) + "px serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText("🍎", fx + cell / 2, fy + cell / 2 + 1);
+      }
+
+      // snake
+      snake.forEach((s, i) => {
+        const [x, y, w, h] = cellRect(s);
+        ctx.fillStyle = i === 0 ? "#178f4b" : "#22a95c";
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(x + 1, y + 1, w - 2, h - 2, i === 0 ? 7 : 5);
+        else ctx.rect(x + 1, y + 1, w - 2, h - 2);
+        ctx.fill();
+      });
+    }
+
+    function turn(x, y) {
+      if (!alive) return;
+      if (dir.x === -x && dir.y === -y) return;   // no instant u-turn
+      nextDir = { x, y };
+    }
+
+    document.querySelectorAll(".pad button").forEach(b => {
+      b.addEventListener("pointerdown", e => {
+        e.preventDefault();
+        turn(Number(b.dataset.dx), Number(b.dataset.dy));
+      });
+    });
+
+    window.addEventListener("keydown", e => {
+      const map = {
+        ArrowUp: [0, -1], ArrowDown: [0, 1], ArrowLeft: [-1, 0], ArrowRight: [1, 0]
+      };
+      const d = map[e.key];
+      if (!d) return;
+      e.preventDefault();
+      turn(d[0], d[1]);
+    });
+
+    let sx = 0, sy = 0;
+    cv.addEventListener("pointerdown", e => { sx = e.clientX; sy = e.clientY; });
+    cv.addEventListener("pointerup", e => {
+      const dx = e.clientX - sx, dy = e.clientY - sy;
+      if (Math.abs(dx) < 18 && Math.abs(dy) < 18) return;
+      if (Math.abs(dx) > Math.abs(dy)) turn(dx > 0 ? 1 : -1, 0);
+      else turn(0, dy > 0 ? 1 : -1);
+    });
+
+    window.addEventListener("resize", () => { refit(); draw(); });
+
+    G.init({ id: "snake", onRestart: reset });
+    reset();
+  </script>
+</body>
+</html>

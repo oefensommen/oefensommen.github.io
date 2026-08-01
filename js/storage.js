@@ -189,10 +189,23 @@ function mergeProgress(a, b) {
       done100: !!(x.done100 || y.done100),
       timeSec: x.timeSec || y.timeSec,
       times: Array.from(new Set([...(x.times || []), ...(y.times || [])])),
-      cats
+      cats,
+      reward: mergeReward(x.reward, y.reward)
     };
   }
   return out;
+}
+
+/* Speeltijd. De verdiende minuten zijn per dag hetzelfde, maar er kan op twee
+   apparaten gespeeld zijn — de hoogste stand telt, anders levert overstappen
+   naar de tablet gratis speeltijd op. */
+function mergeReward(a, b) {
+  if (!a) return b;
+  if (!b) return a;
+  return {
+    sec: Math.max(a.sec || 0, b.sec || 0),
+    used: Math.max(a.used || 0, b.used || 0)
+  };
 }
 
 function todayStr(d = new Date()) {

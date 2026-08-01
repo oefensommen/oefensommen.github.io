@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Mollen meppen</title>
+  <link rel="stylesheet" href="../common.css">
+  <style>
+    .g-stage { display: flex; align-items: center; justify-content: center; }
+    .holes {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      grid-template-rows: repeat(3, 1fr);
+      gap: 10px;
+      width: 100%;
+      aspect-ratio: 1;
+      max-height: 100%;
+    }
+    .hole {
+      position: relative;
+      overflow: hidden;
+      border-radius: 14px;
+      background: radial-gradient(ellipse at 50% 105%, #cbb18c 0 55%, #e6d7c1 56%, #f3ece0);
+      border: 2px solid #e0d3bd;
+      cursor: pointer;
+    }
+    .mol {
+      position: absolute; left: 0; right: 0; bottom: 0;
+      height: 78%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: clamp(26px, 9vw, 52px);
+      transform: translateY(105%);
+      transition: transform .13s ease-out;
+    }
+    .hole.up .mol { transform: translateY(0); }
+    .hole.hit { background: var(--green-soft); border-color: var(--green); }
+    .hole.hit .mol { transform: translateY(105%) scale(.7); }
+  </style>
+</head>
+<body>
+
+  <div class="g-wrap">
+    <div class="g-bar">
+      <span><i class="g-score-label"></i> <b class="g-score-val">0</b></span>
+      <span class="g-extra"></span>
+      <span><i class="g-best-label"></i> <b class="g-best-val">0</b></span>
+    </div>
+
+    <div class="g-stage"><div id="holes" class="holes"></div></div>
+
+    <div class="g-over hidden">
+      <div class="g-over-card">
+        <div class="g-over-emoji">🐹</div>
+        <b class="g-over-title"></b>
+        <p class="g-over-score"></p>
+        <button class="g-again"></button>
+      </div>
+    </div>
+  </div>
+
+  <script src="../common.js"></script>
+  <script>
+    /* Mollen meppen — 45 second rounds. Moles come faster as the round goes on;
+       a golden star is worth three. Missing one costs nothing: no punishment,
+       just a score to beat. */
+    const ROUND = 45;
+    const holesBox = document.getElementById("holes");
+    const holes = [];
+
+    for (let i = 0; i < 9; i++) {
+      const h = document.createElement("div");
+      h.className = "hole";
+      h.innerHTML = '<div class="mol">🐹</div>';
+      h.addEventListener("pointerdown", () => whack(h));
+      holesBox.appendChild(h);
+      holes.push(h);
+    }
+
+    let score = 0, left = ROUND, gap = 950, popId = null, clockId = null, running = false;
+
+    function whack(h) {
+      if (!running || !h.classList.contains("up")) return;
+      score += h.dataset.golden === "1" ? 3 : 1;
+      G.score(score);
+      G.record(score);
+      h.classList.remove("up");
+      h.classList.add("hit");
+      setTimeout(() => h.classList.remove("hit"), 200);
+    }
+
+    function pop() {
+      const free = holes.filter(h => !h.classList.contains("up"));
+      if (free.length) {
+        const h = free[Math.floor(Math.random() * free.length)];
+        const golden = Math.random() < 0.12;
+        h.dataset.golden = golden ? "1" : "";
+        h.querySelector(".mol").textContent = golden ? "⭐" : "🐹";
+        h.classList.add("up");
+        const stay = Math.max(520, gap * 0.95);
+        setTimeout(() => h.classList.remove("up"), stay);
+      }
+      gap = Math.max(430, gap - 14);
+      popId = setTimeout(pop, gap);
+    }
+
+    function tick() {
+      left--;
+      G.extra(G.w("time") + " " + Math.max(0, left));
+      if (left <= 0) stop();
+    }
+
+    function stop() {
+      running = false;
+      clearTimeout(popId);
+      clearInterval(clockId);
+      holes.forEach(h => h.classList.remove("up"));
+      G.over(score);
+    }
+
+    function start() {
+      clearTimeout(popId);
+      clearInterval(clockId);
+      holes.forEach(h => h.classList.remove("up", "hit"));
+      score = 0; left = ROUND; gap = 950; running = true;
+      G.score(0);
+      G.extra(G.w("time") + " " + left);
+      clockId = setInterval(tick, 1000);
+      popId = setTimeout(pop, 600);
+    }
+
+    G.init({ id: "mol", onRestart: start });
+    start();
+  </script>
+</body>
+</html>
