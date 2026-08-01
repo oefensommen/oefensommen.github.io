@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Oefensommen</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧮</text></svg>">
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="brand">🧮 Oefensommen</div>
+    <div class="topbar-right">
+      <span id="timer" class="timer hidden">⏱ 0:00</span>
+      <div class="flags">
+        <button class="flag active" data-lang="nl" title="Nederlands">🇳🇱</button>
+        <button class="flag" data-lang="en" title="English">🇬🇧</button>
+        <button class="flag" data-lang="tr" title="Türkçe">🇹🇷</button>
+      </div>
+    </div>
+  </header>
+
+  <main id="app">
+
+    <!-- LOGIN -->
+    <section id="screen-login" class="screen">
+      <div class="login-wrap">
+        <h1 class="welkom"><span data-i18n="welkom">Welkom</span><span id="welkom-name" class="name"></span> 👋</h1>
+        <p id="login-sub" class="login-sub" data-i18n="login_hint">Typ het wachtwoord om de deur te openen</p>
+
+        <div class="door-scene" id="door-scene">
+          <div class="door-glow"></div>
+          <div class="door" id="door">
+            <div class="door-panel top"></div>
+            <div class="door-panel bottom"></div>
+            <div class="door-handle"></div>
+            <div class="door-lock" id="door-lock"><div class="keyhole"></div></div>
+          </div>
+          <div class="sparkles" id="sparkles"></div>
+        </div>
+
+        <input type="text" id="login-user" class="hidden" autocomplete="username" data-i18n-ph="username" placeholder="Naam">
+        <input type="password" id="login-pass" inputmode="numeric" autocomplete="current-password" data-i18n-ph="password" placeholder="Wachtwoord">
+        <p id="login-error" class="error hidden" data-i18n="login_err">Dat klopt niet. Probeer het nog eens!</p>
+        <button id="btn-login" class="btn primary big" data-i18n="login_btn">Open de deur</button>
+      </div>
+    </section>
+
+    <!-- HOME -->
+    <section id="screen-home" class="screen hidden">
+      <div class="card center">
+        <h1 id="home-greeting">Hoi!</h1>
+        <div class="streak-row">
+          <span class="streak">🔥 <b id="streak-count">0</b> <span data-i18n="streak_days">dagen op rij</span></span>
+        </div>
+        <p id="home-status" class="status"></p>
+        <button id="btn-start" class="btn primary big" data-i18n="start_task">Start de opdracht</button>
+        <div class="nav-row">
+          <button id="btn-calendar" class="btn ghost">📅 <span data-i18n="calendar">Kalender</span></button>
+          <button id="btn-stats" class="btn ghost">📊 <span data-i18n="stats">Overzicht</span></button>
+        </div>
+        <button id="btn-logout" class="link-btn" data-i18n="logout">Uitloggen</button>
+      </div>
+    </section>
+
+    <!-- TASK -->
+    <section id="screen-task" class="screen hidden">
+      <div class="card">
+        <div class="task-head">
+          <button id="btn-quit" class="link-btn">←</button>
+          <div class="progress-wrap"><div id="progress-bar" class="progress-bar"></div></div>
+          <span id="progress-text" class="progress-text">1/20</span>
+          <button id="btn-skip" class="skip-btn"><span data-i18n="skip">Overslaan</span> ⏭</button>
+        </div>
+        <p id="question-text" class="question"></p>
+        <div id="answers" class="answers"></div>
+      </div>
+    </section>
+
+    <!-- RESULT -->
+    <section id="screen-result" class="screen hidden">
+      <div class="card center">
+        <div id="result-emoji" class="big-emoji">🎉</div>
+        <h1 id="result-title"></h1>
+        <p id="result-score" class="status"></p>
+        <p id="result-time" class="result-time hidden"></p>
+        <div id="result-grid" class="result-grid"></div>
+        <div class="btn-row">
+          <button id="btn-retry" class="btn primary hidden" data-i18n="retry_btn">Verbeter je fouten</button>
+          <button id="btn-home" class="btn ghost" data-i18n="back_home">Terug naar start</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- CALENDAR -->
+    <section id="screen-calendar" class="screen hidden">
+      <div class="card">
+        <div class="cal-head">
+          <button id="cal-prev" class="link-btn">←</button>
+          <h2 id="cal-title">Augustus 2026</h2>
+          <button id="cal-next" class="link-btn">→</button>
+        </div>
+        <div id="cal-grid" class="cal-grid"></div>
+        <div class="cal-legend">
+          <span><i class="dot done"></i> <span data-i18n="legend_done">100% goed</span></span>
+          <span><i class="dot partial"></i> <span data-i18n="legend_partial">geoefend</span></span>
+          <span><i class="dot empty"></i> <span data-i18n="legend_empty">niet geoefend</span></span>
+        </div>
+        <button class="btn ghost big btn-back" data-i18n="back_home">Terug naar start</button>
+      </div>
+    </section>
+
+    <!-- STATS -->
+    <section id="screen-stats" class="screen hidden">
+      <div class="card">
+        <h2>📊 <span data-i18n="stats">Overzicht</span></h2>
+        <div class="stat-grid">
+          <div class="stat"><b id="stat-total">0</b><span data-i18n="total_solved">sommen gemaakt</span></div>
+          <div class="stat"><b id="stat-acc">0%</b><span data-i18n="accuracy">goed (1e keer)</span></div>
+          <div class="stat"><b id="stat-days">0</b><span data-i18n="done_days">dagen geoefend</span></div>
+          <div class="stat"><b id="stat-best">0</b><span data-i18n="best_streak">langste reeks</span></div>
+        </div>
+        <h3 data-i18n="per_cat">Per soort som</h3>
+        <div id="cat-bars"></div>
+        <p class="level-line"><span data-i18n="level">Niveau</span>: <b id="stat-level">1</b>/5</p>
+        <button class="btn ghost big btn-back" data-i18n="back_home">Terug naar start</button>
+      </div>
+    </section>
+
+  </main>
+
+  <div id="confetti"></div>
+
+  <script src="js/i18n.js"></script>
+  <script src="js/celebrate.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/cloud.js"></script>
+  <script src="js/storage.js"></script>
+  <script src="js/templates.js"></script>
+  <script src="js/engine.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
