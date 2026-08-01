@@ -1,2 +1,3 @@
 .DS_Store
 references.local.md
+.env.local
