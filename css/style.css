@@ -296,7 +296,14 @@ input:focus { border-color: var(--accent); }
   cursor: pointer;
   transition: border-color .15s, background .15s, transform .08s;
 }
-.answer:hover { border-color: var(--accent); }
+/* Hover only where there is a real pointer to hover with: a touchscreen keeps
+   the last tapped spot in :hover, which on the next question looks like an
+   answer is already chosen. The .fresh guard covers the mouse version of the
+   same thing — a new question must never light up under a resting cursor, so
+   hover only starts once the pointer actually moves. */
+@media (hover: hover) and (pointer: fine) {
+  .answers:not(.fresh) .answer:hover { border-color: var(--accent); }
+}
 .answer:active { transform: scale(0.97); }
 .answer.correct { border-color: var(--green); background: var(--green-soft); color: var(--green); }
 .answer.wrong { border-color: var(--red); background: var(--red-soft); color: var(--red); }

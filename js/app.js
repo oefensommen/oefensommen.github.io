@@ -180,6 +180,7 @@ function renderQuestion() {
   $("question-text").textContent = Engine.text(q, LANG);
   const box = $("answers");
   box.innerHTML = "";
+  box.classList.add("fresh");     // no answer may look chosen before it is touched
   q.options.forEach((opt, i) => {
     const b = document.createElement("button");
     b.className = "answer";
@@ -656,6 +657,8 @@ document.addEventListener("DOMContentLoaded", () => {
     if (confirm(t("quit_confirm"))) goHome();
   });
   $("btn-skip").addEventListener("click", skip);
+  // the cursor has to move before hovering means anything again
+  $("answers").addEventListener("pointermove", () => $("answers").classList.remove("fresh"));
 
   // result
   $("btn-retry").addEventListener("click", startRetry);
