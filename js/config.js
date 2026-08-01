@@ -5,7 +5,6 @@
    way in is through the load_progress/save_progress functions, which verify the
    password server-side against a bcrypt hash.
 
-   Fill these in after creating the Supabase project. While they are empty the
-   app runs fully offline on localStorage (handy for local development). */
-const SUPABASE_URL = "";
-const SUPABASE_ANON_KEY = "";
+   Empty values make the app run fully offline on localStorage (local dev). */
+const SUPABASE_URL = "https://ffvqqjyfmwkqljwhrhtl.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZmdnFxanlmbXdrcWxqd2hyaHRsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU1OTAxOTMsImV4cCI6MjEwMTE2NjE5M30.WYYdwlTLKSIveOjIRuR-1fDXEDRI7cO2OwTPQ1cnCa4";
