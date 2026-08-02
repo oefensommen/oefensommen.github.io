@@ -178,7 +178,8 @@ function mergeProgress(a, b) {
     recentTpl: Object.assign({}, b.recentTpl || {}, a.recentTpl || {}),
     wrongTpl: Array.from(new Set([...(a.wrongTpl || []), ...(b.wrongTpl || [])])).slice(0, 6),
     catLevel: Object.assign({}, b.catLevel || {}, a.catLevel || {}),
-    catStreak: Object.assign({}, b.catStreak || {}, a.catStreak || {})
+    catStreak: Object.assign({}, b.catStreak || {}, a.catStreak || {}),
+    catDay: Object.assign({}, b.catDay || {}, a.catDay || {})
   };
   if (active) out.active = active;
   const dates = new Set([...Object.keys(a.days || {}), ...Object.keys(b.days || {})]);

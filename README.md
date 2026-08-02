@@ -17,10 +17,11 @@ stopte.
 - **Kalender + overzicht**: groen vakje bij 100%, streak, en per soort som hoe het gaat.
 - **Vlaggen NL / EN / TR**: Nederlands is de basis, Engels en Turks zijn er alleen
   om een som te begrijpen. De app start altijd in het Nederlands.
-- **Niveau 1–5 per soort som**, zichtbaar op het startscherm: drie opdrachten op
-  rij foutloos in een onderdeel → dat onderdeel wordt een stapje moeilijker,
-  onder de 60% → een stapje makkelijker. Goed zijn in tafels maakt de klok dus
-  niet zwaarder.
+- **Niveau 1–5 per soort som**, te zien in de balk bovenaan: zeven dagen op rij
+  foutloos in een onderdeel → dat onderdeel wordt een stapje moeilijker, onder
+  de 60% → een stapje makkelijker. Goed zijn in tafels maakt de klok dus niet
+  zwaarder. Een tweede foutloze opdracht op dezelfde dag telt niet mee: zeven
+  dagen moet ook echt zeven dagen zijn.
 - **Speeltijd als beloning**: een afgeronde dag levert minuten op voor een
   spelletje in de app zelf — reclamevrij, want de spelletjes staan in deze repo.
 

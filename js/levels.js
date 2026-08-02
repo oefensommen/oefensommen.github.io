@@ -2,8 +2,8 @@
    Elke categorie heeft een eigen niveau van 1 tot 5. De regel is hard en
    telbaar, geen gevoelskwestie:
 
-     drie opdrachten op rij foutloos in een categorie  -> een niveau erbij
-     onder de 60% in een categorie                     -> een niveau eraf
+     zeven dagen op rij foutloos in een categorie  -> een niveau erbij
+     onder de 60% in een categorie                 -> een niveau eraf
 
    "Foutloos" telt alleen de eerste poging, en alleen als er die opdracht
    minstens twee sommen van die soort in zaten — één goede som zegt te weinig.
@@ -14,7 +14,7 @@
 
 const Levels = {
   MAX: 5,
-  CLEAN_RUNS_NEEDED: 3,     // opdrachten op rij foutloos
+  CLEAN_DAYS_NEEDED: 7,     // dagen op rij foutloos, niet opdrachten
   MIN_TO_JUDGE: 2,          // minder sommen dan dit zegt niets
   DROP_BELOW: 0.6,
 
@@ -25,6 +25,7 @@ const Levels = {
       CATS.forEach(c => { data.catLevel[c] = data.level || 1; });
     }
     if (!data.catStreak) data.catStreak = {};
+    if (!data.catDay) data.catDay = {};        // last day a category's streak moved
     CATS.forEach(c => {
       if (typeof data.catLevel[c] !== "number") data.catLevel[c] = data.level || 1;
       if (typeof data.catStreak[c] !== "number") data.catStreak[c] = 0;
@@ -57,8 +58,12 @@ const Levels = {
       const tally = perCat[cat];
       if (!tally || tally.n < this.MIN_TO_JUDGE) continue;   // not enough to judge
       if (tally.c === tally.n) {
+        // one step per calendar day: a second flawless task today is lovely,
+        // but seven days on the trot has to mean seven days
+        if (data.catDay[cat] === todayStr()) continue;
+        data.catDay[cat] = todayStr();
         data.catStreak[cat]++;
-        if (data.catStreak[cat] >= this.CLEAN_RUNS_NEEDED && data.catLevel[cat] < this.MAX) {
+        if (data.catStreak[cat] >= this.CLEAN_DAYS_NEEDED && data.catLevel[cat] < this.MAX) {
           data.catLevel[cat]++;
           data.catStreak[cat] = 0;
           wentUp.push(cat);
@@ -72,10 +77,10 @@ const Levels = {
     return wentUp;
   },
 
-  /* how many clean runs still to go in this category */
+  /* how many flawless days still to go in this category */
   toGo(data, cat) {
     this.ensure(data);
     if (data.catLevel[cat] >= this.MAX) return 0;
-    return this.CLEAN_RUNS_NEEDED - data.catStreak[cat];
+    return this.CLEAN_DAYS_NEEDED - data.catStreak[cat];
   }
 };
