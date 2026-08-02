@@ -165,19 +165,19 @@ const Live = {
     // The answer stays covered until asked for — otherwise a glance at the
     // parent's screen gives it away. Every new som covers it again.
     const key = state.n + "/" + q.tplId;
-    if (this._revealKey !== key) { this._revealKey = key; this._revealed = false; }
+    if (this._revealKey !== key) { this._revealKey = key; this.hideAnswer(); }
 
     const text = Engine.text(q, LANG);          // rendered in the PARENT's language
     const opts = q.options.map((o, i) => {
       let cls = "mirror-opt";
-      const picked = q.chosen !== null && q.chosen !== undefined;
-      if (picked && i === q.chosen) cls += (i === q.answerIdx) ? " picked-ok" : " picked-no";
-      else if (this._revealed && i === q.answerIdx) cls += " is-answer";
+      if (q.chosen !== null && q.chosen !== undefined && i === q.chosen) {
+        cls += (i === q.answerIdx) ? " picked-ok" : " picked-no";
+      }
       return `<div class="${cls}">${o}</div>`;
     }).join("");
 
     const footer = this._revealed
-      ? `<div class="mirror-key">${t("live_answer")}: <b>${q.options[q.answerIdx]}</b></div>`
+      ? `<div class="mirror-key shown">${t("live_answer")}: <b>${q.options[q.answerIdx]}</b></div>`
       : `<button id="mirror-reveal" class="mirror-reveal">👁️ ${t("show_answer")}</button>`;
 
     el("mirror-body").innerHTML =
@@ -187,6 +187,25 @@ const Live = {
        ${footer}`;
 
     const reveal = el("mirror-reveal");
-    if (reveal) reveal.onclick = () => { this._revealed = true; this.rerender(); };
+    if (reveal) reveal.onclick = () => this.showAnswerBriefly();
+  },
+
+  /* The answer shows itself at the bottom for a few seconds and then goes back
+     into hiding, so it cannot sit there in the open. */
+  ANSWER_SHOWN_MS: 6000,
+
+  showAnswerBriefly() {
+    this._revealed = true;
+    this.rerender();
+    clearTimeout(this._revealTimer);
+    this._revealTimer = setTimeout(() => {
+      this._revealed = false;
+      this.rerender();
+    }, this.ANSWER_SHOWN_MS);
+  },
+
+  hideAnswer() {
+    clearTimeout(this._revealTimer);
+    this._revealed = false;
   }
 };
