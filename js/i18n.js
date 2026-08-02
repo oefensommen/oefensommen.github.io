@@ -62,7 +62,7 @@ const I18N = {
     level_up: "{cat}: niveau {n}!",
     months: ["Januari","Februari","Maart","April","Mei","Juni","Juli","Augustus","September","Oktober","November","December"],
     weekdays: ["Ma","Di","Wo","Do","Vr","Za","Zo"],
-    cats: { optellen: "Optellen", aftrekken: "Aftrekken", vermenigvuldigen: "Vermenigvuldigen", delen: "Delen", tweestap: "Twee bewerkingen", klok: "Klokkijken", verrassing: "Verrassing" }
+    cats: { optellen: "Optellen", aftrekken: "Aftrekken", vermenigvuldigen: "Vermenigvuldigen", delen: "Delen", tweestap: "Meerdere bewerkingen", klok: "Klokkijken", verrassing: "Verrassing" }
   },
   en: {
     login_title: "Welcome!",
@@ -126,7 +126,7 @@ const I18N = {
     level_up: "{cat}: level {n}!",
     months: ["January","February","March","April","May","June","July","August","September","October","November","December"],
     weekdays: ["Mo","Tu","We","Th","Fr","Sa","Su"],
-    cats: { optellen: "Addition", aftrekken: "Subtraction", vermenigvuldigen: "Multiplication", delen: "Division", tweestap: "Two steps", klok: "Telling time", verrassing: "Surprise" }
+    cats: { optellen: "Addition", aftrekken: "Subtraction", vermenigvuldigen: "Multiplication", delen: "Division", tweestap: "Several steps", klok: "Telling time", verrassing: "Surprise" }
   },
   tr: {
     login_title: "Hoş geldin!",
@@ -190,7 +190,7 @@ const I18N = {
     level_up: "{cat}: seviye {n}!",
     months: ["Ocak","Şubat","Mart","Nisan","Mayıs","Haziran","Temmuz","Ağustos","Eylül","Ekim","Kasım","Aralık"],
     weekdays: ["Pt","Sa","Ça","Pe","Cu","Ct","Pz"],
-    cats: { optellen: "Toplama", aftrekken: "Çıkarma", vermenigvuldigen: "Çarpma", delen: "Bölme", tweestap: "İki işlem", klok: "Saat", verrassing: "Sürpriz" }
+    cats: { optellen: "Toplama", aftrekken: "Çıkarma", vermenigvuldigen: "Çarpma", delen: "Bölme", tweestap: "Çok işlemli", klok: "Saat", verrassing: "Sürpriz" }
   }
 };
 

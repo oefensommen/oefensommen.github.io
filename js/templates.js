@@ -498,6 +498,104 @@ const TEMPLATES = [
       return { vars: { a, b }, answer: ans, wrongs: [ans + 1, ans - 1, ans + 2, Math.abs(a - b)] }; }
   },
 
+  /* --- ketensommen: drie of vier getallen achter elkaar ---
+     Soms kaal, want een som zonder verhaaltje is een ander soort werk: er valt
+     niets te begrijpen, alleen netjes op volgorde rekenen. */
+  {
+    id: "kaal-ketting", cat: "tweestap",
+    variants: [
+      { nl: "Hoeveel is {a} + {b} + {c} − {d}?",
+        en: "How much is {a} + {b} + {c} − {d}?",
+        tr: "{a} + {b} + {c} − {d} kaç eder?" },
+      { nl: "Hoeveel is {a} + {b} − {c} + {d}?",
+        en: "How much is {a} + {b} − {c} + {d}?",
+        tr: "{a} + {b} − {c} + {d} kaç eder?" },
+      { nl: "Reken uit: {a} − {b} + {c}",
+        en: "Work it out: {a} − {b} + {c}",
+        tr: "Hesapla: {a} − {b} + {c}" },
+      { nl: "Reken uit: {a} + {b} + {c}",
+        en: "Work it out: {a} + {b} + {c}",
+        tr: "Hesapla: {a} + {b} + {c}" }
+    ],
+    gen(level, v) {
+      const a = lvRange(level, 45, 130, 2.6);
+      const b = lvRange(level, 25, 90, 2.6);
+      const c = lvRange(level, 15, 70, 2.6);
+      if (v === 0) {                                   // a + b + c − d
+        const d = ri(12, Math.floor((a + b + c) / 2));
+        const ans = a + b + c - d;
+        return { vars: { a, b, c, d }, answer: ans,
+                 wrongs: [a + b + c + d, ans + 10, ans - 10, ans + 1, ans - 1] };
+      }
+      if (v === 1) {                                   // a + b − c + d
+        const cc = ri(12, Math.floor((a + b) / 2));
+        const d = lvRange(level, 15, 70, 2.6);
+        const ans = a + b - cc + d;
+        return { vars: { a, b, c: cc, d }, answer: ans,
+                 wrongs: [a + b + cc + d, a + b - cc - d, ans + 10, ans - 10, ans + 1] };
+      }
+      if (v === 2) {                                   // a − b + c
+        const bb = ri(12, a - 12);
+        const ans = a - bb + c;
+        return { vars: { a, b: bb, c }, answer: ans,
+                 wrongs: [a - bb - c, a + bb + c, ans + 10, ans - 10, ans + 1] };
+      }
+      const ans = a + b + c;                           // a + b + c
+      return { vars: { a, b, c }, answer: ans,
+               wrongs: [a + b - c, ans + 10, ans - 10, ans + 100, ans + 1] };
+    }
+  },
+  {
+    id: "twee-kassa-drie", cat: "tweestap",
+    variants: [
+      { nl: "{name} koopt een boek van {a} euro, een spel van {b} euro en een pen van {c} euro. {Hij} betaalt met {d} euro. Hoeveel euro krijgt {hij} terug?",
+        en: "{name} buys a book for {a} euros, a game for {b} euros and a pen for {c} euros. {He} pays with {d} euros. How many euros does {he} get back?",
+        tr: "{name} {a} euroluk kitap, {b} euroluk oyun ve {c} euroluk kalem alıyor. {d} euro veriyor. Kaç euro para üstü alır?" }
+    ],
+    gen(level) {
+      const a = lvRange(level, 12, 30, 1.8), b = lvRange(level, 8, 25, 1.8), c = ri(2, 9);
+      const total = a + b + c;
+      const d = Math.ceil((total + ri(5, 25)) / 10) * 10;      // a round note
+      const ans = d - total;
+      return { vars: { a, b, c, d }, answer: ans,
+               wrongs: [d - a - b, total, ans + 10, ans - 10, ans + 1] };
+    }
+  },
+  {
+    id: "twee-club-ketting", cat: "tweestap",
+    variants: [
+      { nl: "De club van {name} had {a} leden. Er kwamen {b} nieuwe leden bij en later nog {c}. Daarna stopten er {d}. Hoeveel leden heeft de club nu?",
+        en: "{name}'s club had {a} members. {b} new members joined and later {c} more. Then {d} left. How many members does the club have now?",
+        tr: "{name_in} kulübünde {a} üye vardı. {b} yeni üye katıldı, sonra {c} kişi daha. Ardından {d} kişi ayrıldı. Kulüpte şimdi kaç üye var?" }
+    ],
+    gen(level) {
+      const a = lvRange(level, 60, 160, 2.4);
+      const b = lvRange(level, 15, 50, 2.0);
+      const c = lvRange(level, 10, 40, 2.0);
+      const d = ri(8, Math.floor((a + b + c) / 3));
+      const ans = a + b + c - d;
+      return { vars: { a, b, c, d }, answer: ans,
+               wrongs: [a + b + c + d, a + b - c - d, ans + 10, ans - 10, ans + 1] };
+    }
+  },
+  {
+    id: "twee-spaar-ketting", cat: "tweestap",
+    variants: [
+      { nl: "{name} had {a} euro gespaard. {Hij} kreeg er {b} euro bij en verdiende {c} euro met klusjes. Daarna gaf {hij} {d} euro uit. Hoeveel euro heeft {name} nu?",
+        en: "{name} had saved {a} euros. {He} was given {b} euros more and earned {c} euros doing chores. Then {he} spent {d} euros. How many euros does {name} have now?",
+        tr: "{name} {a} euro biriktirmişti. {b} euro daha aldı ve işlerden {c} euro kazandı. Sonra {d} euro harcadı. {name} şimdi kaç euroya sahip?" }
+    ],
+    gen(level) {
+      const a = lvRange(level, 40, 120, 2.4);
+      const b = lvRange(level, 10, 45, 2.0);
+      const c = lvRange(level, 10, 40, 2.0);
+      const d = ri(10, Math.floor((a + b + c) / 2));
+      const ans = a + b + c - d;
+      return { vars: { a, b, c, d }, answer: ans,
+               wrongs: [a + b + c + d, a + b - c + d, ans + 10, ans - 10, ans + 1] };
+    }
+  },
+
   /* ===================== KLOKKIJKEN (CITO/DIA) =====================
      Not in the book, but a core groep 5 CITO/DIA topic and a known weak spot.
      Answers are always digital times or plain numbers, so the four options
