@@ -176,8 +176,11 @@ const Live = {
       return `<div class="${cls}">${o}</div>`;
     }).join("");
 
+    // the same button both ways: press to see it, press again to put it away
     const footer = this._revealed
-      ? `<div class="mirror-key shown">${t("live_answer")}: <b>${q.options[q.answerIdx]}</b></div>`
+      ? `<button id="mirror-reveal" class="mirror-key shown" title="${t("hide_answer")}">
+           ${t("live_answer")}: <b>${q.options[q.answerIdx]}</b> <span class="tuck">🙈</span>
+         </button>`
       : `<button id="mirror-reveal" class="mirror-reveal">👁️ ${t("show_answer")}</button>`;
 
     el("mirror-body").innerHTML =
@@ -187,25 +190,8 @@ const Live = {
        ${footer}`;
 
     const reveal = el("mirror-reveal");
-    if (reveal) reveal.onclick = () => this.showAnswerBriefly();
+    if (reveal) reveal.onclick = () => { this._revealed = !this._revealed; this.rerender(); };
   },
 
-  /* The answer shows itself at the bottom for a few seconds and then goes back
-     into hiding, so it cannot sit there in the open. */
-  ANSWER_SHOWN_MS: 6000,
-
-  showAnswerBriefly() {
-    this._revealed = true;
-    this.rerender();
-    clearTimeout(this._revealTimer);
-    this._revealTimer = setTimeout(() => {
-      this._revealed = false;
-      this.rerender();
-    }, this.ANSWER_SHOWN_MS);
-  },
-
-  hideAnswer() {
-    clearTimeout(this._revealTimer);
-    this._revealed = false;
-  }
+  hideAnswer() { this._revealed = false; }
 };

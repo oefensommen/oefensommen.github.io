@@ -558,13 +558,18 @@ input:focus { border-color: var(--accent); }
 }
 .mirror-key b { color: var(--green); }
 .mirror-key.shown {
+  display: flex; align-items: center; gap: 7px;
+  width: 100%; text-align: left;
   border: 1px solid var(--green);
   background: var(--green-soft);
   color: #14663a;
-  font-weight: 600;
+  font-family: inherit; font-size: .92rem; font-weight: 600;
+  cursor: pointer;
   animation: answer-in .25s ease;
 }
 .mirror-key.shown b { color: #0d5030; font-size: 1.08rem; }
+.mirror-key.shown .tuck { margin-left: auto; opacity: .65; font-size: .9rem; }
+.mirror-key.shown:hover .tuck { opacity: 1; }
 @keyframes answer-in {
   from { opacity: 0; transform: translateY(-4px); }
   to   { opacity: 1; transform: none; }
