@@ -10,14 +10,10 @@
    de cloud-synchronisatie: op de tablet gespeelde minuten zijn ook op de laptop
    op. */
 const Reward = {
-  /* Hoeveel speeltijd een afgeronde dag oplevert, puur op het cijfer van de
-     eerste poging — geen ingewikkelde trap, gewoon drie treden. */
+  /* Zo simpel als het maar kan: in één keer alles goed is 15 minuten waard,
+     al het andere 5. Foutloos werken is daarmee het enige dat telt. */
   minutesForScore(correct, total) {
-    if (!total) return 5;
-    const pct = correct / total;
-    if (pct >= 1) return 15;
-    if (pct >= 0.9) return 10;
-    return 5;
+    return (total && correct === total) ? 15 : 5;
   },
 
   _today(data) {

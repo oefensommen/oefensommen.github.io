@@ -44,8 +44,7 @@ eerste poging:
 | Eerste poging | Speeltijd |
 | --- | --- |
 | alles goed (20 uit 20) | 15 minuten |
-| 90% of meer (18 of 19 goed) | 10 minuten |
-| daaronder | 5 minuten |
+| al het andere | 5 minuten |
 
 De fouten moeten nog steeds allemaal verbeterd worden voordat de dag afgerond
 is; het cijfer bepaalt alleen hoeveel tijd het oplevert.
