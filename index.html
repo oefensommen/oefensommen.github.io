@@ -14,12 +14,20 @@
     <button id="btn-brand" class="brand" title="Oefensommen">🧮 Oefensommen</button>
     <div class="topbar-right">
       <span id="timer" class="timer hidden">⏱ 0:00</span>
-      <button id="btn-pause" class="pause-btn hidden" title="Pauze">⏸</button>
+      <button id="btn-pause" class="icon-btn hidden" data-i18n-title="pause">⏸</button>
       <div class="flags">
         <button class="flag active" data-lang="nl" title="Nederlands">🇳🇱</button>
         <button class="flag" data-lang="en" title="English">🇬🇧</button>
         <button class="flag" data-lang="tr" title="Türkçe">🇹🇷</button>
       </div>
+      <button id="btn-logout-top" class="icon-btn hidden" data-i18n-title="logout" aria-label="Uitloggen">
+        <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor"
+             stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M15 17l5-5-5-5"></path>
+          <path d="M20 12H9"></path>
+          <path d="M13 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h7"></path>
+        </svg>
+      </button>
     </div>
   </header>
 
@@ -72,7 +80,6 @@
           <button id="btn-calendar" class="btn ghost">📅 <span data-i18n="calendar">Kalender</span></button>
           <button id="btn-stats" class="btn ghost">📊 <span data-i18n="stats">Overzicht</span></button>
         </div>
-        <button id="btn-logout" class="link-btn" data-i18n="logout">Uitloggen</button>
       </div>
     </section>
 

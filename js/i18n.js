@@ -26,6 +26,7 @@ const I18N = {
     live_waiting: "Wachten tot {name} begint…",
     live_answer: "Goede antwoord",
     live_paused: "heeft even pauze",
+    pause: "Pauze",
     paused_title: "Even pauze",
     paused_sub: "De klok staat stil. Je gaat verder met dezelfde som.",
     resume_btn: "Verder gaan",
@@ -85,6 +86,7 @@ const I18N = {
     live_waiting: "Waiting for {name} to start…",
     live_answer: "Correct answer",
     live_paused: "is taking a break",
+    pause: "Pause",
     paused_title: "Short break",
     paused_sub: "The clock is stopped. You carry on with the same question.",
     resume_btn: "Carry on",
@@ -144,6 +146,7 @@ const I18N = {
     live_waiting: "{name} başlayana kadar bekleniyor…",
     live_answer: "Doğru cevap",
     live_paused: "mola verdi",
+    pause: "Mola",
     paused_title: "Kısa mola",
     paused_sub: "Süre durdu. Aynı sorudan devam edeceksin.",
     resume_btn: "Devam et",
@@ -192,6 +195,9 @@ function applyI18n() {
   });
   document.querySelectorAll("[data-i18n-ph]").forEach(el => {
     el.placeholder = t(el.dataset.i18nPh);
+  });
+  document.querySelectorAll("[data-i18n-title]").forEach(el => {
+    el.title = t(el.dataset.i18nTitle);          // icon-only buttons
   });
   document.documentElement.lang = LANG;
 }

@@ -37,6 +37,7 @@ function show(id) {
   document.querySelectorAll(".screen").forEach(s => s.classList.add("hidden"));
   $(id).classList.remove("hidden");
   $("btn-pause").classList.toggle("hidden", id !== "screen-task");
+  $("btn-logout-top").classList.toggle("hidden", id === "screen-login");
 }
 
 /* ---------- language ---------- */
@@ -716,7 +717,12 @@ document.addEventListener("DOMContentLoaded", () => {
   $("btn-watch").addEventListener("click", () => openMirror());
   $("btn-calendar").addEventListener("click", () => { calMonth = new Date(); renderCalendar(); show("screen-calendar"); });
   $("btn-stats").addEventListener("click", () => { renderStats(); show("screen-stats"); });
-  $("btn-logout").addEventListener("click", () => { Store.logout(); goLogin(); });
+  $("btn-logout-top").addEventListener("click", () => {
+    // walking out mid-task throws the answers away, so ask first
+    if (session && (isOn("screen-task") || isOn("screen-pause")) && !confirm(t("quit_confirm"))) return;
+    Store.logout();
+    goLogin();
+  });
 
   // task
   $("btn-quit").addEventListener("click", () => {
