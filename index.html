@@ -4,21 +4,29 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <title>Oefensommen</title>
-  <link rel="stylesheet" href="css/style.css?v=202608021308">
-  <link rel="stylesheet" href="css/games.css?v=202608021308">
+  <link rel="stylesheet" href="css/style.css?v=202608021315">
+  <link rel="stylesheet" href="css/games.css?v=202608021315">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧮</text></svg>">
 </head>
 <body>
 
   <header class="topbar">
-    <button id="btn-brand" class="brand" title="Oefensommen">🧮 Oefensommen</button>
+    <button id="btn-brand" class="brand" title="Oefensommen">🧮</button>
     <div class="topbar-right">
-      <span id="timer" class="timer hidden">⏱ 0:00</span>
-      <button id="btn-pause" class="icon-btn hidden" data-i18n-title="pause">⏸</button>
-      <div class="flags">
-        <button class="flag active" data-lang="nl" title="Nederlands">🇳🇱</button>
-        <button class="flag" data-lang="en" title="English">🇬🇧</button>
-        <button class="flag" data-lang="tr" title="Türkçe">🇹🇷</button>
+      <div id="timerbox" class="timerbox hidden">
+        <span class="timer-clock">⏱</span>
+        <span id="timer" class="timer-value">0:00</span>
+        <button id="btn-pause" class="timer-pause" data-i18n-title="pause">⏸</button>
+      </div>
+      <div class="langpick">
+        <button id="lang-current" class="flag-btn" aria-haspopup="true" aria-expanded="false">
+          <span id="lang-flag">🇳🇱</span><span id="lang-caret" class="caret hidden">▾</span>
+        </button>
+        <div id="lang-menu" class="lang-menu hidden">
+          <button class="lang-opt" data-lang="nl">🇳🇱 Nederlands</button>
+          <button class="lang-opt" data-lang="en">🇬🇧 English</button>
+          <button class="lang-opt" data-lang="tr">🇹🇷 Türkçe</button>
+        </div>
       </div>
       <button id="btn-logout-top" class="icon-btn hidden" data-i18n-title="logout" aria-label="Uitloggen">
         <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor"
@@ -215,16 +223,16 @@
 
   <div id="confetti"></div>
 
-  <script src="js/i18n.js?v=202608021308"></script>
-  <script src="js/celebrate.js?v=202608021308"></script>
-  <script src="js/config.js?v=202608021308"></script>
-  <script src="js/cloud.js?v=202608021308"></script>
-  <script src="js/storage.js?v=202608021308"></script>
-  <script src="js/templates.js?v=202608021308"></script>
-  <script src="js/levels.js?v=202608021308"></script>
-  <script src="js/engine.js?v=202608021308"></script>
-  <script src="js/live.js?v=202608021308"></script>
-  <script src="js/reward.js?v=202608021308"></script>
-  <script src="js/app.js?v=202608021308"></script>
+  <script src="js/i18n.js?v=202608021315"></script>
+  <script src="js/celebrate.js?v=202608021315"></script>
+  <script src="js/config.js?v=202608021315"></script>
+  <script src="js/cloud.js?v=202608021315"></script>
+  <script src="js/storage.js?v=202608021315"></script>
+  <script src="js/templates.js?v=202608021315"></script>
+  <script src="js/levels.js?v=202608021315"></script>
+  <script src="js/engine.js?v=202608021315"></script>
+  <script src="js/live.js?v=202608021315"></script>
+  <script src="js/reward.js?v=202608021315"></script>
+  <script src="js/app.js?v=202608021315"></script>
 </body>
 </html>

@@ -17,11 +17,11 @@ function elapsedSec() {
   return session ? Math.floor((Date.now() - session.t0) / 1000) : 0;
 }
 function tickTimer() {
-  $("timer").textContent = "⏱ " + fmtTime(elapsedSec());
+  $("timer").textContent = fmtTime(elapsedSec());
 }
 function startTimer() {
   session.t0 = Date.now();
-  $("timer").classList.remove("hidden");
+  $("timerbox").classList.remove("hidden");
   tickTimer();
   clearInterval(timerInt);
   timerInt = setInterval(tickTimer, 1000);
@@ -29,7 +29,7 @@ function startTimer() {
 function stopTimer() {
   clearInterval(timerInt);
   timerInt = null;
-  $("timer").classList.add("hidden");
+  $("timerbox").classList.add("hidden");
 }
 
 /* ---------- screens ---------- */
@@ -38,14 +38,44 @@ function show(id) {
   $(id).classList.remove("hidden");
   $("btn-pause").classList.toggle("hidden", id !== "screen-task");
   $("btn-logout-top").classList.toggle("hidden", id === "screen-login");
+  renderLangPicker();          // the menu belongs to whoever is signed in now
 }
 
 /* ---------- language ---------- */
+const LANG_FLAGS = { nl: "🇳🇱", en: "🇬🇧", tr: "🇹🇷" };
+
+/* Only the parent may read a som in another language; the child works in Dutch,
+   so the child simply sees the flag with nothing behind it. */
+function renderLangPicker() {
+  const canSwitch = Store.isParent();
+  $("lang-flag").textContent = LANG_FLAGS[LANG] || LANG_FLAGS.nl;
+  $("lang-current").classList.toggle("switchable", canSwitch);
+  $("lang-caret").classList.toggle("hidden", !canSwitch);
+  if (!canSwitch) closeLangMenu();
+  document.querySelectorAll(".lang-opt").forEach(o =>
+    o.classList.toggle("active", o.dataset.lang === LANG));
+}
+
+function closeLangMenu() {
+  $("lang-menu").classList.add("hidden");
+  $("lang-current").classList.remove("open");
+  $("lang-current").setAttribute("aria-expanded", "false");
+}
+
+function toggleLangMenu() {
+  if (!Store.isParent()) return;               // the child has nothing to pick
+  const menu = $("lang-menu");
+  const opening = menu.classList.contains("hidden");
+  menu.classList.toggle("hidden", !opening);
+  $("lang-current").classList.toggle("open", opening);
+  $("lang-current").setAttribute("aria-expanded", String(opening));
+}
+
 function setLang(lang) {
   LANG = lang;
-  document.querySelectorAll(".flag").forEach(f =>
-    f.classList.toggle("active", f.dataset.lang === lang));
   applyI18n();
+  renderLangPicker();
+  closeLangMenu();
   // re-render dynamic screens
   renderLoginFields();          // applyI18n resets the hint; restore the right one
   if (!$("screen-task").classList.contains("hidden") && session) renderQuestion();
@@ -677,6 +707,8 @@ function goHome() {
   stopPlay();
   Live.stopHeartbeat();
   if (Store.isParent() && isOn("screen-mirror")) leftMirror = true;
+  // the child always works in Dutch, whatever the parent last picked here
+  if (!Store.isParent() && LANG !== "nl") setLang("nl");
   session = null;
   if (!Store.isParent()) Live.push("home");
   renderHome();
@@ -695,9 +727,13 @@ function goLogin() {
 document.addEventListener("DOMContentLoaded", () => {
   applyI18n();
 
-  // flags
-  document.querySelectorAll(".flag").forEach(f =>
-    f.addEventListener("click", () => setLang(f.dataset.lang)));
+  // language: one flag, with a menu behind it for the parent
+  renderLangPicker();
+  $("lang-current").addEventListener("click", e => { e.stopPropagation(); toggleLangMenu(); });
+  document.querySelectorAll(".lang-opt").forEach(o =>
+    o.addEventListener("click", () => setLang(o.dataset.lang)));
+  document.addEventListener("click", closeLangMenu);
+  document.addEventListener("keydown", e => { if (e.key === "Escape") closeLangMenu(); });
 
   // login (magic door)
   $("btn-login").addEventListener("click", tryLogin);

@@ -39,19 +39,63 @@ body {
   margin: 0 auto;
 }
 .brand {
-  font-weight: 800; font-size: 1.15rem; letter-spacing: -0.01em;
+  font-size: 1.7rem; line-height: 1;
   background: none; border: none; padding: 0; cursor: pointer;
   font-family: inherit; color: var(--ink);
   transition: opacity .15s;
 }
 .brand:hover { opacity: 0.6; }
 .brand:active { transform: scale(0.97); }
-.topbar-right { display: flex; align-items: center; gap: 12px; }
-.timer {
-  font-weight: 700; font-size: 0.95rem; color: var(--muted);
+.topbar-right { display: flex; align-items: center; gap: 10px; }
+
+/* elapsed time and pause read as one control, because they belong together */
+.timerbox {
+  display: flex; align-items: center; gap: 7px;
   background: var(--card); border: 1px solid var(--line);
-  padding: 5px 10px; border-radius: 999px; font-variant-numeric: tabular-nums;
+  border-radius: 999px; padding: 3px 3px 3px 11px;
 }
+.timerbox.hidden { display: none; }
+.timer-clock { font-size: .85rem; opacity: .75; }
+.timer-value {
+  font-weight: 700; font-size: .95rem; color: var(--muted);
+  font-variant-numeric: tabular-nums; min-width: 34px;
+}
+.timer-pause {
+  width: 26px; height: 26px; border-radius: 50%;
+  border: none; background: var(--bg); color: var(--muted);
+  font-size: .7rem; line-height: 1; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: background .15s, color .15s, transform .08s;
+}
+.timer-pause:hover { background: var(--accent-soft); color: var(--accent); }
+.timer-pause:active { transform: scale(0.92); }
+.timer-pause.hidden { display: none; }
+
+/* one flag, and a menu behind it for whoever is allowed to switch */
+.langpick { position: relative; }
+.flag-btn {
+  display: flex; align-items: center; gap: 3px;
+  background: none; border: 2px solid transparent; border-radius: 10px;
+  padding: 3px 5px; font-size: 1.3rem; line-height: 1; cursor: default;
+}
+.flag-btn.switchable { cursor: pointer; }
+.flag-btn.switchable:hover, .flag-btn.open { border-color: var(--accent); background: var(--accent-soft); }
+.caret { font-size: .62rem; color: var(--muted); }
+.lang-menu {
+  position: absolute; right: 0; top: calc(100% + 6px); z-index: 40;
+  background: var(--card); border: 1px solid var(--line);
+  border-radius: 12px; padding: 5px;
+  box-shadow: 0 8px 24px rgba(29, 36, 51, .12);
+  min-width: 168px;
+}
+.lang-opt {
+  display: block; width: 100%; text-align: left;
+  background: none; border: none; border-radius: 8px;
+  padding: 9px 10px; font-size: .95rem; font-family: inherit;
+  color: var(--ink); cursor: pointer; white-space: nowrap;
+}
+.lang-opt:hover { background: var(--bg); }
+.lang-opt.active { background: var(--accent-soft); color: var(--accent); font-weight: 700; }
 .icon-btn {
   background: var(--card); border: 1px solid var(--line);
   border-radius: 999px; width: 34px; height: 34px;
