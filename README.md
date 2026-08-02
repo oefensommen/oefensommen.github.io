@@ -17,8 +17,10 @@ stopte.
 - **Kalender + overzicht**: groen vakje bij 100%, streak, en per soort som hoe het gaat.
 - **Vlaggen NL / EN / TR**: Nederlands is de basis, Engels en Turks zijn er alleen
   om een som te begrijpen. De app start altijd in het Nederlands.
-- **Niveau 1–5**, onzichtbaar voor het kind: twee keer foutloos → moeilijker,
-  onder de 60% → makkelijker.
+- **Niveau 1–5 per soort som**, zichtbaar op het startscherm: drie opdrachten op
+  rij foutloos in een onderdeel → dat onderdeel wordt een stapje moeilijker,
+  onder de 60% → een stapje makkelijker. Goed zijn in tafels maakt de klok dus
+  niet zwaarder.
 - **Speeltijd als beloning**: een afgeronde dag levert minuten op voor een
   spelletje in de app zelf — reclamevrij, want de spelletjes staan in deze repo.
 
@@ -36,14 +38,17 @@ som komt niet twee keer voorbij. De foute antwoorden zijn typische denkfouten
 
 ## Speeltijd
 
-Wie de dag afmaakt, verdient speeltijd. Hoe eerder alles goed is, hoe meer:
+Wie de dag afmaakt, verdient speeltijd. Hoeveel hangt af van het cijfer van de
+eerste poging:
 
-| Klaar in | Speeltijd |
+| Eerste poging | Speeltijd |
 | --- | --- |
-| ronde 1 (20 uit 20 in één keer) | 15 minuten |
-| ronde 2 | 10 minuten |
-| ronde 3 | 5 minuten |
-| elke ronde daarna | 1 minuut minder, met 1 minuut als bodem |
+| alles goed (20 uit 20) | 15 minuten |
+| 90% of meer (18 of 19 goed) | 10 minuten |
+| daaronder | 5 minuten |
+
+De fouten moeten nog steeds allemaal verbeterd worden voordat de dag afgerond
+is; het cijfer bepaalt alleen hoeveel tijd het oplevert.
 
 Eén beloning per dag: een tweede opdracht op dezelfde dag mag, maar levert geen
 extra tijd op. Wat niet opgemaakt is, vervalt om middernacht.
@@ -72,6 +77,7 @@ Statische site, geen build en geen dependencies.
 | `css/style.css` | opmaak |
 | `css/games.css` | opmaak van het spelgedeelte |
 | `js/templates.js` | de sommen (sjablonen per categorie) |
+| `js/levels.js` | niveau per soort som (regels, teller, het getal op het scherm) |
 | `js/engine.js` | bouwt een opdracht, kiest antwoorden, vertaalt teksten |
 | `js/app.js` | schermen en spelverloop |
 | `js/storage.js` | voortgang lokaal + synchroniseren |

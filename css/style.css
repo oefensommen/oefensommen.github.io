@@ -396,6 +396,67 @@ input:focus { border-color: var(--accent); }
 .dot.partial { background: var(--amber); }
 .dot.empty { background: var(--line); }
 
+/* ---------- Level chip ----------
+   Sits right above the start button: a gold medallion with the number, the
+   word, and a thin bar for how far the six categories have come together. */
+.level-chip {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  max-width: 320px;
+  margin: 0 auto 16px;
+  padding: 10px 14px 10px 10px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #fffdf5 0%, #fff8e3 100%);
+  border: 1px solid #f0dca8;
+  box-shadow: 0 1px 2px rgba(140, 105, 10, .06), 0 6px 16px rgba(140, 105, 10, .07);
+  text-align: left;
+}
+.level-badge {
+  flex-shrink: 0;
+  width: 38px; height: 38px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 34% 30%, #ffeaa8, #f3c33f 45%, #dfa312 100%);
+  border: 1.5px solid #d19a10;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 800; font-size: 1.15rem; color: #6b4a00;
+  box-shadow: inset 0 -2px 4px rgba(120, 80, 0, .22), 0 1px 3px rgba(120, 80, 0, .25);
+}
+.level-body { flex: 1; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.level-title { font-size: .95rem; font-weight: 700; color: #6b4a00; }
+.level-title b { color: #4a3200; }
+.level-track {
+  height: 6px; border-radius: 999px;
+  background: rgba(190, 150, 40, .22);
+  overflow: hidden;
+}
+.level-track i {
+  display: block; height: 100%; width: 0%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #f3c33f, #e0a413);
+  transition: width .6s cubic-bezier(.3, .8, .3, 1);
+}
+.level-next { font-size: .78rem; color: #97701a; white-space: nowrap; font-weight: 600; }
+.level-chip.maxed .level-track i { background: linear-gradient(90deg, #34c777, #22a95c); }
+
+/* the level a category just reached, announced on the result screen */
+.levelup-line {
+  margin: 4px 0 2px;
+  font-weight: 700;
+  color: #a4780c;
+  font-size: .98rem;
+}
+.levelup-line span { display: inline-block; }
+
+/* per-category level pips in the parent's overview */
+.cat-level { display: inline-flex; gap: 3px; margin-left: 8px; vertical-align: middle; }
+.cat-level i {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--line);
+}
+.cat-level i.on { background: #e0a413; }
+
 /* ---------- Countdown ---------- */
 #screen-count {
   display: flex; flex-direction: column; align-items: center; justify-content: center;

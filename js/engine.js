@@ -239,10 +239,12 @@ const Engine = {
     const usedInTask = [];
     const questions = [];
 
+    // every category carries its own level, so being good at tables does not
+    // make the clock questions harder
     const add = (cat) => {
       const tpl = this.pickTemplate(cat, data, usedInTask);
       usedInTask.push(tpl.id);
-      questions.push(this.makeQuestion(tpl, data.level));
+      questions.push(this.makeQuestion(tpl, Levels.of(data, tpl.cat)));
     };
 
     for (let i = 0; i < nMain; i++) add(mainCat);
@@ -258,7 +260,7 @@ const Engine = {
       const wrongId = data.wrongTpl[i];
       const wrongTpl = wrongId && TEMPLATES.find(tp => tp.id === wrongId && tp.cat !== "verrassing");
       if (wrongTpl) {
-        questions.push(this.makeQuestion(wrongTpl, data.level));
+        questions.push(this.makeQuestion(wrongTpl, Levels.of(data, wrongTpl.cat)));
       } else {
         add(otherCats[Math.floor(Math.random() * otherCats.length)]);
       }

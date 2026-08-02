@@ -108,10 +108,28 @@ function renderHome() {
   $("btn-watch").classList.toggle("hidden", !parent);
   $("nav-row").classList.toggle("hidden", !parent);
 
+  renderLevelChip(parent);
+
   // speeltijd die vandaag verdiend is en nog niet op
   const playLeftSec = parent ? 0 : Reward.remaining(data);
   $("btn-play").classList.toggle("hidden", playLeftSec <= 0);
   $("home-play-left").textContent = playLeftSec > 0 ? fmtTime(playLeftSec) : "";
+}
+
+/* The level the user sees: one number for the six categories together, with a
+   bar for how far the rest have come and a line saying what is left to do. */
+function renderLevelChip(parent) {
+  const chip = $("level-chip");
+  if (parent) { chip.classList.add("hidden"); return; }
+  const st = Levels.overall(data);
+  chip.classList.remove("hidden");
+  chip.classList.toggle("maxed", st.level >= Levels.MAX);
+  $("level-num").textContent = st.level;
+  $("level-num-text").textContent = st.level;
+  $("level-fill").style.width = Math.round(st.progress * 100) + "%";
+  $("level-next").textContent = st.level >= Levels.MAX
+    ? t("level_max")
+    : t("level_next").replace("{n}", st.atNext).replace("{t}", st.total);
 }
 
 /* ---------- task flow ---------- */
@@ -248,12 +266,16 @@ function recordFirstPass() {
   const ds = todayStr();
   const day = data.days[ds] || { solved: 0, firstCorrect: 0, done100: false, cats: {} };
   let nCorrect = 0;
+  const perCat = {};                      // this task only, for the level rules
   session.questions.forEach(q => {
     day.solved++;
     if (q.correctFirst) { day.firstCorrect++; nCorrect++; }
     const c = day.cats[q.cat] || { n: 0, c: 0 };
     c.n++; if (q.correctFirst) c.c++;
     day.cats[q.cat] = c;
+    const t = perCat[q.cat] || { n: 0, c: 0 };
+    t.n++; if (q.correctFirst) t.c++;
+    perCat[q.cat] = t;
     // wrong-template pool for future repeat
     if (!q.correctFirst && q.cat !== "verrassing") {
       data.wrongTpl = [q.tplId, ...data.wrongTpl.filter(id => id !== q.tplId)].slice(0, 6);
@@ -266,15 +288,9 @@ function recordFirstPass() {
   data.days[ds] = day;
   console.log(`[Oefensommen] ${ds}: ${session.questions.length} sommen in ${fmtTime(secs)} — ${nCorrect} goed (1e keer), ${nSkipped} overgeslagen`);
 
-  // adaptive level (hidden from child)
-  const ratio = nCorrect / session.questions.length;
-  if (ratio === 1) {
-    data.perfectStreak++;
-    if (data.perfectStreak >= 2 && data.level < 5) { data.level++; data.perfectStreak = 0; }
-  } else {
-    data.perfectStreak = 0;
-    if (ratio < 0.6 && data.level > 1) data.level--;
-  }
+  // three clean runs in a category and that category gets a bit harder
+  session.levelUps = Levels.record(data, perCat);
+  session.score = { correct: nCorrect, total: session.questions.length };
 
   // wrong + skipped questions both return in the correction round
   const wrongs = session.questions.map((q, i) => i).filter(i => !session.questions[i].solved);
@@ -291,8 +307,9 @@ function markDone100() {
   data.days[ds] = day;
   session.nextQueue = null;
   session.celebrate = true;
-  // speeltijd verdiend: in één keer foutloos is het meeste waard
-  session.rewardMin = Reward.grant(data, session.round || 1);
+  // speeltijd verdiend, puur op het cijfer van de eerste poging
+  const sc = session.score || { correct: 0, total: session.questions.length };
+  session.rewardMin = Reward.grant(data, sc.correct, sc.total);
   Store.save(data);
 }
 
@@ -333,6 +350,18 @@ function renderResult() {
   // de beloning: de melding alleen de ronde waarin hij verdiend is, de knop
   // zolang er vandaag nog speeltijd over is
   const earned = session.rewardMin || 0;
+  // a category that just went up a level is worth saying out loud
+  const ups = $("result-levelups");
+  ups.innerHTML = "";
+  (session.levelUps || []).forEach(cat => {
+    const p = document.createElement("p");
+    p.className = "levelup-line";
+    p.textContent = "⭐ " + t("level_up")
+      .replace("{cat}", t("cats")[cat])
+      .replace("{n}", Levels.of(data, cat));
+    ups.appendChild(p);
+  });
+
   const rewardEl = $("result-reward");
   rewardEl.textContent = earned > 0 ? t("reward_earned").replace("{m}", earned) : "";
   rewardEl.classList.toggle("hidden", earned <= 0);
@@ -413,7 +442,7 @@ function renderStats() {
   $("stat-acc").textContent = total ? Math.round((correct / total) * 100) + "%" : "—";
   $("stat-days").textContent = daysPracticed;
   $("stat-best").textContent = bestStreak();
-  $("stat-level").textContent = data.level;
+  $("stat-level").textContent = Levels.overall(data).level;
 
   const box = $("cat-bars");
   box.innerHTML = "";
@@ -423,10 +452,16 @@ function renderStats() {
     if (!agg || !agg.n) return;
     const pct = Math.round((agg.c / agg.n) * 100);
     const cls = pct >= 80 ? "" : (pct >= 60 ? "mid" : "low");
+    // the surprise mix has no level of its own
+    const lvl = cat === "verrassing" ? 0 : Levels.of(data, cat);
+    const pips = lvl
+      ? `<span class="cat-level" title="${t("level")} ${lvl}">` +
+        [1, 2, 3, 4, 5].map(i => `<i class="${i <= lvl ? "on" : ""}"></i>`).join("") +
+        `</span>` : "";
     const row = document.createElement("div");
     row.className = "cat-bar-row";
     row.innerHTML =
-      `<div class="cat-bar-label"><span>${t("cats")[cat]}</span><b>${pct}% · ${agg.c}/${agg.n}</b></div>
+      `<div class="cat-bar-label"><span>${t("cats")[cat]}${pips}</span><b>${pct}% · ${agg.c}/${agg.n}</b></div>
        <div class="cat-bar-track"><div class="cat-bar-fill ${cls}" style="width:${pct}%"></div></div>`;
     box.appendChild(row);
   });

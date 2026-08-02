@@ -10,12 +10,14 @@
    de cloud-synchronisatie: op de tablet gespeelde minuten zijn ook op de laptop
    op. */
 const Reward = {
-  /* round 1 = the first pass, round 2 = the first correction round, ... */
-  minutesForRound(round) {
-    if (round <= 1) return 15;
-    if (round === 2) return 10;
-    if (round === 3) return 5;
-    return Math.max(1, 8 - round);      // 4 → 4, 5 → 3, 6 → 2, daarna 1
+  /* Hoeveel speeltijd een afgeronde dag oplevert, puur op het cijfer van de
+     eerste poging — geen ingewikkelde trap, gewoon drie treden. */
+  minutesForScore(correct, total) {
+    if (!total) return 5;
+    const pct = correct / total;
+    if (pct >= 1) return 15;
+    if (pct >= 0.9) return 10;
+    return 5;
   },
 
   _today(data) {
@@ -25,10 +27,10 @@ const Reward = {
   /* Called the moment a day becomes 100%. One reward per day: a second task on
      the same day is welcome, but it does not earn extra time.
      Returns the minutes awarded, or 0 when there was already a reward. */
-  grant(data, round) {
+  grant(data, correct, total) {
     const day = this._today(data);
     if (!day || day.reward) return 0;
-    const min = this.minutesForRound(round || 1);
+    const min = this.minutesForScore(correct, total);
     day.reward = { sec: min * 60, used: 0 };
     return min;
   },

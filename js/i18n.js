@@ -48,6 +48,9 @@ const I18N = {
     best_streak: "langste reeks",
     per_cat: "Per soort som",
     level: "Niveau",
+    level_next: "{n}/{t} onderdelen verder",
+    level_max: "hoogste niveau",
+    level_up: "{cat}: niveau {n}!",
     months: ["Januari","Februari","Maart","April","Mei","Juni","Juli","Augustus","September","Oktober","November","December"],
     weekdays: ["Ma","Di","Wo","Do","Vr","Za","Zo"],
     cats: { optellen: "Optellen", aftrekken: "Aftrekken", vermenigvuldigen: "Vermenigvuldigen", delen: "Delen", tweestap: "Twee bewerkingen", klok: "Klokkijken", verrassing: "Verrassing" }
@@ -100,6 +103,9 @@ const I18N = {
     best_streak: "longest streak",
     per_cat: "By problem type",
     level: "Level",
+    level_next: "{n}/{t} topics ahead",
+    level_max: "top level",
+    level_up: "{cat}: level {n}!",
     months: ["January","February","March","April","May","June","July","August","September","October","November","December"],
     weekdays: ["Mo","Tu","We","Th","Fr","Sa","Su"],
     cats: { optellen: "Addition", aftrekken: "Subtraction", vermenigvuldigen: "Multiplication", delen: "Division", tweestap: "Two steps", klok: "Telling time", verrassing: "Surprise" }
@@ -152,6 +158,9 @@ const I18N = {
     best_streak: "en uzun seri",
     per_cat: "Soru türüne göre",
     level: "Seviye",
+    level_next: "{t} konudan {n} tanesi ileride",
+    level_max: "en üst seviye",
+    level_up: "{cat}: seviye {n}!",
     months: ["Ocak","Şubat","Mart","Nisan","Mayıs","Haziran","Temmuz","Ağustos","Eylül","Ekim","Kasım","Aralık"],
     weekdays: ["Pt","Sa","Ça","Pe","Cu","Ct","Pz"],
     cats: { optellen: "Toplama", aftrekken: "Çıkarma", vermenigvuldigen: "Çarpma", delen: "Bölme", tweestap: "İki işlem", klok: "Saat", verrassing: "Sürpriz" }

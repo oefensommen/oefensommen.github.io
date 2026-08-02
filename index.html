@@ -56,6 +56,14 @@
           <span class="streak">🔥 <b id="streak-count">0</b> <span data-i18n="streak_days">dagen op rij</span></span>
         </div>
         <p id="home-status" class="status"></p>
+        <div id="level-chip" class="level-chip hidden">
+          <span class="level-badge"><span id="level-num">1</span></span>
+          <span class="level-body">
+            <span class="level-title"><span data-i18n="level">Niveau</span> <b id="level-num-text">1</b></span>
+            <span class="level-track"><i id="level-fill"></i></span>
+          </span>
+          <span id="level-next" class="level-next"></span>
+        </div>
         <button id="btn-start" class="btn primary big" data-i18n="start_task">Start de opdracht</button>
         <button id="btn-play" class="btn play big hidden">🎮 <span data-i18n="play_btn">Spelen</span> <b id="home-play-left"></b></button>
         <button id="btn-watch" class="btn primary big hidden">🔴 <span data-i18n="watch_live">Live meekijken</span></button>
@@ -89,6 +97,7 @@
         <p id="result-score" class="status"></p>
         <p id="result-time" class="result-time hidden"></p>
         <p id="result-reward" class="reward-line hidden"></p>
+        <div id="result-levelups"></div>
         <div id="result-grid" class="result-grid"></div>
         <div class="btn-row">
           <button id="btn-retry" class="btn primary hidden" data-i18n="retry_btn">Verbeter je fouten</button>
@@ -190,6 +199,7 @@
   <script src="js/cloud.js"></script>
   <script src="js/storage.js"></script>
   <script src="js/templates.js"></script>
+  <script src="js/levels.js"></script>
   <script src="js/engine.js"></script>
   <script src="js/live.js"></script>
   <script src="js/reward.js"></script>
