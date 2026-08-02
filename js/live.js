@@ -162,20 +162,31 @@ const Live = {
       t("live_question").replace("{n}", state.n).replace("{t}", state.total);
     el("mirror-time").textContent = state.elapsed ? "⏱ " + fmtTime(state.elapsed) : "";
 
+    // The answer stays covered until asked for — otherwise a glance at the
+    // parent's screen gives it away. Every new som covers it again.
+    const key = state.n + "/" + q.tplId;
+    if (this._revealKey !== key) { this._revealKey = key; this._revealed = false; }
+
     const text = Engine.text(q, LANG);          // rendered in the PARENT's language
     const opts = q.options.map((o, i) => {
       let cls = "mirror-opt";
-      if (q.chosen !== null && q.chosen !== undefined) {
-        if (i === q.chosen) cls += (i === q.answerIdx) ? " picked-ok" : " picked-no";
-        else if (i === q.answerIdx) cls += " is-answer";
-      }
+      const picked = q.chosen !== null && q.chosen !== undefined;
+      if (picked && i === q.chosen) cls += (i === q.answerIdx) ? " picked-ok" : " picked-no";
+      else if (this._revealed && i === q.answerIdx) cls += " is-answer";
       return `<div class="${cls}">${o}</div>`;
     }).join("");
+
+    const footer = this._revealed
+      ? `<div class="mirror-key">${t("live_answer")}: <b>${q.options[q.answerIdx]}</b></div>`
+      : `<button id="mirror-reveal" class="mirror-reveal">👁️ ${t("show_answer")}</button>`;
 
     el("mirror-body").innerHTML =
       `<p class="mirror-q">${text}</p>
        <div class="mirror-options">${opts}</div>
-       <div class="mirror-key">${t("live_answer")}: <b>${q.options[q.answerIdx]}</b>${
-         q.skipped ? " · ⏭" : ""}</div>`;
+       ${q.skipped ? `<div class="mirror-note">⏭ ${t("skip")}</div>` : ""}
+       ${footer}`;
+
+    const reveal = el("mirror-reveal");
+    if (reveal) reveal.onclick = () => { this._revealed = true; this.rerender(); };
   }
 };

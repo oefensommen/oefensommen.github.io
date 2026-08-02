@@ -557,6 +557,16 @@ input:focus { border-color: var(--accent); }
   background: var(--bg); border-radius: 10px; padding: 9px 12px;
 }
 .mirror-key b { color: var(--green); }
+.mirror-note { margin-top: 14px; font-size: .88rem; color: var(--muted); }
+.mirror-reveal {
+  margin-top: 16px; width: 100%;
+  background: var(--bg); border: 1px dashed var(--line); border-radius: 10px;
+  padding: 10px 12px; font-family: inherit; font-size: .92rem; font-weight: 600;
+  color: var(--muted); cursor: pointer;
+  transition: border-color .15s, color .15s, background .15s;
+}
+.mirror-reveal:hover { border-color: var(--green); color: var(--green); background: var(--green-soft); }
+.mirror-reveal:active { transform: scale(0.99); }
 .mirror-idle { text-align: center; padding: 26px 8px; color: var(--muted); }
 .mirror-idle .big-emoji { opacity: .8; }
 @media (max-width: 420px) { .mirror-options { grid-template-columns: 1fr; } }
