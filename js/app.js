@@ -1,5 +1,25 @@
 /* Oefensommen — app flow */
 
+/* A phone that kept an old index.html would keep running old code for as long
+   as it felt like it, and nobody is going to clear a cache on a tablet. So on
+   every start we ask the server for the real index.html and, if it points at
+   newer files than the ones we are running, reload once. Fetching it with
+   "reload" refreshes the browser's own copy, so the reload lands on the new
+   version. The session flag makes a loop impossible. */
+(async function selfUpdate() {
+  try {
+    const running = (document.querySelector('script[src*="app.js"]') || {}).src || "";
+    const mine = running.match(/[?&]v=(\d+)/);
+    if (!mine) return;
+    const html = await fetch("index.html", { cache: "reload" }).then(r => r.text());
+    const live = html.match(/app\.js\?v=(\d+)/);
+    if (live && live[1] !== mine[1] && !sessionStorage.getItem("os_selfupdate")) {
+      sessionStorage.setItem("os_selfupdate", live[1]);
+      location.reload();
+    }
+  } catch (e) { /* offline: keep running what we have */ }
+})();
+
 let data = Store.load();
 let session = null;           // { questions, idx, firstPass, queue }
 let calMonth = null;          // Date of shown calendar month
