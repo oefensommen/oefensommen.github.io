@@ -148,8 +148,15 @@ function renderHome() {
     : t("hello").replace("{name}", Store.deviceUser().toUpperCase());
   $("streak-count").textContent = currentStreak();
 
+  // an unfinished task takes over the button, so it cannot be thrown away by
+  // accidentally starting a second one
+  const open = parent ? null : activeTask();
+  $("btn-continue").classList.toggle("hidden", !open);
+  if (open) $("continue-at").textContent = (open.idx + 1) + "/" + open.queue.length;
+
   let status = t("today_todo");
-  if (day && day.done100) status = t("today_done");
+  if (open) status = t("today_resume").replace("{n}", open.idx + 1).replace("{t}", open.queue.length);
+  else if (day && day.done100) status = t("today_done");
   else if (day && day.solved > 0) status = t("today_partial");
   if (parent) {
     status = liveBusy ? Store.watches().toUpperCase() + " " + t("live_busy")
@@ -158,7 +165,7 @@ function renderHome() {
   $("home-status").textContent = status;
 
   // the child practises; the parent watches and reviews
-  $("btn-start").classList.toggle("hidden", parent);
+  $("btn-start").classList.toggle("hidden", parent || !!open);
   $("btn-watch").classList.toggle("hidden", !parent);
   $("nav-row").classList.toggle("hidden", !parent);
 
@@ -227,6 +234,7 @@ function startTask() {
     lastSec: null
   };
   session.queue = session.questions.map((_, i) => i);
+  saveActive();                   // resumable from the very first som
   Live.startHeartbeat();          // keep the parent's mirror alive while thinking
   runCountdown(() => {
     startTimer();
@@ -239,6 +247,87 @@ function currentQ() {
   return session.questions[session.queue[session.idx]];
 }
 
+/* ---------- an unfinished task travels with the account ----------
+   The whole task is written into the progress blob after every answer, so it
+   rides the normal cloud sync: pause on the phone, open the tablet, carry on
+   at the same som. Only today's counts — an abandoned task does not follow
+   the child into tomorrow. */
+function snapshotActive() {
+  if (!session || !session.questions) return null;
+  return {
+    at: Date.now(),
+    date: todayStr(),
+    idx: session.idx,
+    queue: session.queue,
+    firstPass: session.firstPass,
+    round: session.round || 1,
+    elapsed: session.pausedSec != null ? session.pausedSec : elapsedSec(),
+    paused: session.pausedSec != null,
+    lastSec: session.lastSec || null,
+    score: session.score || null,
+    levelUps: session.levelUps || [],
+    rewardMin: session.rewardMin || 0,
+    questions: session.questions.map(q => ({
+      tplId: q.tplId, cat: q.cat, variantIdx: q.variantIdx, vars: q.vars,
+      name: q.name, name2: q.name2, obj: q.obj, obj2: q.obj2,
+      options: q.options, answerIdx: q.answerIdx,
+      chosen: q.chosen === undefined ? null : q.chosen,
+      correctFirst: q.correctFirst === undefined ? null : q.correctFirst,
+      solved: !!q.solved,
+      skipped: !!q.skipped
+    }))
+  };
+}
+
+function saveActive(pushNow) {
+  const snap = snapshotActive();
+  if (!snap) return;
+  data.active = snap;
+  Store.save(data);
+  if (pushNow) Store.pushNow(data);      // a pause should reach the other device at once
+}
+
+function clearActive() {
+  if (!data.active) return;
+  delete data.active;
+  Store.save(data);
+  Store.pushNow(data);
+}
+
+/* The task to carry on with, or nothing */
+function activeTask() {
+  const a = data.active;
+  if (!a || !a.questions || !a.questions.length) return null;
+  if (a.date !== todayStr()) return null;                  // yesterday's leftovers
+  if (a.questions.every(q => q.solved)) return null;       // already finished
+  return a;
+}
+
+function resumeActive() {
+  const a = activeTask();
+  if (!a) return goHome();
+  session = {
+    questions: a.questions,
+    queue: a.queue,
+    idx: Math.min(a.idx, a.queue.length - 1),
+    firstPass: a.firstPass,
+    round: a.round || 1,
+    lastSec: a.lastSec,
+    score: a.score,
+    levelUps: a.levelUps || [],
+    rewardMin: a.rewardMin || 0,
+    pausedSec: null,
+    t0: Date.now() - (a.elapsed || 0) * 1000                // the clock carries on
+  };
+  Live.startHeartbeat();
+  clearInterval(timerInt);
+  $("timerbox").classList.remove("hidden");
+  tickTimer();
+  timerInt = setInterval(tickTimer, 1000);
+  renderQuestion();
+  show("screen-task");
+}
+
 /* ---------- pause ----------
    The clock stops and the som goes off screen, so a break is a real break and
    not a chance to keep reading the question. */
@@ -249,6 +338,7 @@ function pauseTask() {
   timerInt = null;
   $("pause-at").textContent = `${session.idx + 1}/${session.queue.length}`;
   $("pause-time").textContent = "⏱ " + fmtTime(session.pausedSec);
+  saveActive(true);                   // straight to the cloud: the tablet may be next
   Live.push("pause");
   show("screen-pause");
 }
@@ -315,6 +405,7 @@ function skip() {
 
 function advance() {
   session.idx++;
+  saveActive();                       // so another device can pick it up here
   $("progress-bar").style.width = `${(session.idx / session.queue.length) * 100}%`;
   if (session.idx >= session.queue.length) finishPass();
   else renderQuestion();
@@ -381,6 +472,7 @@ function markDone100() {
   data.days[ds] = day;
   session.nextQueue = null;
   session.celebrate = true;
+  delete data.active;              // the day is done; nothing left to carry on with
   // speeltijd verdiend, puur op het cijfer van de eerste poging
   const sc = session.score || { correct: 0, total: session.questions.length };
   session.rewardMin = Reward.grant(data, sc.correct, sc.total);
@@ -461,6 +553,7 @@ function startRetry() {
   session.idx = 0;
   session.firstPass = false;
   session.round = (session.round || 1) + 1;
+  saveActive();                    // the correction round is resumable too
   renderQuestion();
   show("screen-task");
 }
@@ -771,6 +864,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // home
   $("btn-start").addEventListener("click", startTask);
+  $("btn-continue").addEventListener("click", resumeActive);
   $("btn-watch").addEventListener("click", () => openMirror());
   $("btn-calendar").addEventListener("click", () => { calMonth = new Date(); renderCalendar(); show("screen-calendar"); });
   $("btn-stats").addEventListener("click", () => { renderStats(); show("screen-stats"); });
@@ -783,7 +877,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // task
   $("btn-quit").addEventListener("click", () => {
-    if (confirm(t("quit_confirm"))) goHome();
+    if (confirm(t("quit_confirm"))) { clearActive(); goHome(); }
   });
   $("btn-skip").addEventListener("click", skip);
   $("btn-pause").addEventListener("click", pauseTask);
@@ -808,12 +902,17 @@ document.addEventListener("DOMContentLoaded", () => {
   $("cal-next").addEventListener("click", () => { calMonth.setMonth(calMonth.getMonth() + 1); renderCalendar(); });
 
   document.addEventListener("visibilitychange", () => {
-    if (document.hidden) { bookPlayTime(); Store.pushNow(data); return; }
+    // leaving the screen mid-task: bank it so the next device gets the same som
+    if (document.hidden) { if (session) saveActive(); bookPlayTime(); Store.pushNow(data); return; }
     // the day may have rolled over while the app sat open → lock again (00:00 reset)
     if (!Store.isLoggedIn()) { if (!isOn("screen-login")) goLogin(); return; }
     refreshFromCloud();
   });
-  window.addEventListener("pagehide", () => { bookPlayTime(); Store.pushNow(data); });
+  window.addEventListener("pagehide", () => {
+    if (session) saveActive();
+    bookPlayTime();
+    Store.pushNow(data);
+  });
 
   // entry
   if (Store.isLoggedIn()) {

@@ -166,13 +166,21 @@ const Store = {
    same day still end up with one sensible record. */
 function mergeProgress(a, b) {
   a = a || {}; b = b || {};
+  // an unfinished task: whichever device touched it last is the truth, so a
+  // som answered on the tablet is not undone by an older copy on the laptop
+  const actA = a.active, actB = b.active;
+  const active = (actA && actB) ? ((actA.at || 0) >= (actB.at || 0) ? actA : actB) : (actA || actB);
+
   const out = {
     level: Math.max(a.level || 1, b.level || 1),
     perfectStreak: Math.max(a.perfectStreak || 0, b.perfectStreak || 0),
     days: {},
     recentTpl: Object.assign({}, b.recentTpl || {}, a.recentTpl || {}),
-    wrongTpl: Array.from(new Set([...(a.wrongTpl || []), ...(b.wrongTpl || [])])).slice(0, 6)
+    wrongTpl: Array.from(new Set([...(a.wrongTpl || []), ...(b.wrongTpl || [])])).slice(0, 6),
+    catLevel: Object.assign({}, b.catLevel || {}, a.catLevel || {}),
+    catStreak: Object.assign({}, b.catStreak || {}, a.catStreak || {})
   };
+  if (active) out.active = active;
   const dates = new Set([...Object.keys(a.days || {}), ...Object.keys(b.days || {})]);
   for (const d of dates) {
     const x = (a.days || {})[d], y = (b.days || {})[d];
