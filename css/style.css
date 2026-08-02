@@ -455,49 +455,20 @@ input:focus { border-color: var(--accent); }
 .dot.partial { background: var(--amber); }
 .dot.empty { background: var(--line); }
 
-/* ---------- Level chip ----------
-   Sits right above the start button: a gold medallion with the number, the
-   word, and a thin bar for how far the six categories have come together. */
-.level-chip {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  width: 100%;
-  max-width: 320px;
-  margin: 0 auto 16px;
-  padding: 10px 14px 10px 10px;
-  border-radius: 16px;
-  background: linear-gradient(135deg, #fffdf5 0%, #fff8e3 100%);
-  border: 1px solid #f0dca8;
-  box-shadow: 0 1px 2px rgba(140, 105, 10, .06), 0 6px 16px rgba(140, 105, 10, .07);
-  text-align: left;
-}
-.level-badge {
-  flex-shrink: 0;
-  width: 38px; height: 38px;
-  border-radius: 50%;
-  background: radial-gradient(circle at 34% 30%, #ffeaa8, #f3c33f 45%, #dfa312 100%);
-  border: 1.5px solid #d19a10;
-  display: flex; align-items: center; justify-content: center;
-  font-weight: 800; font-size: 1.15rem; color: #6b4a00;
-  box-shadow: inset 0 -2px 4px rgba(120, 80, 0, .22), 0 1px 3px rgba(120, 80, 0, .25);
-}
-.level-body { flex: 1; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
-.level-title { font-size: .95rem; font-weight: 700; color: #6b4a00; }
-.level-title b { color: #4a3200; }
-.level-track {
-  height: 6px; border-radius: 999px;
-  background: rgba(190, 150, 40, .22);
-  overflow: hidden;
-}
-.level-track i {
-  display: block; height: 100%; width: 0%;
+/* ---------- Level badge ----------
+   A small gold pill in the top bar; the full story is in its tooltip. */
+.level-pill {
+  display: flex; align-items: center; gap: 4px;
+  padding: 4px 10px 4px 7px;
   border-radius: 999px;
-  background: linear-gradient(90deg, #f3c33f, #e0a413);
-  transition: width .6s cubic-bezier(.3, .8, .3, 1);
+  background: linear-gradient(135deg, #fffdf5, #fff3d4);
+  border: 1px solid #f0dca8;
+  font-weight: 800; font-size: .9rem; color: #6b4a00;
+  cursor: default; white-space: nowrap;
 }
-.level-next { font-size: .78rem; color: #97701a; white-space: nowrap; font-weight: 600; }
-.level-chip.maxed .level-track i { background: linear-gradient(90deg, #34c777, #22a95c); }
+.level-pill.hidden { display: none; }
+.level-pill .star { font-size: .8rem; }
+.level-pill.maxed { border-color: #9ad9b6; background: linear-gradient(135deg, #f4fdf8, #dff5e9); color: #14663a; }
 
 /* the level a category just reached, announced on the result screen */
 .levelup-line {

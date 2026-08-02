@@ -4,8 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <title>Oefensommen</title>
-  <link rel="stylesheet" href="css/style.css?v=202608021315">
-  <link rel="stylesheet" href="css/games.css?v=202608021315">
+  <link rel="stylesheet" href="css/style.css?v=202608021320">
+  <link rel="stylesheet" href="css/games.css?v=202608021320">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧮</text></svg>">
 </head>
 <body>
@@ -13,6 +13,7 @@
   <header class="topbar">
     <button id="btn-brand" class="brand" title="Oefensommen">🧮</button>
     <div class="topbar-right">
+      <div id="level-pill" class="level-pill hidden"><span class="star">⭐</span><b id="level-num">1</b></div>
       <div id="timerbox" class="timerbox hidden">
         <span class="timer-clock">⏱</span>
         <span id="timer" class="timer-value">0:00</span>
@@ -73,16 +74,7 @@
           <span class="streak">🔥 <b id="streak-count">0</b> <span data-i18n="streak_days">dagen op rij</span></span>
         </div>
         <p id="home-status" class="status"></p>
-        <div id="level-chip" class="level-chip hidden">
-          <span class="level-badge"><span id="level-num">1</span></span>
-          <span class="level-body">
-            <span class="level-title"><span data-i18n="level">Niveau</span> <b id="level-num-text">1</b></span>
-            <span class="level-track"><i id="level-fill"></i></span>
-          </span>
-          <span id="level-next" class="level-next"></span>
-        </div>
         <button id="btn-start" class="btn primary big" data-i18n="start_task">Start de opdracht</button>
-        <button id="btn-play" class="btn play big hidden">🎮 <span data-i18n="play_btn">Spelen</span> <b id="home-play-left"></b></button>
         <button id="btn-watch" class="btn primary big hidden">🔴 <span data-i18n="watch_live">Live meekijken</span></button>
         <div id="nav-row" class="nav-row hidden">
           <button id="btn-calendar" class="btn ghost">📅 <span data-i18n="calendar">Kalender</span></button>
@@ -117,7 +109,7 @@
         <div id="result-grid" class="result-grid"></div>
         <div class="btn-row">
           <button id="btn-retry" class="btn primary hidden" data-i18n="retry_btn">Verbeter je fouten</button>
-          <button id="btn-play-result" class="btn play hidden">🎮 <span data-i18n="play_btn">Spelen</span></button>
+          <button id="btn-play-result" class="btn play hidden">🎮 <span data-i18n="play_btn">Spelen</span> <b id="result-play-left"></b></button>
         </div>
       </div>
     </section>
@@ -223,16 +215,16 @@
 
   <div id="confetti"></div>
 
-  <script src="js/i18n.js?v=202608021315"></script>
-  <script src="js/celebrate.js?v=202608021315"></script>
-  <script src="js/config.js?v=202608021315"></script>
-  <script src="js/cloud.js?v=202608021315"></script>
-  <script src="js/storage.js?v=202608021315"></script>
-  <script src="js/templates.js?v=202608021315"></script>
-  <script src="js/levels.js?v=202608021315"></script>
-  <script src="js/engine.js?v=202608021315"></script>
-  <script src="js/live.js?v=202608021315"></script>
-  <script src="js/reward.js?v=202608021315"></script>
-  <script src="js/app.js?v=202608021315"></script>
+  <script src="js/i18n.js?v=202608021320"></script>
+  <script src="js/celebrate.js?v=202608021320"></script>
+  <script src="js/config.js?v=202608021320"></script>
+  <script src="js/cloud.js?v=202608021320"></script>
+  <script src="js/storage.js?v=202608021320"></script>
+  <script src="js/templates.js?v=202608021320"></script>
+  <script src="js/levels.js?v=202608021320"></script>
+  <script src="js/engine.js?v=202608021320"></script>
+  <script src="js/live.js?v=202608021320"></script>
+  <script src="js/reward.js?v=202608021320"></script>
+  <script src="js/app.js?v=202608021320"></script>
 </body>
 </html>

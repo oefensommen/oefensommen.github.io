@@ -39,6 +39,8 @@ function show(id) {
   $("btn-pause").classList.toggle("hidden", id !== "screen-task");
   $("btn-logout-top").classList.toggle("hidden", id === "screen-login");
   renderLangPicker();          // the menu belongs to whoever is signed in now
+  if (id === "screen-login") $("level-pill").classList.add("hidden");
+  else renderLevelChip(Store.isParent());
 }
 
 /* ---------- language ---------- */
@@ -141,27 +143,21 @@ function renderHome() {
   $("nav-row").classList.toggle("hidden", !parent);
 
   renderLevelChip(parent);
-
-  // speeltijd die vandaag verdiend is en nog niet op
-  const playLeftSec = parent ? 0 : Reward.remaining(data);
-  $("btn-play").classList.toggle("hidden", playLeftSec <= 0);
-  $("home-play-left").textContent = playLeftSec > 0 ? fmtTime(playLeftSec) : "";
+  // spelen hoort bij het rapport van een afgeronde opdracht, niet hier
 }
 
-/* The level the user sees: one number for the six categories together, with a
-   bar for how far the rest have come and a line saying what is left to do. */
+/* The level lives in the top bar as a small badge: the number for the six
+   categories together, with the details in the tooltip. */
 function renderLevelChip(parent) {
-  const chip = $("level-chip");
-  if (parent) { chip.classList.add("hidden"); return; }
+  const pill = $("level-pill");
+  if (parent) { pill.classList.add("hidden"); return; }
   const st = Levels.overall(data);
-  chip.classList.remove("hidden");
-  chip.classList.toggle("maxed", st.level >= Levels.MAX);
+  pill.classList.remove("hidden");
+  pill.classList.toggle("maxed", st.level >= Levels.MAX);
   $("level-num").textContent = st.level;
-  $("level-num-text").textContent = st.level;
-  $("level-fill").style.width = Math.round(st.progress * 100) + "%";
-  $("level-next").textContent = st.level >= Levels.MAX
+  pill.title = t("level") + " " + st.level + " · " + (st.level >= Levels.MAX
     ? t("level_max")
-    : t("level_next").replace("{n}", st.atNext).replace("{t}", st.total);
+    : t("level_next").replace("{n}", st.atNext).replace("{t}", st.total));
 }
 
 /* ---------- task flow ---------- */
@@ -423,7 +419,12 @@ function renderResult() {
   const rewardEl = $("result-reward");
   rewardEl.textContent = earned > 0 ? t("reward_earned").replace("{m}", earned) : "";
   rewardEl.classList.toggle("hidden", earned <= 0);
-  $("btn-play-result").classList.toggle("hidden", Reward.remaining(data) <= 0);
+  // speeltijd hoort bij een AFGERONDE dag: pas als alles goed is, en alleen
+  // zolang de minuten van vandaag nog niet op zijn (om middernacht vervallen ze)
+  const dayDone = (data.days[todayStr()] || {}).done100;
+  const playLeftSec = Reward.remaining(data);
+  $("btn-play-result").classList.toggle("hidden", !(dayDone && playLeftSec > 0));
+  $("result-play-left").textContent = playLeftSec > 0 ? fmtTime(playLeftSec) : "";
 
   Live.push("result");
 
@@ -774,9 +775,12 @@ document.addEventListener("DOMContentLoaded", () => {
   $("btn-retry").addEventListener("click", startRetry);
 
   // speeltijd
-  $("btn-play").addEventListener("click", openGames);
   $("btn-play-result").addEventListener("click", openGames);
-  $("games-back").addEventListener("click", goHome);
+  // back out of the games to the report card, so the remaining minutes stay
+  // reachable; only leaving that screen ends the play session for today
+  $("games-back").addEventListener("click", () => {
+    if (session) { renderResult(); show("screen-result"); } else goHome();
+  });
   $("play-back").addEventListener("click", leavePlay);
 
   // calendar nav
