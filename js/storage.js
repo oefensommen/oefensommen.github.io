@@ -179,6 +179,7 @@ function mergeProgress(a, b) {
     wrongTpl: Array.from(new Set([...(a.wrongTpl || []), ...(b.wrongTpl || [])])).slice(0, 6),
     catLevel: Object.assign({}, b.catLevel || {}, a.catLevel || {}),
     catStreak: Object.assign({}, b.catStreak || {}, a.catStreak || {}),
+    catBad: Object.assign({}, b.catBad || {}, a.catBad || {}),
     catDay: Object.assign({}, b.catDay || {}, a.catDay || {})
   };
   if (active) out.active = active;
