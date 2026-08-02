@@ -533,9 +533,11 @@ function renderResult() {
   rewardEl.classList.toggle("hidden", earned <= 0);
   // speeltijd hoort bij een AFGERONDE dag: pas als alles goed is, en alleen
   // zolang de minuten van vandaag nog niet op zijn (om middernacht vervallen ze)
-  const dayDone = (data.days[todayStr()] || {}).done100;
+  // Not "the day was finished at some point" — THIS report card must be clean.
+  // A second task with a mistake still in it does not open the game, however
+  // many minutes are left over from the task before it.
   const playLeftSec = Reward.remaining(data);
-  $("btn-play-result").classList.toggle("hidden", !(dayDone && playLeftSec > 0));
+  $("btn-play-result").classList.toggle("hidden", !(allSolved && playLeftSec > 0));
   $("result-play-left").textContent = playLeftSec > 0 ? fmtTime(playLeftSec) : "";
 
   Live.push("result");
@@ -787,8 +789,15 @@ function tickPlay() {
   const spent = Math.floor((Date.now() - playT0) / 1000);
   const left = Math.max(0, playLeft - spent);
   $("play-left").textContent = "🎮 " + fmtTime(left);
-  if (left <= 0) leavePlay();
+  if (left <= 0) timeIsUp();
   else if (spent >= 10) bookPlayTime();
+}
+
+/* The minutes are gone: shut the game and say so, rather than leaving it
+   running with a clock on zero. */
+function timeIsUp() {
+  bookPlayTime();
+  leavePlay();
 }
 
 /* write the seconds played into the day record (and so into the cloud) */
@@ -906,6 +915,8 @@ document.addEventListener("DOMContentLoaded", () => {
     if (document.hidden) { if (session) saveActive(); bookPlayTime(); Store.pushNow(data); return; }
     // the day may have rolled over while the app sat open → lock again (00:00 reset)
     if (!Store.isLoggedIn()) { if (!isOn("screen-login")) goLogin(); return; }
+    // a backgrounded tab stops ticking, so the time may have run out unnoticed
+    if (isOn("screen-play") && Reward.remaining(data) <= 0) { timeIsUp(); return; }
     refreshFromCloud();
   });
   window.addEventListener("pagehide", () => {
