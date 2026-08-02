@@ -36,6 +36,7 @@ function stopTimer() {
 function show(id) {
   document.querySelectorAll(".screen").forEach(s => s.classList.add("hidden"));
   $(id).classList.remove("hidden");
+  $("btn-pause").classList.toggle("hidden", id !== "screen-task");
 }
 
 /* ---------- language ---------- */
@@ -179,6 +180,7 @@ function startTask() {
     lastSec: null
   };
   session.queue = session.questions.map((_, i) => i);
+  Live.startHeartbeat();          // keep the parent's mirror alive while thinking
   runCountdown(() => {
     startTimer();
     renderQuestion();
@@ -188,6 +190,31 @@ function startTask() {
 
 function currentQ() {
   return session.questions[session.queue[session.idx]];
+}
+
+/* ---------- pause ----------
+   The clock stops and the som goes off screen, so a break is a real break and
+   not a chance to keep reading the question. */
+function pauseTask() {
+  if (!session || !isOn("screen-task")) return;
+  session.pausedSec = elapsedSec();
+  clearInterval(timerInt);
+  timerInt = null;
+  $("pause-at").textContent = `${session.idx + 1}/${session.queue.length}`;
+  $("pause-time").textContent = "⏱ " + fmtTime(session.pausedSec);
+  Live.push("pause");
+  show("screen-pause");
+}
+
+function resumeTask() {
+  if (!session) return goHome();
+  session.t0 = Date.now() - (session.pausedSec || 0) * 1000;   // carry on, not from zero
+  session.pausedSec = null;
+  clearInterval(timerInt);
+  timerInt = setInterval(tickTimer, 1000);
+  tickTimer();
+  renderQuestion();
+  show("screen-task");
 }
 
 function renderQuestion() {
@@ -546,17 +573,19 @@ async function tryLogin() {
 
 /* ---------- parent watching ---------- */
 let liveBusy = false;
+let leftMirror = false;      // parent walked away from the mirror on purpose
 
 /* The parent keeps a quiet eye on the child from the home screen, and the
    mirror opens by itself the moment the child starts. */
 function startParentWatch() {
   Live.startWatching((state, age) => {
-    const wasBusy = liveBusy;
     liveBusy = Live.isBusy(state, age);
+    if (!liveBusy) leftMirror = false;                 // a new session may open it again
     if (isOn("screen-mirror")) Live.render(state, age);
     else if (isOn("screen-home")) {
       renderHome();
-      if (liveBusy && !wasBusy) openMirror(state, age);   // the child just began
+      // follow the child automatically, unless the parent chose to step away
+      if (liveBusy && !leftMirror) openMirror(state, age);
     }
   }, 2500);
 }
@@ -645,6 +674,8 @@ function leavePlay() {
 function goHome() {
   stopTimer();
   stopPlay();
+  Live.stopHeartbeat();
+  if (Store.isParent() && isOn("screen-mirror")) leftMirror = true;
   session = null;
   if (!Store.isParent()) Live.push("home");
   renderHome();
@@ -692,6 +723,8 @@ document.addEventListener("DOMContentLoaded", () => {
     if (confirm(t("quit_confirm"))) goHome();
   });
   $("btn-skip").addEventListener("click", skip);
+  $("btn-pause").addEventListener("click", pauseTask);
+  $("btn-resume").addEventListener("click", resumeTask);
   // the cursor has to move before hovering means anything again
   $("answers").addEventListener("pointermove", () => $("answers").classList.remove("fresh"));
 

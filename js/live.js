@@ -6,21 +6,24 @@
 
 const Live = {
   MIN_GAP_MS: 600,          // don't spam the API while a child clicks quickly
-  STALE_SEC: 25,            // no update for this long → treat the child as idle
+  HEARTBEAT_MS: 8000,       // keep saying "still here" while a question is read
+  STALE_SEC: 75,            // only call it idle once the heartbeat really stopped
 
   _last: 0, _pending: null, _timer: null,
+  _beat: null, _lastScreen: null,
 
   /* ---------------- child side ---------------- */
 
   /* Build a snapshot of the current screen from the running session. */
   snapshot(screen, extra) {
     const s = Object.assign({ screen: screen, at: Date.now() }, extra || {});
-    if (session && screen === "task") {
+    if (session && (screen === "task" || screen === "pause")) {
       const q = session.questions[session.queue[session.idx]];
       s.n = session.idx + 1;
       s.total = session.queue.length;
       s.round = session.firstPass ? 1 : 2;
-      s.elapsed = elapsedSec();
+      s.elapsed = session.pausedSec != null ? session.pausedSec : elapsedSec();
+      if (screen === "pause") return s;      // paused: the counters, not the som
       s.q = {
         tplId: q.tplId, variantIdx: q.variantIdx, vars: q.vars,
         name: q.name, name2: q.name2, obj: q.obj, obj2: q.obj2,
@@ -40,6 +43,7 @@ const Live = {
 
   push(screen, extra) {
     if (!Cloud.configured() || Store.isParent()) return;
+    this._lastScreen = screen;
     this._pending = this.snapshot(screen, extra);
     const wait = Math.max(0, this.MIN_GAP_MS - (Date.now() - this._last));
     clearTimeout(this._timer);
@@ -54,6 +58,20 @@ const Live = {
     const { u, p } = Store.creds();
     if (!u || !p) return;
     try { await Cloud.pushLive(u, p, state); } catch (e) { /* offline: skip a beat */ }
+  },
+
+  /* Reading a word problem takes a child a long time, and nothing happens on
+     screen meanwhile. Without this the parent would decide the child had
+     stopped and close the mirror halfway through a question. */
+  startHeartbeat() {
+    this.stopHeartbeat();
+    this._beat = setInterval(() => {
+      if (this._lastScreen) this.push(this._lastScreen);
+    }, this.HEARTBEAT_MS);
+  },
+
+  stopHeartbeat() {
+    if (this._beat) { clearInterval(this._beat); this._beat = null; }
   },
 
   /* ---------------- parent side ---------------- */
@@ -111,6 +129,15 @@ const Live = {
       el("mirror-status").textContent = t("get_ready");
       el("mirror-time").textContent = "";
       el("mirror-body").innerHTML = `<div class="mirror-idle"><div class="big-emoji">⏳</div></div>`;
+      return;
+    }
+
+    if (state.screen === "pause") {
+      el("mirror-status").textContent = t("live_paused");
+      el("mirror-time").textContent = state.elapsed ? "⏱ " + fmtTime(state.elapsed) : "";
+      el("mirror-body").innerHTML =
+        `<div class="mirror-idle"><div class="big-emoji">⏸️</div><p>${
+          t("live_question").replace("{n}", state.n || "?").replace("{t}", state.total || "?")}</p></div>`;
       return;
     }
 
