@@ -759,23 +759,15 @@ function renderCalendar() {
   $("cal-title").textContent = `${t("months")[m]} ${y}`;
   const grid = $("cal-grid");
   grid.innerHTML = "";
-  t("weekdays").forEach(w => {
-    const c = document.createElement("div");
-    c.className = "cal-cell head";
-    c.textContent = w;
-    grid.appendChild(c);
-  });
-  const first = new Date(y, m, 1);
-  const offset = (first.getDay() + 6) % 7; // Monday first
+  // The month runs straight through, 1 to the end, with no empty squares in
+  // front of the first. The weekday is written on each day itself, so it is
+  // still there to be read without pushing the numbers out of line.
   const daysInMonth = new Date(y, m + 1, 0).getDate();
-  for (let i = 0; i < offset; i++) {
-    const c = document.createElement("div");
-    c.className = "cal-cell out";
-    grid.appendChild(c);
-  }
   const today = todayStr();
+  const wd = t("weekdays");
   for (let d = 1; d <= daysInMonth; d++) {
-    const ds = todayStr(new Date(y, m, d));
+    const date = new Date(y, m, d);
+    const ds = todayStr(date);
     const rec = data.days[ds];
     const c = document.createElement("div");
     c.className = "cal-cell";
@@ -785,7 +777,11 @@ function renderCalendar() {
     if (flawless) c.classList.add("done");
     else if (rec && rec.solved > 0) c.classList.add("partial");
     if (ds === today) c.classList.add("today");
-    c.textContent = d;
+    c.innerHTML = `<span class="wd">${wd[(date.getDay() + 6) % 7]}</span>` +
+                  `<span class="dnum">${d}</span>`;
+    if (rec && rec.solved > 0) {
+      c.title = `${d} · ${rec.firstCorrect}/${rec.solved}`;
+    }
     grid.appendChild(c);
   }
 }

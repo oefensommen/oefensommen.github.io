@@ -438,15 +438,18 @@ input:focus { border-color: var(--accent); }
   aspect-ratio: 1;
   border-radius: 10px;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 1px;
   font-size: 0.9rem;
   font-weight: 600;
   background: var(--bg);
   color: var(--muted);
 }
-.cal-cell.head { background: none; font-size: 0.78rem; font-weight: 700; aspect-ratio: auto; padding: 4px 0; }
-.cal-cell.out { background: none; }
+/* the weekday sits on the day itself now that the month runs straight through */
+.cal-cell .wd { font-size: 0.58rem; font-weight: 700; opacity: .55; line-height: 1; }
+.cal-cell .dnum { line-height: 1; }
 .cal-cell.done { background: var(--green); color: #fff; }
 .cal-cell.partial { background: var(--amber); color: #fff; }
 .cal-cell.today { outline: 2.5px solid var(--accent); outline-offset: 1px; }
