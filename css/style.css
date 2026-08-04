@@ -390,6 +390,15 @@ input:focus { border-color: var(--accent); }
 }
 .result-tile.ok { background: var(--green-soft); }
 .result-tile.no { background: var(--red-soft); }
+.result-tile.todo { background: #fff4e0; border: 1px dashed #e8b45c; }
+/* every som can be opened again from the report */
+.result-tile {
+  border: 1px solid transparent;
+  font-family: inherit; cursor: pointer;
+  transition: transform .08s, box-shadow .15s;
+}
+.result-tile:hover { box-shadow: 0 2px 8px rgba(29, 36, 51, .12); }
+.result-tile:active { transform: scale(0.95); }
 .result-tile .num { font-size: 0.8rem; font-weight: 700; color: var(--muted); }
 .result-tile .mark { font-size: 1.25rem; line-height: 1; }
 @media (max-width: 420px) {

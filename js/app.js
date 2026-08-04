@@ -264,6 +264,7 @@ function snapshotActive() {
     elapsed: session.pausedSec != null ? session.pausedSec : elapsedSec(),
     paused: session.pausedSec != null,
     lastSec: session.lastSec || null,
+    banked: !!session.banked,          // whether the score has already been booked
     score: session.score || null,
     levelUps: session.levelUps || [],
     rewardMin: session.rewardMin || 0,
@@ -272,7 +273,7 @@ function snapshotActive() {
       name: q.name, name2: q.name2, obj: q.obj, obj2: q.obj2,
       options: q.options, answerIdx: q.answerIdx,
       chosen: q.chosen === undefined ? null : q.chosen,
-      correctFirst: q.correctFirst === undefined ? null : q.correctFirst,
+      correctFirst: q.correctFirst === undefined ? null : q.correctFirst,   // null = still waiting
       solved: !!q.solved,
       skipped: !!q.skipped
     }))
@@ -313,6 +314,7 @@ function resumeActive() {
     firstPass: a.firstPass,
     round: a.round || 1,
     lastSec: a.lastSec,
+    banked: !!a.banked,
     score: a.score,
     levelUps: a.levelUps || [],
     rewardMin: a.rewardMin || 0,
@@ -357,6 +359,7 @@ function resumeTask() {
 function renderQuestion() {
   const q = currentQ();
   $("btn-skip").disabled = false;
+  $("btn-skip").classList.toggle("hidden", !!session.review);   // nothing to skip when looking back
   $("progress-text").textContent = `${session.idx + 1}/${session.queue.length}`;
   $("progress-bar").style.width = `${(session.idx / session.queue.length) * 100}%`;
   $("question-text").textContent = Engine.text(q, LANG);
@@ -367,10 +370,16 @@ function renderQuestion() {
     const b = document.createElement("button");
     b.className = "answer";
     b.textContent = opt;
-    b.onclick = () => answer(i, b);
+    if (session.review) {
+      // looking back at a finished som: show what was picked, change nothing
+      b.disabled = true;
+      if (i === q.chosen) b.classList.add(q.correctFirst ? "correct" : "wrong");
+    } else {
+      b.onclick = () => answer(i, b);
+    }
     box.appendChild(b);
   });
-  Live.push("task");
+  if (!session.review) Live.push("task");
 }
 
 function answer(i, btn) {
@@ -380,27 +389,32 @@ function answer(i, btn) {
   $("btn-skip").disabled = true;
   btn.classList.add(correct ? "correct" : "wrong");
 
-  if (session.firstPass) {
+  // The first time a som is really faced decides its verdict — whether that is
+  // now or after it was put aside. Skipping postpones the judgement, it is not
+  // a wrong answer, but it does not dodge one either.
+  if (undecided(q)) {
     q.chosen = i;
     q.correctFirst = correct;
     q.solved = correct;
-  } else {
-    if (correct) q.solved = true;
+  } else if (correct) {
+    q.solved = true;
   }
 
   Live.push("task");                     // let the parent see the pick land
   setTimeout(advance, correct ? 600 : 900);
 }
 
+/* A som nobody has answered yet: no verdict, neither right nor wrong. */
+function undecided(q) {
+  return q.correctFirst === null || q.correctFirst === undefined;
+}
+
 function skip() {
   const q = currentQ();
   q.skipped = true;
-  if (session.firstPass) {
-    q.chosen = null;
-    q.correctFirst = false;   // counts as not-correct on first try
-    q.solved = false;         // stays unsolved → returns in the correction round
-  }
-  advance();
+  q.chosen = null;
+  q.solved = false;           // it comes back until it is answered
+  advance();                  // correctFirst stays undecided on purpose
 }
 
 function advance() {
@@ -413,21 +427,30 @@ function advance() {
 
 function finishPass() {
   if (session.firstPass) {
-    recordFirstPass();
-  } else {
-    // keep only questions that are still not solved for the next retry round
-    const stillWrong = session.queue.filter(qi => !session.questions[qi].solved);
-    if (stillWrong.length === 0) markDone100();
-    else session.nextQueue = stillWrong;
+    session.lastSec = elapsedSec();
+    stopTimer();
   }
+  recordFirstPass();                 // waits until every som has been faced
+
+  // everything that still needs answering, not just what was in this round
+  const open = session.questions.map((q, i) => i).filter(i => !session.questions[i].solved);
+  if (open.length === 0) markDone100();
+  else session.nextQueue = open;
+
+  saveActive();
   renderResult();
   show("screen-result");
 }
 
+/* Book the day's score, the levels and the repeat pool. Held back while a som
+   is still waiting to be answered, because a postponed som has no verdict yet
+   and would otherwise be counted as a mistake. */
 function recordFirstPass() {
-  const secs = elapsedSec();
-  session.lastSec = secs;
-  stopTimer();
+  if (session.banked) return;
+  if (!session.questions.every(q => !undecided(q))) return;
+  session.banked = true;
+
+  const secs = session.lastSec || elapsedSec();
   const ds = todayStr();
   const day = data.days[ds] || { solved: 0, firstCorrect: 0, done100: false, cats: {} };
   let nCorrect = 0;
@@ -453,15 +476,9 @@ function recordFirstPass() {
   data.days[ds] = day;
   console.log(`[Oefensommen] ${ds}: ${session.questions.length} sommen in ${fmtTime(secs)} — ${nCorrect} goed (1e keer), ${nSkipped} overgeslagen`);
 
-  // three clean runs in a category and that category gets a bit harder
+  // seven flawless days in a category and that category gets a bit harder
   session.levelUps = Levels.record(data, perCat);
   session.score = { correct: nCorrect, total: session.questions.length };
-
-  // wrong + skipped questions both return in the correction round
-  const wrongs = session.questions.map((q, i) => i).filter(i => !session.questions[i].solved);
-  if (wrongs.length === 0) markDone100();
-  else session.nextQueue = wrongs;
-
   Store.save(data);
 }
 
@@ -492,13 +509,19 @@ function renderResult() {
     ? partyMessage(LANG)
     : t("result_score").replace("{c}", nSolved).replace("{t}", qs.length);
 
-  // numbered grid: number + ✓/✗ only (no question text, no answer revealed)
+  // numbered grid, three states and no answers given away. Every som can be
+  // opened again from here: the ones still waiting to be answered, and the
+  // finished ones to look back at.
   const grid = $("result-grid");
   grid.innerHTML = "";
   qs.forEach((q, i) => {
-    const cell = document.createElement("div");
-    cell.className = "result-tile " + (q.solved ? "ok" : "no");
-    cell.innerHTML = `<span class="num">${i + 1}</span><span class="mark">${q.solved ? "✅" : "❌"}</span>`;
+    const waiting = undecided(q);
+    const cell = document.createElement("button");
+    cell.className = "result-tile " + (q.solved ? "ok" : (waiting ? "todo" : "no"));
+    cell.title = t(q.solved ? "tile_done" : (waiting ? "tile_todo" : "tile_wrong"));
+    cell.innerHTML = `<span class="num">${i + 1}</span>` +
+                     `<span class="mark">${q.solved ? "✅" : (waiting ? "⏭" : "❌")}</span>`;
+    cell.addEventListener("click", () => openQuestion(i));
     grid.appendChild(cell);
   });
 
@@ -549,11 +572,34 @@ function renderResult() {
   }
 }
 
+/* Open one som straight from the report card. Still waiting to be answered →
+   answer it now; already finished → look at it without changing anything. */
+function openQuestion(i) {
+  const q = session.questions[i];
+  session.fromResult = true;
+  session.review = !!q.solved;
+  session.queue = [i];
+  session.idx = 0;
+  session.firstPass = false;
+  renderQuestion();
+  show("screen-task");
+  $("btn-pause").classList.add("hidden");     // no clock is running here
+}
+
+function backToResult() {
+  session.review = false;
+  session.fromResult = false;
+  renderResult();
+  show("screen-result");
+}
+
 function startRetry() {
   session.queue = session.nextQueue;
   session.nextQueue = null;
   session.idx = 0;
   session.firstPass = false;
+  session.review = false;
+  session.fromResult = false;
   session.round = (session.round || 1) + 1;
   saveActive();                    // the correction round is resumable too
   renderQuestion();
@@ -886,6 +932,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // task
   $("btn-quit").addEventListener("click", () => {
+    if (session && session.fromResult) return backToResult();   // came from the report
     if (confirm(t("quit_confirm"))) { clearActive(); goHome(); }
   });
   $("btn-skip").addEventListener("click", skip);
