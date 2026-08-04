@@ -24,14 +24,17 @@ const Reward = {
     return (data && data.days && data.days[todayStr()]) || null;
   },
 
-  /* Called the moment a day becomes 100%. One reward per day: a second task on
-     the same day is welcome, but it does not earn extra time.
-     Returns the minutes awarded, or 0 when there was already a reward. */
+  /* Called the moment an opdracht is finished. Every finished opdracht earns
+     its own speeltijd on its own score, so a day that started badly can still
+     be turned around by sitting down and doing another twenty properly. The
+     minutes go into one pot for the day, which is what the games spend from.
+     Returns the minutes just earned. */
   grant(data, correct, total) {
     const day = this._today(data);
-    if (!day || day.reward) return 0;
+    if (!day) return 0;
     const min = this.minutesForScore(correct, total);
-    day.reward = { sec: min * 60, used: 0 };
+    if (!day.reward) day.reward = { sec: 0, used: 0 };
+    day.reward.sec += min * 60;
     return min;
   },
 

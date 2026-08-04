@@ -183,10 +183,18 @@ function renderHome() {
   // accidentally starting a second one
   const open = parent ? null : activeTask();
   $("btn-continue").classList.toggle("hidden", !open);
-  if (open) $("continue-at").textContent = (open.idx + 1) + "/" + open.queue.length;
+  // an opdracht that was worked through but still has soms put aside is not at
+  // "som 21 of 20" — it is back at the report card with a few left to do
+  const left = open ? open.questions.filter(q => !q.solved && !q.failed).length : 0;
+  const pastEnd = open && open.idx >= open.queue.length;
+  if (open) {
+    $("continue-at").textContent = pastEnd ? "" : (open.idx + 1) + "/" + open.queue.length;
+  }
 
   let status = t("today_todo");
-  if (open) status = t("today_resume").replace("{n}", open.idx + 1).replace("{t}", open.queue.length);
+  if (open) status = pastEnd
+    ? t("finish_rest").replace("{n}", left)
+    : t("today_resume").replace("{n}", open.idx + 1).replace("{t}", open.queue.length);
   else if (day && day.done100) status = t("today_done");
   else if (day && day.solved > 0) status = t("today_partial");
   if (parent) {
@@ -215,7 +223,7 @@ function renderLevelChip(parent) {
   $("level-num").textContent = st.level;
   pill.title = t("level") + " " + st.level + " · " + (st.level >= Levels.MAX
     ? t("level_max")
-    : t("level_next").replace("{n}", st.atNext).replace("{t}", st.total));
+    : (st.toGo === 1 ? t("level_togo_one") : t("level_togo").replace("{n}", st.toGo)));
 }
 
 /* ---------- task flow ---------- */
@@ -274,8 +282,15 @@ function startTask() {
   });
 }
 
+/* Which som is on screen. Normally it is the one the queue points at, but the
+   report card can open any single som on its own, off to one side of the
+   queue — and that view must never be mistaken for where the opdracht stands. */
+function currentIdx() {
+  return session.viewOne != null ? session.viewOne : session.queue[session.idx];
+}
+
 function currentQ() {
-  return session.questions[session.queue[session.idx]];
+  return session.questions[currentIdx()];
 }
 
 /* ---------- an unfinished task travels with the account ----------
@@ -297,7 +312,7 @@ function snapshotActive() {
     lastSec: session.lastSec || null,
     banked: !!session.banked,          // whether the score has already been booked
     score: session.score || null,
-    levelUps: session.levelUps || [],
+    levelUp: session.levelUp || null,
     rewardMin: session.rewardMin || 0,
     questions: session.questions.map(q => ({
       tplId: q.tplId, cat: q.cat, variantIdx: q.variantIdx, vars: q.vars,
@@ -343,28 +358,39 @@ function activeTask() {
       q.tries = ATTEMPTS;
     }
   });
-  if (a.questions.every(q => q.solved)) return null;       // already finished
+  // nothing left to do: a som is done whether it went right or wrong. Asking
+  // only about q.solved kept a finished opdracht hanging around all day, which
+  // took the start button away from a child who wanted to practise again.
+  if (a.questions.every(q => q.solved || q.failed)) return null;
   return a;
 }
 
 function resumeActive() {
   const a = activeTask();
   if (!a) return goHome();
+  // the opdracht had already been worked all the way through — what was left
+  // open is on the report card, which is where it should come back
+  const pastEnd = a.idx >= a.queue.length;
   session = {
     questions: a.questions,
     queue: a.queue,
-    idx: Math.min(a.idx, a.queue.length - 1),
+    idx: pastEnd ? a.queue.length : Math.min(a.idx, a.queue.length - 1),
     firstPass: a.firstPass,
     round: a.round || 1,
     lastSec: a.lastSec,
     banked: !!a.banked,
     score: a.score,
-    levelUps: a.levelUps || [],
+    levelUp: a.levelUp || null,
     rewardMin: a.rewardMin || 0,
     pausedSec: null,
     t0: Date.now() - (a.elapsed || 0) * 1000                // the clock carries on
   };
   Live.startHeartbeat();
+  if (pastEnd) {
+    finishPass();                 // rebuilds what is left and draws the card
+    show("screen-result");
+    return;
+  }
   clearInterval(timerInt);
   $("timerbox").classList.remove("hidden");
   tickTimer();
@@ -403,8 +429,11 @@ function renderQuestion() {
   const q = currentQ();
   $("btn-skip").disabled = false;
   $("btn-skip").classList.toggle("hidden", !!session.review);   // nothing to skip when looking back
-  $("progress-text").textContent = `${session.idx + 1}/${session.queue.length}`;
-  $("progress-bar").style.width = `${(session.idx / session.queue.length) * 100}%`;
+  // one som opened from the report card is "som 5 of 20", not "1 of 1"
+  const at = session.viewOne != null ? session.viewOne : session.idx;
+  const of = session.viewOne != null ? session.questions.length : session.queue.length;
+  $("progress-text").textContent = `${at + 1}/${of}`;
+  $("progress-bar").style.width = `${(at / of) * 100}%`;
   $("question-text").textContent = Engine.text(q, LANG);
   const box = $("answers");
   box.innerHTML = "";
@@ -433,7 +462,7 @@ function renderQuestion() {
 function renderTaskMarks() {
   if (!session) return;
   $("task-marks").innerHTML =
-    Live.marksPanelHTML(Live.marksOf(session.questions), session.queue[session.idx]);
+    Live.marksPanelHTML(Live.marksOf(session.questions), currentIdx());
 }
 
 /* One go at a som. The moment an answer is touched the som is settled — right
@@ -442,6 +471,7 @@ function renderTaskMarks() {
    from the report card afterwards. */
 function answer(i, btn) {
   const q = currentQ();
+  if (finished(q)) return;        // a settled som cannot be answered a second time
   const correct = i === q.answerIdx;
 
   document.querySelectorAll(".answer").forEach(b => b.disabled = true);
@@ -487,6 +517,15 @@ function skip() {
 }
 
 function advance() {
+  // a som answered from the report card belongs to no queue: settle it and go
+  // straight back to the card, leaving the opdracht's own place untouched
+  if (session.viewOne != null) {
+    session.viewOne = null;
+    session.fromResult = false;
+    saveActive();
+    finishPass();
+    return;
+  }
   session.idx++;
   saveActive();                       // so another device can pick it up here
   $("progress-bar").style.width = `${(session.idx / session.queue.length) * 100}%`;
@@ -496,17 +535,22 @@ function advance() {
 
 function finishPass() {
   if (session.firstPass) {
-    session.lastSec = elapsedSec();
+    // a pass that was already timed keeps its time; coming back to the report
+    // card later must not stretch it
+    if (session.lastSec == null) session.lastSec = elapsedSec();
     stopTimer();
   }
   recordFirstPass();                 // waits until every som has been faced
 
   // only soms that were put aside can still be done; a failed one is settled
   const open = session.questions.map((q, i) => i).filter(i => !finished(session.questions[i]));
-  if (open.length === 0) markDone100();
-  else session.nextQueue = open;
+  if (open.length === 0) {
+    markDone100();          // this clears the active task — do not write it back
+  } else {
+    session.nextQueue = open;
+    saveActive();           // still soms to do, so it stays resumable
+  }
 
-  saveActive();
   renderResult();
   show("screen-result");
 }
@@ -523,16 +567,12 @@ function recordFirstPass() {
   const ds = todayStr();
   const day = data.days[ds] || { solved: 0, firstCorrect: 0, done100: false, cats: {} };
   let nCorrect = 0;
-  const perCat = {};                      // this task only, for the level rules
   session.questions.forEach(q => {
     day.solved++;
     if (q.correctFirst) { day.firstCorrect++; nCorrect++; }
-    const c = day.cats[q.cat] || { n: 0, c: 0 };
+    const c = day.cats[q.cat] || { n: 0, c: 0 };   // per soort, for the overview
     c.n++; if (q.correctFirst) c.c++;
     day.cats[q.cat] = c;
-    const t = perCat[q.cat] || { n: 0, c: 0 };
-    t.n++; if (q.correctFirst) t.c++;
-    perCat[q.cat] = t;
     // wrong-template pool for future repeat
     if (!q.correctFirst && q.cat !== "verrassing") {
       data.wrongTpl = [q.tplId, ...data.wrongTpl.filter(id => id !== q.tplId)].slice(0, 6);
@@ -545,13 +585,16 @@ function recordFirstPass() {
   data.days[ds] = day;
   console.log(`[Oefensommen] ${ds}: ${session.questions.length} sommen in ${fmtTime(secs)} — ${nCorrect} goed (1e keer), ${nSkipped} overgeslagen`);
 
-  // seven flawless days in a category and that category gets a bit harder
-  session.levelUps = Levels.record(data, perCat);
   session.score = { correct: nCorrect, total: session.questions.length };
+  // five faultless days and everything gets a bit harder; five days with four
+  // or more mistakes and it gets easier again
+  session.levelUp = Levels.record(data, session.score);
   Store.save(data);
 }
 
 function markDone100() {
+  if (session.rewarded) return;      // one opdracht earns its speeltijd once
+  session.rewarded = true;
   const ds = todayStr();
   const day = data.days[ds] || { solved: 0, firstCorrect: 0, done100: false, cats: {} };
   day.done100 = true;
@@ -616,17 +659,15 @@ function renderResult() {
   // de beloning: de melding alleen de ronde waarin hij verdiend is, de knop
   // zolang er vandaag nog speeltijd over is
   const earned = session.rewardMin || 0;
-  // a category that just went up a level is worth saying out loud
+  // a level gained is worth saying out loud
   const ups = $("result-levelups");
   ups.innerHTML = "";
-  (session.levelUps || []).forEach(cat => {
+  if (session.levelUp) {
     const p = document.createElement("p");
     p.className = "levelup-line";
-    p.textContent = "⭐ " + t("level_up")
-      .replace("{cat}", t("cats")[cat])
-      .replace("{n}", Levels.of(data, cat));
+    p.textContent = "⭐ " + t("level_up").replace("{n}", session.levelUp);
     ups.appendChild(p);
-  });
+  }
 
   const rewardEl = $("result-reward");
   rewardEl.textContent = earned > 0 ? t("reward_earned").replace("{m}", earned) : "";
@@ -653,9 +694,7 @@ function openQuestion(i) {
   const q = session.questions[i];
   session.fromResult = true;
   session.review = finished(q);       // settled soms are read-only, right or wrong
-  session.queue = [i];
-  session.idx = 0;
-  session.firstPass = false;
+  session.viewOne = i;                // beside the queue, not instead of it
   renderQuestion();
   show("screen-task");
   $("btn-pause").classList.add("hidden");     // no clock is running here
@@ -664,6 +703,7 @@ function openQuestion(i) {
 function backToResult() {
   session.review = false;
   session.fromResult = false;
+  session.viewOne = null;
   renderResult();
   show("screen-result");
 }
@@ -750,16 +790,12 @@ function renderStats() {
     if (!agg || !agg.n) return;
     const pct = Math.round((agg.c / agg.n) * 100);
     const cls = pct >= 80 ? "" : (pct >= 60 ? "mid" : "low");
-    // the surprise mix has no level of its own
-    const lvl = cat === "verrassing" ? 0 : Levels.of(data, cat);
-    const pips = lvl
-      ? `<span class="cat-level" title="${t("level")} ${lvl}">` +
-        [1, 2, 3, 4, 5].map(i => `<i class="${i <= lvl ? "on" : ""}"></i>`).join("") +
-        `</span>` : "";
+    // the level is one number for all the sommen together; it belongs in the
+    // line under this list, not beside every soort
     const row = document.createElement("div");
     row.className = "cat-bar-row";
     row.innerHTML =
-      `<div class="cat-bar-label"><span>${t("cats")[cat]}${pips}</span><b>${pct}% · ${agg.c}/${agg.n}</b></div>
+      `<div class="cat-bar-label"><span>${t("cats")[cat]}</span><b>${pct}% · ${agg.c}/${agg.n}</b></div>
        <div class="cat-bar-track"><div class="cat-bar-fill ${cls}" style="width:${pct}%"></div></div>`;
     box.appendChild(row);
   });
@@ -1043,7 +1079,7 @@ document.addEventListener("DOMContentLoaded", () => {
   document.addEventListener("visibilitychange", () => {
     // leaving the screen mid-task: bank it so the next device gets the same som
     if (document.hidden) { if (session) saveActive(); bookPlayTime(); Store.pushNow(data); return; }
-    // the day may have rolled over while the app sat open → lock again (00:00 reset)
+    // signed out from another tab on this device
     if (!Store.isLoggedIn()) { if (!isOn("screen-login")) goLogin(); return; }
     // a backgrounded tab stops ticking, so the time may have run out unnoticed
     if (isOn("screen-play") && Reward.remaining(data) <= 0) { timeIsUp(); return; }

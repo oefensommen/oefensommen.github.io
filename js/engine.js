@@ -265,7 +265,7 @@ const Engine = {
     const taken = new Set();                 // and the ones picked just now
     let repeats = 0;
 
-    const fromTpl = (tpl) => this.freshFrom(tpl, Levels.of(data, tpl.cat), seen, taken);
+    const fromTpl = (tpl) => this.freshFrom(tpl, Levels.of(data), seen, taken);
 
     // every category carries its own level, so being good at tables does not
     // make the clock questions harder
@@ -284,7 +284,7 @@ const Engine = {
         // better than an opdracht that comes up short — but twice in the SAME
         // opdracht is never acceptable, so keep drawing until it is at least
         // not one of today's.
-        const level = Levels.of(data, tpl.cat);
+        const level = Levels.of(data);
         for (let i = 0; i < 200; i++) {
           q = this.makeQuestion(tpl, level);
           if (!taken.has(this.sig(q))) break;

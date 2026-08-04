@@ -34,10 +34,12 @@ const Live = {
       return s;
     }
     if (session && (screen === "task" || screen === "pause")) {
-      const q = session.questions[session.queue[session.idx]];
-      s.n = session.idx + 1;
-      s.total = session.queue.length;
-      s.cur = session.queue[session.idx];       // which of the twenty, for the panel
+      const cur = currentIdx();
+      const q = session.questions[cur];
+      // a som opened from the report card is one of the twenty, not one of one
+      s.n = (session.viewOne != null ? session.viewOne : session.idx) + 1;
+      s.total = session.viewOne != null ? session.questions.length : session.queue.length;
+      s.cur = cur;                              // which of the twenty, for the panel
                                                 // (not "at" — that is the timestamp)
       s.round = session.firstPass ? 1 : 2;
       s.elapsed = session.pausedSec != null ? session.pausedSec : elapsedSec();

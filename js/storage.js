@@ -8,7 +8,7 @@
 
 const Store = {
   KEY: "oefensommen_v1",
-  DAY_KEY: "oefensommen_auth",     // date string of the last successful unlock
+  DAY_KEY: "oefensommen_auth",     // set at the last successful unlock
   USER_KEY: "oefensommen_user",    // username remembered for THIS device
   PASS_KEY: "oefensommen_pass",    // needed to sign each cloud call
   DIRTY_KEY: "oefensommen_dirty",  // local changes not yet pushed
@@ -56,7 +56,16 @@ const Store = {
 
   /* ---------- device / session ---------- */
   deviceUser() { return localStorage.getItem(this.USER_KEY) || ""; },
-  isLoggedIn() { return localStorage.getItem(this.DAY_KEY) === todayStr(); },
+
+  /* Once a device has been unlocked it stays unlocked. It used to lock itself
+     again at midnight, which meant a child sitting down to work first had to
+     find out that today's password had changed — a daily obstacle in front of
+     the one thing we want to be easy. Signing out is now a deliberate act. */
+  isLoggedIn() {
+    return !!localStorage.getItem(this.DAY_KEY) &&
+           !!localStorage.getItem(this.USER_KEY) &&
+           !!localStorage.getItem(this.PASS_KEY);
+  },
   role() { return localStorage.getItem(this.ROLE_KEY) || "child"; },
   isParent() { return this.role() === "parent"; },
   watches() { return localStorage.getItem(this.WATCH_KEY) || ""; },
@@ -179,8 +188,14 @@ function mergeProgress(a, b) {
   const actA = a.active, actB = b.active;
   const active = (actA && actB) ? ((actA.at || 0) >= (actB.at || 0) ? actA : actB) : (actA || actB);
 
+  // the level is judged once a day, so both devices should agree; where they
+  // do not, the further-along side wins rather than the last one to sync
   const out = {
     level: Math.max(a.level || 1, b.level || 1),
+    streak: Math.max(a.streak || 0, b.streak || 0),
+    bad: Math.max(a.bad || 0, b.bad || 0),
+    levelDay: (a.levelDay || "") > (b.levelDay || "") ? a.levelDay : (b.levelDay || ""),
+    levelMerged: !!(a.levelMerged || b.levelMerged),
     perfectStreak: Math.max(a.perfectStreak || 0, b.perfectStreak || 0),
     days: {},
     recentTpl: Object.assign({}, b.recentTpl || {}, a.recentTpl || {}),
