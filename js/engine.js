@@ -261,8 +261,14 @@ const Engine = {
 
     const usedInTask = [];
     const questions = [];
-    const seen = new Set(data.seen || []);   // every som ever asked
-    const taken = new Set();                 // and the ones picked just now
+    const seen = new Set(data.seen || []);   // every som already asked
+    // an opdracht that was left half done is still lying there with sommen the
+    // child has not seen yet; those are not "asked", but they must not be
+    // handed out twice either
+    if (data.active && data.active.date === todayStr() && data.active.questions) {
+      data.active.questions.forEach(q => seen.add(this.sig(q)));
+    }
+    const taken = new Set();                 // the ones picked just now
     let repeats = 0;
 
     const fromTpl = (tpl) => this.freshFrom(tpl, Levels.of(data), seen, taken);
@@ -319,13 +325,28 @@ const Engine = {
 
     for (let i = 0; i < nSurprise; i++) add("verrassing");
 
-    // remember usage — the templates, and the sommen themselves
+    // Which templates were used is remembered here, but NOT the sommen. A som
+    // counts as asked when the child has actually seen it — see remember()
+    // below. Writing all twenty down now would burn the ones an opdracht that
+    // is broken off halfway never got round to showing.
     const today = todayStr();
     usedInTask.forEach(id => { data.recentTpl[id] = today; });
-    data.seen = (data.seen || []).concat([...taken]).slice(-Store.SEEN_MAX);
     if (repeats) console.log(`[Oefensommen] ${repeats} som(men) waren op: niets nieuws meer in die soort`);
     Store.save(data);
 
     return this.shuffle(questions);
+  },
+
+  /* This som has now been in front of the child, so it is asked and will never
+     come round again. Returns true when it was not already written down. */
+  remember(data, q) {
+    const s = this.sig(q);
+    if (!data.seen) data.seen = [];
+    if (data.seen.indexOf(s) !== -1) return false;
+    data.seen.push(s);
+    if (data.seen.length > Store.SEEN_MAX) {
+      data.seen = data.seen.slice(-Store.SEEN_MAX);
+    }
+    return true;
   }
 };

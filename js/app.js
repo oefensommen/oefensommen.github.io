@@ -465,6 +465,10 @@ function resumeTask() {
 
 function renderQuestion() {
   const q = currentQ();
+  // it has been seen now, so it is asked and will never come round again — and
+  // the sommen of an opdracht that is broken off before reaching them stay
+  // unasked, waiting, instead of being spent
+  if (Engine.remember(data, q)) Store.save(data);
   $("btn-skip").disabled = false;
   $("btn-skip").classList.toggle("hidden", !!session.review);   // nothing to skip when looking back
   // one som opened from the report card is "som 5 of 20", not "1 of 1"
