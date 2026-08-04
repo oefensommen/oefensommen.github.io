@@ -1,30 +1,60 @@
 /* Oefensommen — app flow */
 
 /* A phone that kept an old index.html would keep running old code for as long
-   as it felt like it, and nobody is going to clear a cache on a tablet. So on
-   every start we ask the server for the real index.html and, if it points at
-   newer files than the ones we are running, reload once. Fetching it with
-   "reload" refreshes the browser's own copy, so the reload lands on the new
-   version. The session flag makes a loop impossible. */
-(async function selfUpdate() {
-  try {
-    const running = (document.querySelector('script[src*="app.js"]') || {}).src || "";
-    const mine = running.match(/[?&]v=(\d+)/);
-    if (!mine) return;
-    const html = await fetch("index.html", { cache: "reload" }).then(r => r.text());
-    const live = html.match(/app\.js\?v=(\d+)/);
-    if (live && live[1] !== mine[1] && !sessionStorage.getItem("os_selfupdate")) {
-      sessionStorage.setItem("os_selfupdate", live[1]);
-      location.reload();
-    }
-  } catch (e) { /* offline: keep running what we have */ }
-})();
+   as it felt like it, and nobody is going to clear a cache on a tablet. So we
+   ask the server for the real index.html and, if it points at newer files than
+   the ones we are running, load that version.
+
+   Three things this has to get right, all of them learned the hard way:
+   the flag remembers WHICH version it reloaded for, so the next deploy is
+   still picked up (a plain "have I reloaded before" flag froze a tablet on an
+   old build for the rest of the day); the reload carries the version in the
+   address, because a bare reload may be answered from the browser's own copy
+   of index.html; and a tab that is simply woken up days later checks again,
+   since phones keep tabs alive far longer than anyone reloads them. */
+const SelfUpdate = {
+  mine: null,
+  pending: null,
+
+  async check() {
+    try {
+      if (!this.mine) {
+        const running = (document.querySelector('script[src*="app.js"]') || {}).src || "";
+        const m = running.match(/[?&]v=(\d+)/);
+        if (!m) return;
+        this.mine = m[1];
+      }
+      const html = await fetch("index.html?u=" + this.mine + "." + Date.now(),
+                              { cache: "no-store" }).then(r => r.text());
+      const live = (html.match(/app\.js\?v=(\d+)/) || [])[1];
+      if (!live || live === this.mine) return;
+      if (sessionStorage.getItem("os_selfupdate") === live) return;  // already tried this one
+      if (session) { this.pending = live; return; }   // never yank a som off the screen
+      this.apply(live);
+    } catch (e) { /* offline: keep running what we have */ }
+  },
+
+  apply(v) {
+    sessionStorage.setItem("os_selfupdate", v);
+    location.replace(location.pathname + "?v=" + v);
+  },
+
+  /* called when the child is back on the home screen and nothing is running */
+  applyIfPending() {
+    if (this.pending) this.apply(this.pending);
+  }
+};
 
 let data = Store.load();
 let session = null;           // { questions, idx, firstPass, queue }
 let calMonth = null;          // Date of shown calendar month
 let taskCount = 20;
 let timerInt = null;
+
+SelfUpdate.check();
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden) SelfUpdate.check();      // a tablet picked up again
+});
 
 const $ = id => document.getElementById(id);
 
@@ -303,6 +333,16 @@ function activeTask() {
   const a = data.active;
   if (!a || !a.questions || !a.questions.length) return null;
   if (a.date !== todayStr()) return null;                  // yesterday's leftovers
+  // Before there were two goes at a som, a wrong answer settled it on the spot
+  // and nothing was written down to say so. Carried over as it stands, such a
+  // som counts as never reached: it shows up blank in the overview and the
+  // opdracht can never finish. Say plainly what it was — wrong.
+  a.questions.forEach(q => {
+    if (!q.solved && !q.failed && !q.skipped && q.correctFirst === false && !q.tries) {
+      q.failed = true;
+      q.tries = ATTEMPTS;
+    }
+  });
   if (a.questions.every(q => q.solved)) return null;       // already finished
   return a;
 }
@@ -928,6 +968,7 @@ function goHome() {
   if (!Store.isParent()) Live.push("home");
   renderHome();
   show("screen-home");
+  SelfUpdate.applyIfPending();   // an update that waited for the opdracht to end
 }
 
 function goLogin() {

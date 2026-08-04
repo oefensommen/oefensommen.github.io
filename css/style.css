@@ -578,17 +578,22 @@ input:focus { border-color: var(--accent); }
   margin-top: 10px; font-size: .74rem; font-weight: 700; color: var(--muted);
 }
 @media (max-width: 600px) {
-  /* on a phone it stays on the right too — just a narrow rail of two columns,
-     never underneath, where it would scroll out of sight */
-  .mirror-split, .task-split { grid-template-columns: minmax(0, 1fr) 50px; gap: 10px; }
+  /* on a phone it stays on the right too, as one narrow list running down the
+     side — 1, 2, 3 under each other — never underneath the som, where it
+     would scroll out of sight */
+  .mirror-split, .task-split { grid-template-columns: minmax(0, 1fr) 46px; gap: 10px; }
   .marks-panel { padding-left: 9px; }
-  .mark-grid { grid-template-columns: repeat(2, 1fr); gap: 3px; }
-  .mark-cell { border-radius: 5px; }
-  .mark-cell .n { font-size: .5rem; }
-  .mark-cell .i { font-size: .62rem; }
+  .mark-grid { grid-template-columns: 1fr; gap: 2px; }
+  .mark-cell {
+    aspect-ratio: auto; min-height: 20px;
+    flex-direction: row; justify-content: space-between;
+    gap: 3px; padding: 2px 4px; border-radius: 5px;
+  }
+  .mark-cell .n { font-size: .58rem; }
+  .mark-cell .i { font-size: .6rem; height: auto; }
   .mark-tally {
     flex-direction: column; align-items: center;
-    gap: 3px; margin-top: 7px; font-size: .63rem;
+    gap: 3px; margin-top: 8px; font-size: .63rem;
   }
 }
 
