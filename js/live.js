@@ -37,6 +37,8 @@ const Live = {
       const q = session.questions[session.queue[session.idx]];
       s.n = session.idx + 1;
       s.total = session.queue.length;
+      s.cur = session.queue[session.idx];       // which of the twenty, for the panel
+                                                // (not "at" — that is the timestamp)
       s.round = session.firstPass ? 1 : 2;
       s.elapsed = session.pausedSec != null ? session.pausedSec : elapsedSec();
       if (screen === "pause") return s;      // paused: the counters, not the som
@@ -118,25 +120,28 @@ const Live = {
 
   /* The whole opdracht beside the som on screen: what is right, what went
      wrong, what was put aside, and where the child is now. */
-  marksPanel(state) {
-    const marks = state.marks || [];
-    if (!marks.length) return "";
+  /* Shared by both sides: the child sees it beside the som it is working on,
+     the parent sees the same thing in the mirror. `at` is the question being
+     looked at, counted from zero. */
+  marksPanelHTML(marks, at) {
+    if (!marks || !marks.length) return "";
     const icon = { ok: "✅", ok2: "✔️", no: "❌", skip: "⏭" };
-    const tiles = marks.map((m, i) => {
-      const here = (i + 1) === state.n ? " here" : "";
-      return `<div class="mark-cell ${m || "open"}${here}">` +
-             `<span class="n">${i + 1}</span><span class="i">${icon[m] || ""}</span></div>`;
-    }).join("");
+    const tiles = marks.map((m, i) =>
+      `<div class="mark-cell ${m || "open"}${i === at ? " here" : ""}">` +
+      `<span class="n">${i + 1}</span><span class="i">${icon[m] || ""}</span></div>`).join("");
     const count = k => marks.filter(m => m === k).length;
-    return `<aside class="mirror-marks">
-              <div class="mark-grid">${tiles}</div>
-              <div class="mark-tally">
-                <span>✅ ${count("ok")}</span>
-                <span>✔️ ${count("ok2")}</span>
-                <span>❌ ${count("no")}</span>
-                <span>⏭ ${count("skip")}</span>
-              </div>
-            </aside>`;
+    return `<div class="mark-grid">${tiles}</div>
+            <div class="mark-tally">
+              <span>✅ ${count("ok")}</span>
+              <span>✔️ ${count("ok2")}</span>
+              <span>❌ ${count("no")}</span>
+              <span>⏭ ${count("skip")}</span>
+            </div>`;
+  },
+
+  marksPanel(state) {
+    const html = this.marksPanelHTML(state.marks, state.cur);
+    return html ? `<aside class="marks-panel">${html}</aside>` : "";
   },
 
   /* Redraw the last picture — used when the parent flips the language flag. */
@@ -210,7 +215,12 @@ const Live = {
 
     // a question is on screen
     const q = state.q;
-    if (!q) return;
+    if (!q) {                       // a beat arrived without a som in it —
+      el("mirror-status").textContent = t("live_busy");   // say so rather than
+      el("mirror-time").textContent = "";                 // leave an empty card
+      el("mirror-body").innerHTML = `<div class="mirror-idle"><div class="big-emoji">⏳</div></div>`;
+      return;
+    }
     el("mirror-status").textContent =
       t("live_question").replace("{n}", state.n).replace("{t}", state.total);
     el("mirror-time").textContent = state.elapsed ? "⏱ " + fmtTime(state.elapsed) : "";

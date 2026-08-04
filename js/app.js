@@ -384,12 +384,21 @@ function renderQuestion() {
     }
     box.appendChild(b);
   });
+  renderTaskMarks();
   if (!session.review) Live.push("task");
 }
 
 /* Two goes at a som, and no more. Guessing on until something sticks teaches
    nothing, so after a second wrong answer the right one is shown and the som
    is settled as wrong for good. */
+/* The whole opdracht beside the som being worked on, so the child can see how
+   it is going without waiting for the report card. */
+function renderTaskMarks() {
+  if (!session) return;
+  $("task-marks").innerHTML =
+    Live.marksPanelHTML(Live.marksOf(session.questions), session.queue[session.idx]);
+}
+
 function answer(i, btn) {
   const q = currentQ();
   const correct = i === q.answerIdx;
@@ -404,6 +413,7 @@ function answer(i, btn) {
     q.solved = true;
     lockAll();
     $("btn-skip").disabled = true;
+    renderTaskMarks();
     Live.push("task");
     setTimeout(advance, 600);
     return;
@@ -421,6 +431,7 @@ function answer(i, btn) {
   $("btn-skip").disabled = true;
   const right = document.querySelectorAll(".answer")[q.answerIdx];
   if (right) right.classList.add("correct");
+  renderTaskMarks();
   Live.push("task");
   setTimeout(advance, 1800);
 }
