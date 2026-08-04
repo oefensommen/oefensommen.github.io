@@ -57,6 +57,7 @@ function show(id) {
   document.querySelectorAll(".screen").forEach(s => s.classList.add("hidden"));
   $(id).classList.remove("hidden");
   $("btn-pause").classList.toggle("hidden", id !== "screen-task");
+  $("btn-skip").classList.toggle("hidden", id !== "screen-task");
   $("btn-logout-top").classList.toggle("hidden", id === "screen-login");
   renderLangPicker();          // the menu belongs to whoever is signed in now
   if (id === "screen-login") $("level-pill").classList.add("hidden");
@@ -274,7 +275,9 @@ function snapshotActive() {
       options: q.options, answerIdx: q.answerIdx,
       chosen: q.chosen === undefined ? null : q.chosen,
       correctFirst: q.correctFirst === undefined ? null : q.correctFirst,   // null = still waiting
+      tries: q.tries || 0,
       solved: !!q.solved,
+      failed: !!q.failed,
       skipped: !!q.skipped
     }))
   };
@@ -371,9 +374,11 @@ function renderQuestion() {
     b.className = "answer";
     b.textContent = opt;
     if (session.review) {
-      // looking back at a finished som: show what was picked, change nothing
+      // looking back at a settled som: what was picked, and what it should have
+      // been when the two chances ran out
       b.disabled = true;
-      if (i === q.chosen) b.classList.add(q.correctFirst ? "correct" : "wrong");
+      if (i === q.chosen) b.classList.add(q.solved ? "correct" : "wrong");
+      if (q.failed && i === q.answerIdx) b.classList.add("correct");
     } else {
       b.onclick = () => answer(i, b);
     }
@@ -382,31 +387,55 @@ function renderQuestion() {
   if (!session.review) Live.push("task");
 }
 
+/* Two goes at a som, and no more. Guessing on until something sticks teaches
+   nothing, so after a second wrong answer the right one is shown and the som
+   is settled as wrong for good. */
 function answer(i, btn) {
   const q = currentQ();
   const correct = i === q.answerIdx;
-  document.querySelectorAll(".answer").forEach(b => b.disabled = true);
-  $("btn-skip").disabled = true;
+  const lockAll = () => document.querySelectorAll(".answer").forEach(b => b.disabled = true);
+
+  q.tries = (q.tries || 0) + 1;
+  if (q.tries === 1) q.correctFirst = correct;   // only the first go counts for the score
+  q.chosen = i;
   btn.classList.add(correct ? "correct" : "wrong");
 
-  // The first time a som is really faced decides its verdict — whether that is
-  // now or after it was put aside. Skipping postpones the judgement, it is not
-  // a wrong answer, but it does not dodge one either.
-  if (undecided(q)) {
-    q.chosen = i;
-    q.correctFirst = correct;
-    q.solved = correct;
-  } else if (correct) {
+  if (correct) {
     q.solved = true;
+    lockAll();
+    $("btn-skip").disabled = true;
+    Live.push("task");
+    setTimeout(advance, 600);
+    return;
   }
 
-  Live.push("task");                     // let the parent see the pick land
-  setTimeout(advance, correct ? 600 : 900);
+  if (q.tries < ATTEMPTS) {                      // one more chance, same som
+    btn.disabled = true;
+    Live.push("task");
+    return;
+  }
+
+  // out of chances: show what it should have been, then move on
+  q.failed = true;
+  lockAll();
+  $("btn-skip").disabled = true;
+  const right = document.querySelectorAll(".answer")[q.answerIdx];
+  if (right) right.classList.add("correct");
+  Live.push("task");
+  setTimeout(advance, 1800);
 }
+
+const ATTEMPTS = 2;                 // goes per som before it is settled
 
 /* A som nobody has answered yet: no verdict, neither right nor wrong. */
 function undecided(q) {
   return q.correctFirst === null || q.correctFirst === undefined;
+}
+
+/* Nothing more can happen to this som: it was answered right, or the two
+   chances are gone. */
+function finished(q) {
+  return !!q.solved || !!q.failed;
 }
 
 function skip() {
@@ -432,8 +461,8 @@ function finishPass() {
   }
   recordFirstPass();                 // waits until every som has been faced
 
-  // everything that still needs answering, not just what was in this round
-  const open = session.questions.map((q, i) => i).filter(i => !session.questions[i].solved);
+  // only soms that were put aside can still be done; a failed one is settled
+  const open = session.questions.map((q, i) => i).filter(i => !finished(session.questions[i]));
   if (open.length === 0) markDone100();
   else session.nextQueue = open;
 
@@ -447,7 +476,7 @@ function finishPass() {
    and would otherwise be counted as a mistake. */
 function recordFirstPass() {
   if (session.banked) return;
-  if (!session.questions.every(q => !undecided(q))) return;
+  if (!session.questions.every(finished)) return;      // a som is still waiting
   session.banked = true;
 
   const secs = session.lastSec || elapsedSec();
@@ -499,28 +528,29 @@ function markDone100() {
 /* ---------- result ---------- */
 function renderResult() {
   const qs = session.questions;
-  const allSolved = qs.every(q => q.solved);
-  const nSolved = qs.filter(q => q.solved).length;
+  const allDone = qs.every(finished);                       // nothing left to answer
+  const perfect = allDone && qs.every(q => q.correctFirst);  // right first time, all of them
+  const nRight = qs.filter(q => q.correctFirst).length;
 
-  $("result-title").textContent = allSolved ? t("result_perfect") : t("result_almost");
-  $("result-emoji").textContent = allSolved ? partyEmoji() : "💪";
-  $("result-emoji").classList.toggle("party", allSolved);
-  $("result-score").textContent = allSolved
+  $("result-title").textContent =
+    perfect ? t("result_perfect") : (allDone ? t("result_done") : t("result_almost"));
+  $("result-emoji").textContent = perfect ? partyEmoji() : "💪";
+  $("result-emoji").classList.toggle("party", perfect);
+  $("result-score").textContent = perfect
     ? partyMessage(LANG)
-    : t("result_score").replace("{c}", nSolved).replace("{t}", qs.length);
+    : t("result_score").replace("{c}", nRight).replace("{t}", qs.length);
 
-  // numbered grid, three states and no answers given away. Every som can be
-  // opened again from here: the ones still waiting to be answered, and the
-  // finished ones to look back at.
+  // numbered grid: right first time, right on the second go, wrong for good,
+  // or still to be done. No answers given away, and every som can be opened.
   const grid = $("result-grid");
   grid.innerHTML = "";
   qs.forEach((q, i) => {
-    const waiting = undecided(q);
+    const state = q.correctFirst ? "ok" : (q.solved ? "ok2" : (q.failed ? "no" : "todo"));
+    const icon  = { ok: "✅", ok2: "✔️", no: "❌", todo: "⏭" }[state];
     const cell = document.createElement("button");
-    cell.className = "result-tile " + (q.solved ? "ok" : (waiting ? "todo" : "no"));
-    cell.title = t(q.solved ? "tile_done" : (waiting ? "tile_todo" : "tile_wrong"));
-    cell.innerHTML = `<span class="num">${i + 1}</span>` +
-                     `<span class="mark">${q.solved ? "✅" : (waiting ? "⏭" : "❌")}</span>`;
+    cell.className = "result-tile " + state;
+    cell.title = t({ ok: "tile_done", ok2: "tile_second", no: "tile_wrong", todo: "tile_todo" }[state]);
+    cell.innerHTML = `<span class="num">${i + 1}</span><span class="mark">${icon}</span>`;
     cell.addEventListener("click", () => openQuestion(i));
     grid.appendChild(cell);
   });
@@ -534,7 +564,10 @@ function renderResult() {
     timeEl.classList.add("hidden");
   }
 
-  $("btn-retry").classList.toggle("hidden", allSolved);
+  // only the soms that were put aside can still be done
+  const left = qs.filter(q => !finished(q)).length;
+  $("btn-retry").textContent = left ? t("finish_rest").replace("{n}", left) : "";
+  $("btn-retry").classList.toggle("hidden", !left);
 
   // de beloning: de melding alleen de ronde waarin hij verdiend is, de knop
   // zolang er vandaag nog speeltijd over is
@@ -554,19 +587,17 @@ function renderResult() {
   const rewardEl = $("result-reward");
   rewardEl.textContent = earned > 0 ? t("reward_earned").replace("{m}", earned) : "";
   rewardEl.classList.toggle("hidden", earned <= 0);
-  // speeltijd hoort bij een AFGERONDE dag: pas als alles goed is, en alleen
-  // zolang de minuten van vandaag nog niet op zijn (om middernacht vervallen ze)
-  // Not "the day was finished at some point" — THIS report card must be clean.
-  // A second task with a mistake still in it does not open the game, however
-  // many minutes are left over from the task before it.
+  // The game waits until THIS opdracht is finished — every som answered, or its
+  // two chances used. How much time it is worth is the first-try score, so a
+  // day with mistakes still ends somewhere, just with less to play for.
   const playLeftSec = Reward.remaining(data);
-  $("btn-play-result").classList.toggle("hidden", !(allSolved && playLeftSec > 0));
+  $("btn-play-result").classList.toggle("hidden", !(allDone && playLeftSec > 0));
   $("result-play-left").textContent = playLeftSec > 0 ? fmtTime(playLeftSec) : "";
 
   Live.push("result");
 
-  // fire confetti once, right when the task becomes perfect
-  if (allSolved && session.celebrate) {
+  // confetti belongs to a faultless run, not merely a finished one
+  if (perfect && session.celebrate) {
     session.celebrate = false;
     fireConfetti();
   }
@@ -577,7 +608,7 @@ function renderResult() {
 function openQuestion(i) {
   const q = session.questions[i];
   session.fromResult = true;
-  session.review = !!q.solved;
+  session.review = finished(q);       // settled soms are read-only, right or wrong
   session.queue = [i];
   session.idx = 0;
   session.firstPass = false;
@@ -794,11 +825,13 @@ function openMirror(state, age) {
    het spel: de tijd loopt door of het nu goed of slecht gaat, en hij wordt elke
    tien seconden weggeschreven — een dichtgeklapte tablet levert geen gratis
    minuten op. */
-let playInt = null, playT0 = 0, playLeft = 0;
+let playInt = null, playT0 = 0, playLeft = 0, playing = null;
 
 function openGames() {
   renderGames();
   show("screen-games");
+  Live.push("games");                 // the parent sees the playing too
+  Live.startHeartbeat();
 }
 
 function renderGames() {
@@ -829,6 +862,8 @@ function startPlay(game) {
   clearInterval(playInt);
   playInt = setInterval(tickPlay, 1000);
   show("screen-play");
+  playing = game;
+  Live.push("play");
 }
 
 function tickPlay() {

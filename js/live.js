@@ -15,8 +15,24 @@ const Live = {
   /* ---------------- child side ---------------- */
 
   /* Build a snapshot of the current screen from the running session. */
+  /* How each som stands, in one short word per question, so the parent can see
+     the whole opdracht at a glance instead of only the som on screen. */
+  marksOf(questions) {
+    return questions.map(q =>
+      q.correctFirst ? "ok"                   // right first time
+        : (q.solved ? "ok2"                   // right on the second go
+          : (q.failed ? "no"                  // both chances used
+            : (q.skipped ? "skip" : ""))));   // "" = not reached yet
+  },
+
   snapshot(screen, extra) {
     const s = Object.assign({ screen: screen, at: Date.now() }, extra || {});
+    if (session && session.questions) s.marks = this.marksOf(session.questions);
+    if (screen === "games" || screen === "play") {
+      s.left = Reward.remaining(data);
+      if (screen === "play" && playing) s.game = playing.key;   // which spelletje
+      return s;
+    }
     if (session && (screen === "task" || screen === "pause")) {
       const q = session.questions[session.queue[session.idx]];
       s.n = session.idx + 1;
@@ -100,6 +116,29 @@ const Live = {
     return !!state && !!state.screen && state.screen !== "home" && age < this.STALE_SEC;
   },
 
+  /* The whole opdracht beside the som on screen: what is right, what went
+     wrong, what was put aside, and where the child is now. */
+  marksPanel(state) {
+    const marks = state.marks || [];
+    if (!marks.length) return "";
+    const icon = { ok: "✅", ok2: "✔️", no: "❌", skip: "⏭" };
+    const tiles = marks.map((m, i) => {
+      const here = (i + 1) === state.n ? " here" : "";
+      return `<div class="mark-cell ${m || "open"}${here}">` +
+             `<span class="n">${i + 1}</span><span class="i">${icon[m] || ""}</span></div>`;
+    }).join("");
+    const count = k => marks.filter(m => m === k).length;
+    return `<aside class="mirror-marks">
+              <div class="mark-grid">${tiles}</div>
+              <div class="mark-tally">
+                <span>✅ ${count("ok")}</span>
+                <span>✔️ ${count("ok2")}</span>
+                <span>❌ ${count("no")}</span>
+                <span>⏭ ${count("skip")}</span>
+              </div>
+            </aside>`;
+  },
+
   /* Redraw the last picture — used when the parent flips the language flag. */
   rerender() {
     if (this._lastState) this.render(this._lastState, this._lastAge);
@@ -141,12 +180,26 @@ const Live = {
       return;
     }
 
+    if (state.screen === "games" || state.screen === "play") {
+      const name = state.game ? t(state.game) : "";
+      el("mirror-status").textContent = state.screen === "play"
+        ? t("live_playing").replace("{game}", name)
+        : t("live_games");
+      el("mirror-time").textContent = state.left != null ? "🎮 " + fmtTime(state.left) : "";
+      el("mirror-body").innerHTML =
+        `<div class="mirror-idle"><div class="big-emoji">🎮</div>${
+          name ? `<p>${name}</p>` : ""}</div>`;
+      return;
+    }
+
     if (state.screen === "result") {
       el("mirror-status").textContent = t("live_done");
       el("mirror-time").textContent = state.elapsed ? "⏱ " + fmtTime(state.elapsed) : "";
-      const tiles = (state.grid || []).map((ok, i) =>
-        `<div class="result-tile ${ok ? "ok" : "no"}"><span class="num">${i + 1}</span>` +
-        `<span class="mark">${ok ? "✅" : "❌"}</span></div>`).join("");
+      const marks = state.marks || (state.grid || []).map(ok => ok ? "ok" : "no");
+      const icon = { ok: "✅", ok2: "✔️", no: "❌", skip: "⏭" };
+      const tiles = marks.map((m, i) =>
+        `<div class="result-tile ${m === "skip" ? "todo" : (m || "no")}">` +
+        `<span class="num">${i + 1}</span><span class="mark">${icon[m] || "❌"}</span></div>`).join("");
       const sc = state.score || { solved: 0, total: 0 };
       el("mirror-body").innerHTML =
         `<p class="status" style="text-align:center">${
@@ -176,6 +229,15 @@ const Live = {
       return `<div class="${cls}">${o}</div>`;
     }).join("");
 
+    // once a choice is made, say plainly how it went — colour alone is easy to
+    // miss from across the room
+    const picked = q.chosen !== null && q.chosen !== undefined;
+    const right = picked && q.chosen === q.answerIdx;
+    const verdict = picked
+      ? `<div class="mirror-verdict ${right ? "right" : "wrong"}">${
+           right ? "✅ " + t("verdict_right") : "❌ " + t("verdict_wrong")}</div>`
+      : "";
+
     // the same button both ways: press to see it, press again to put it away
     const footer = this._revealed
       ? `<button id="mirror-reveal" class="mirror-key shown" title="${t("hide_answer")}">
@@ -184,10 +246,16 @@ const Live = {
       : `<button id="mirror-reveal" class="mirror-reveal">👁️ ${t("show_answer")}</button>`;
 
     el("mirror-body").innerHTML =
-      `<p class="mirror-q">${text}</p>
-       <div class="mirror-options">${opts}</div>
-       ${q.skipped ? `<div class="mirror-note">⏭ ${t("skip")}</div>` : ""}
-       ${footer}`;
+      `<div class="mirror-split">
+         <div class="mirror-main">
+           <p class="mirror-q">${text}</p>
+           <div class="mirror-options">${opts}</div>
+           ${verdict}
+           ${q.skipped ? `<div class="mirror-note">⏭ ${t("skip")}</div>` : ""}
+           ${footer}
+         </div>
+         ${this.marksPanel(state)}
+       </div>`;
 
     const reveal = el("mirror-reveal");
     if (reveal) reveal.onclick = () => { this._revealed = !this._revealed; this.rerender(); };
