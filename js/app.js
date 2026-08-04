@@ -323,13 +323,45 @@ function snapshotActive() {
       tries: q.tries || 0,
       solved: !!q.solved,
       failed: !!q.failed,
-      skipped: !!q.skipped
+      skipped: !!q.skipped,
+      booked: !!q.booked           // already counted in today's record
     }))
   };
 }
 
+/* Write every som that is settled but not yet counted into today's record.
+   A som counts from the moment it is answered, not when the opdracht happens
+   to reach its end — so an opdracht that is broken off halfway, a tablet that
+   runs out of battery or a tab that is simply closed all leave the work the
+   child really did standing. Each som carries a flag saying it has been
+   counted, and that flag travels with the opdracht, so picking the same work
+   up on another device counts nothing twice. */
+function bankSettled() {
+  if (!session || !session.questions) return;
+  const ds = todayStr();
+  const day = data.days[ds] || { solved: 0, firstCorrect: 0, done100: false, cats: {} };
+  let added = 0;
+  session.questions.forEach(q => {
+    if (!finished(q) || q.booked) return;
+    q.booked = true;
+    added++;
+    day.solved++;
+    if (q.correctFirst) day.firstCorrect++;
+    const c = day.cats[q.cat] || { n: 0, c: 0 };
+    c.n++; if (q.correctFirst) c.c++;
+    day.cats[q.cat] = c;
+    // the soort som that went wrong comes back in a later opdracht
+    if (!q.correctFirst && q.cat !== "verrassing") {
+      data.wrongTpl = [q.tplId, ...data.wrongTpl.filter(id => id !== q.tplId)].slice(0, 6);
+    }
+  });
+  if (added) data.days[ds] = day;
+}
+
 function saveActive(pushNow) {
-  const snap = snapshotActive();
+  if (!session || !session.questions) return;
+  bankSettled();                         // count it first, then write it down,
+  const snap = snapshotActive();         // so the snapshot carries the flags
   if (!snap) return;
   data.active = snap;
   Store.save(data);
@@ -347,7 +379,13 @@ function clearActive() {
 function activeTask() {
   const a = data.active;
   if (!a || !a.questions || !a.questions.length) return null;
-  if (a.date !== todayStr()) return null;                  // yesterday's leftovers
+  if (a.date !== todayStr()) {
+    // yesterday's leftovers. The sommen the child actually made were counted
+    // on the day itself, so nothing is lost by letting the rest go.
+    delete data.active;
+    Store.save(data);
+    return null;
+  }
   // An older build recorded a wrong answer without writing down that the som
   // was settled. Carried over as it stands, such a som counts as never reached:
   // it shows up blank in the overview and the opdracht can never finish. Say
@@ -555,29 +593,22 @@ function finishPass() {
   show("screen-result");
 }
 
-/* Book the day's score, the levels and the repeat pool. Held back while a som
-   is still waiting to be answered, because a postponed som has no verdict yet
-   and would otherwise be counted as a mistake. */
+/* Close the books on a whole opdracht: the time it took, the level and the
+   score it is judged on. The sommen themselves were already counted one by one
+   as they were answered; this is what can only be said once every one of them
+   has been faced — a som still put aside has no verdict yet and must not be
+   read as a mistake. */
 function recordFirstPass() {
   if (session.banked) return;
   if (!session.questions.every(finished)) return;      // a som is still waiting
   session.banked = true;
 
+  bankSettled();                       // whatever is not counted yet
   const secs = session.lastSec || elapsedSec();
   const ds = todayStr();
   const day = data.days[ds] || { solved: 0, firstCorrect: 0, done100: false, cats: {} };
-  let nCorrect = 0;
-  session.questions.forEach(q => {
-    day.solved++;
-    if (q.correctFirst) { day.firstCorrect++; nCorrect++; }
-    const c = day.cats[q.cat] || { n: 0, c: 0 };   // per soort, for the overview
-    c.n++; if (q.correctFirst) c.c++;
-    day.cats[q.cat] = c;
-    // wrong-template pool for future repeat
-    if (!q.correctFirst && q.cat !== "verrassing") {
-      data.wrongTpl = [q.tplId, ...data.wrongTpl.filter(id => id !== q.tplId)].slice(0, 6);
-    }
-  });
+  const nCorrect = session.questions.filter(q => q.correctFirst).length;
+
   // time log: how long the 20 questions took (first pass)
   day.timeSec = secs;
   day.times = (day.times || []).concat(secs);
