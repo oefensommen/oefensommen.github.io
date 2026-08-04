@@ -15,13 +15,21 @@ const Store = {
   ROLE_KEY: "oefensommen_role",    // "child" | "parent"
   WATCH_KEY: "oefensommen_watch",  // for a parent: the child it mirrors
 
+  /* Fingerprints of the sommen already asked, so none of them comes round a
+     second time. Twenty a day means 9000 covers about 450 school days — more
+     than two school years — before the oldest ones start to fall off the end.
+     It costs roughly 85 kB in the record that travels between the devices,
+     which is why it is a bounded list and not simply everything, forever. */
+  SEEN_MAX: 9000,
+
   _default() {
     return {
       level: 1,
       perfectStreak: 0,          // consecutive 100% first-pass tasks (for level-up)
       days: {},                  // "2026-08-01": { solved, firstCorrect, done100, timeSec, times, cats }
       recentTpl: {},             // templateId -> last used date string
-      wrongTpl: []               // template ids answered wrong recently (repeat pool)
+      wrongTpl: [],              // template ids answered wrong recently (repeat pool)
+      seen: []                   // every som ever asked, so none is asked twice
     };
   },
 
@@ -177,6 +185,9 @@ function mergeProgress(a, b) {
     days: {},
     recentTpl: Object.assign({}, b.recentTpl || {}, a.recentTpl || {}),
     wrongTpl: Array.from(new Set([...(a.wrongTpl || []), ...(b.wrongTpl || [])])).slice(0, 6),
+    // both devices asked their own sommen; neither list may be thrown away, or
+    // a som done on the tablet could come round again on the laptop
+    seen: Array.from(new Set([...(b.seen || []), ...(a.seen || [])])).slice(-Store.SEEN_MAX),
     catLevel: Object.assign({}, b.catLevel || {}, a.catLevel || {}),
     catStreak: Object.assign({}, b.catStreak || {}, a.catStreak || {}),
     catBad: Object.assign({}, b.catBad || {}, a.catBad || {}),

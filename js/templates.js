@@ -122,7 +122,8 @@ const TEMPLATES = [
         en: "{name} counts the {obj} collection. {He} has {a} Dutch and {b} Belgian {obj}. How many {obj} does {he} have?",
         tr: "{name} {obj} koleksiyonunu sayıyor. {a} Hollanda ve {b} Belçika {obj} var. Kaç {obj} var?" }
     ],
-    gen() { const a = pickArr([500, 600, 700, 300, 400]); const b = pickArr([200, 300, 400, 100]); const ans = a + b;
+    gen(level) { const a = lvRange(level, 12, 28, 1.6) * 25, b = lvRange(level, 4, 16, 1.6) * 25;
+      const ans = a + b;
       return { vars: { a, b }, answer: ans, wrongs: [ans + 100, ans - 100, ans + 200, Math.abs(a - b)] }; }
   },
   {
@@ -149,7 +150,8 @@ const TEMPLATES = [
         en: "{name} starts counting at {a}. {He} counts on by {b}, four times. What number does {name} end on?",
         tr: "{name} {a}'dan saymaya başlıyor. Dört kez {b} ekliyor. {name} sayması bitince hangi sayıda olur?" }
     ],
-    gen() { const b = pickArr([10, 100]); const start = b === 100 ? pickArr([750, 1625, 1255]) : pickArr([4845, 750, 1625]);
+    gen(level) { const b = pickArr([10, 100]);
+      const start = b === 100 ? lvRange(level, 700, 1900, 1.5) : lvRange(level, 700, 4900, 1.2);
       const ans = start + 4 * b;
       return { vars: { a: start, b }, answer: ans, wrongs: [start + 3 * b, start + 5 * b, start + 6 * b, start + 2 * b] }; }
   },
@@ -221,7 +223,8 @@ const TEMPLATES = [
         en: "{name} starts counting back from {a}. {He} takes off {b}, four times. What number does {name} end on?",
         tr: "{name} {a}'dan geriye saymaya başlıyor. Dört kez {b} çıkarıyor. Sayması bitince hangi sayıda olur?" }
     ],
-    gen() { const b = pickArr([1, 10]); const start = b === 10 ? pickArr([5030, 5425, 4845]) : pickArr([463, 512, 638]);
+    gen(level) { const b = pickArr([1, 10]);
+      const start = b === 10 ? lvRange(level, 3000, 5900, 1.2) : lvRange(level, 320, 890, 1.4);
       const ans = start - 4 * b;
       return { vars: { a: start, b }, answer: ans, wrongs: [start - 3 * b, start - 5 * b, start - 2 * b, start - 6 * b] }; }
   },
@@ -232,7 +235,7 @@ const TEMPLATES = [
         en: "There are {a} empty bottles in the shed. {name} takes half to the bottle bank. How many empty bottles are left?",
         tr: "Depoda {a} boş şişe var. {name} yarısını cam kutusuna götürüyor. Depoda kaç boş şişe kaldı?" }
     ],
-    gen() { const half = ri(9, 24); const a = half * 2; const ans = half;
+    gen(level) { const half = lvRange(level, 9, 45, 1.6); const a = half * 2; const ans = half;
       return { vars: { a }, answer: ans, wrongs: [ans + 2, ans - 2, ans + 1, a] }; }
   },
   {
@@ -242,7 +245,8 @@ const TEMPLATES = [
         en: "{name}'s plan allows {a} minutes of calling per month. {He} has already called {b} minutes. How many minutes are left?",
         tr: "{name_in} aboneliğinde ayda {a} dakika konuşma var. {b} dakika konuştu bile. Kaç dakika kaldı?" }
     ],
-    gen() { const a = pickArr([900, 800, 1000]); const b = pickArr([600, 500, 300, 400]); const ans = a - b;
+    gen(level) { const a = lvRange(level, 24, 40, 1.5) * 25, b = lvRange(level, 8, 20, 1.5) * 25;
+      const ans = a - b;
       return { vars: { a, b }, answer: ans, wrongs: [ans + 100, ans - 100, ans + 200, a + b > 1000 ? ans + 300 : a + b] }; }
   },
   {
@@ -252,7 +256,8 @@ const TEMPLATES = [
         en: "{name}'s club has {a} euros after the jumble sale. The sale raised {b} euros. How many euros were there before the sale?",
         tr: "{name_in} kulübünde bit pazarından sonra {a} euro var. Pazar {b} euro kazandırdı. Pazardan önce kasada kaç euro vardı?" }
     ],
-    gen() { const a = pickArr([5000, 4000, 3600]); const b = pickArr([1500, 1400, 2000]); const ans = a - b;
+    gen(level) { const a = lvRange(level, 28, 50, 1.3) * 100, b = lvRange(level, 8, 22, 1.3) * 100;
+      const ans = a - b;
       return { vars: { a, b }, answer: ans, wrongs: [ans + 100, ans - 100, a + b, ans + 1000] }; }
   },
 
@@ -265,7 +270,7 @@ const TEMPLATES = [
         en: "{name} counts the {obj}. There are {a} crates. Each crate holds {b} {obj}. How many {obj} are there?",
         tr: "{name} {obj} sayıyor. {a} kasa var. Her kasada {b} {obj} var. Toplam kaç {obj} var?" }
     ],
-    gen() { const a = ri(6, 9), b = pickArr([80, 150, 60, 90]); const ans = a * b;
+    gen(level) { const a = ri(4, 9), b = lvRange(level, 20, 90, 1.7); const ans = a * b;
       return { vars: { a, b }, answer: ans, wrongs: [ans + 10, ans - 10, ans + b, ans - b] }; }
   },
   {
@@ -275,7 +280,7 @@ const TEMPLATES = [
         en: "{name} is on a {a}-day cycling holiday. {He} cycles {b} kilometres each day. How many kilometres does {name} cycle?",
         tr: "{name} {a} günlük bisiklet tatilinde. Her gün {b} kilometre gidiyor. {name} toplam kaç kilometre gider?" }
     ],
-    gen() { const a = ri(6, 9), b = pickArr([30, 80, 40, 60]); const ans = a * b;
+    gen(level) { const a = ri(4, 9), b = lvRange(level, 15, 80, 1.7); const ans = a * b;
       return { vars: { a, b }, answer: ans, wrongs: [ans + 20, ans - 20, ans + b, ans - b] }; }
   },
   {
@@ -289,7 +294,7 @@ const TEMPLATES = [
         en: "The cinema has {a} rows with {b} seats each. How many seats in total?",
         tr: "Sinemada her sırada {b} koltuk olan {a} sıra var. Toplam kaç koltuk var?" }
     ],
-    gen(level) { const a = lvTable(level), b = ri(6, 9); const ans = a * b;
+    gen(level) { const a = lvTable(level), b = lvRange(level, 6, 30, 1.6); const ans = a * b;
       return { vars: { a, b }, answer: ans, wrongs: [ans + a, ans - a, ans + b, a + b] }; }
   },
   {
@@ -299,7 +304,7 @@ const TEMPLATES = [
         en: "{name}'s maths book has {a} chapters. Each chapter has {b} sums. How many sums are in the book?",
         tr: "{name_in} matematik kitabında {a} bölüm var. Her bölümde {b} soru var. Kitapta kaç soru var?" }
     ],
-    gen() { const a = pickArr([60, 70, 80]); const b = ri(11, 12); const ans = a * b;
+    gen(level) { const a = lvRange(level, 20, 80, 1.6); const b = ri(6, 12); const ans = a * b;
       return { vars: { a, b }, answer: ans, wrongs: [ans + 10, ans - 10, ans + a, ans - a] }; }
   },
   {
@@ -309,7 +314,7 @@ const TEMPLATES = [
         en: "{name} sells {a} lottery tickets. One ticket costs {b} euros. How many euros did {name} earn?",
         tr: "{name} piyango için {a} bilet satıyor. Bir bilet {b} euro. {name} kaç euro kazandı?" }
     ],
-    gen() { const a = pickArr([80, 70, 90, 60]); const b = ri(4, 6); const ans = a * b;
+    gen(level) { const a = lvRange(level, 40, 95, 1.6); const b = ri(3, 8); const ans = a * b;
       return { vars: { a, b }, answer: ans, wrongs: [ans + 20, ans - 20, ans + a, ans - a] }; }
   },
   {
@@ -319,7 +324,7 @@ const TEMPLATES = [
         en: "{name} sells {a} bottles of cola at the market. One bottle costs € 1.50. How many euros did {name} earn?",
         tr: "{name} pazarda {a} şişe kola satıyor. Bir şişe kola € 1,50. {name} kaç euro kazandı?" }
     ],
-    gen() { const a = pickArr([30, 40, 20, 50]); const ans = a * 1.5;
+    gen(level) { const a = lvRange(level, 8, 40, 1.6) * 2; const ans = a * 1.5;
       return { vars: { a }, answer: ans, wrongs: [ans + 1, ans - 1, ans + 2, a] }; }
   },
 
@@ -332,7 +337,7 @@ const TEMPLATES = [
         en: "{name} has {a} {obj} for the dogs at the shelter. There are {b} dogs. How many {obj} does each dog get?",
         tr: "{name_in} barınaktaki köpekler için {a} {obj} var. {b} köpek var. Her köpeğe kaç {obj} düşer?" }
     ],
-    gen(level) { const b = lvTable(level); const q = ri(4, 9); const a = b * q;
+    gen(level) { const b = lvTable(level); const q = lvRange(level, 4, 24, 1.5); const a = b * q;
       return { vars: { a, b }, answer: q, wrongs: [q + 1, q - 1, q + 2, b] }; }
   },
   {
@@ -345,7 +350,7 @@ const TEMPLATES = [
         en: "{name}'s family goes to a restaurant. They are with {a} people. A table seats {b}. How many tables do they need?",
         tr: "{name_in} ailesi restorana gidiyor. {a} kişiler. Bir masaya {b} kişi sığıyor. Kaç masa gerekir?" }
     ],
-    gen() { const b = pickArr([20, 5, 4]); const q = b === 20 ? ri(11, 14) : ri(3, 6); const a = b * q;
+    gen(level) { const b = pickArr([4, 5, 6, 8, 10, 20, 25]); const q = lvRange(level, 3, 30, 1.5); const a = b * q;
       return { vars: { a, b }, answer: q, wrongs: [q + 1, q - 1, q + 2, b] }; }
   },
   {
@@ -355,7 +360,7 @@ const TEMPLATES = [
         en: "{name}'s class goes to the museum. The tickets cost {a} euros together. There are {b} children. How much is each ticket?",
         tr: "{name_in} sınıfı müzeye gidiyor. Biletler toplam {a} euro. {b} çocuk var. Bilet başına kaç euro?" }
     ],
-    gen() { const b = pickArr([20, 10, 25]); const q = ri(4, 7); const a = b * q;
+    gen(level) { const b = ri(8, 32); const q = lvRange(level, 3, 12, 1.6); const a = b * q;
       return { vars: { a, b }, answer: q, wrongs: [q + 1, q - 1, q + 2, b] }; }
   },
   {
@@ -366,7 +371,7 @@ const TEMPLATES = [
         en: "{name} is moving and packs {a} {obj}. {He} has {b} boxes to put the {obj} in. How many {obj} go in each box?",
         tr: "{name} taşınıyor ve {a} {obj} paketliyor. {obj} için {b} kutusu var. Her kutuya kaç {obj} koyar?" }
     ],
-    gen() { const b = pickArr([8, 4, 6]); const q = pickArr([30, 25, 35, 40]); const a = b * q;
+    gen(level) { const b = pickArr([4, 5, 6, 8, 10]); const q = lvRange(level, 12, 45, 1.5); const a = b * q;
       return { vars: { a, b }, answer: q, wrongs: [q + 5, q - 5, q + 10, b] }; }
   },
   {
@@ -377,7 +382,7 @@ const TEMPLATES = [
         en: "{name} fills boxes with {obj}. {He} has {a} {obj}. A box holds {b} {obj}. How many boxes can {name} fill completely?",
         tr: "{name} kutuları {obj} ile dolduruyor. {a} {obj} var. Bir kutuya {b} {obj} sığıyor. {name} kaç kutuyu tam doldurabilir?" }
     ],
-    gen() { const b = pickArr([12, 6, 8]); const q = ri(4, 9); const a = b * q + ri(1, b - 1);
+    gen(level) { const b = pickArr([5, 6, 8, 10, 12, 15]); const q = lvRange(level, 4, 16, 1.5); const a = b * q + ri(1, b - 1);
       return { vars: { a, b }, answer: q, wrongs: [q + 1, q - 1, q + 2, b] }; }
   },
   {
@@ -388,7 +393,7 @@ const TEMPLATES = [
         en: "{name} puts {obj} into bags. {He} has {a} {obj}. Each bag holds {b} {obj}. How many {obj} are left over?",
         tr: "{name} {obj} paketliyor. {a} {obj} var. Her pakete {b} {obj} giriyor. Geriye kaç {obj} artar?" }
     ],
-    gen() { const b = pickArr([12, 6, 8, 5]); const q = ri(4, 9); const r = ri(1, b - 1); const a = b * q + r;
+    gen(level) { const b = pickArr([5, 6, 7, 8, 9, 12]); const q = lvRange(level, 4, 16, 1.5); const r = ri(1, b - 1); const a = b * q + r;
       return { vars: { a, b }, answer: r, wrongs: [r + 1, r - 1, q, b - r] }; }
   },
   {
@@ -398,7 +403,7 @@ const TEMPLATES = [
         en: "The canteen sold {a} euros of fries. A portion costs € 2.50. How many portions were sold?",
         tr: "Kantinde {a} euroluk patates satıldı. Bir porsiyon € 2,50. Kaç porsiyon satıldı?" }
     ],
-    gen() { const q = pickArr([200, 220, 180, 160]); const a = q * 2.5;
+    gen(level) { const q = lvRange(level, 40, 120, 1.5) * 2; const a = q * 2.5;
       return { vars: { a }, answer: q, wrongs: [q + 20, q - 20, q + 10, a / 10] }; }
   },
 
@@ -451,8 +456,11 @@ const TEMPLATES = [
         en: "{name} unpacks boxes of books. There are {a} boxes with {b} books each. {name} divides the books over {c} shelves. How many books per shelf?",
         tr: "{name} kitap kutularını açıyor. Her birinde {b} kitap olan {a} kutu var. {name} kitapları {c} rafa paylaştırıyor. Her rafta kaç kitap olur?" }
     ],
-    gen() { const a = pickArr([5, 4]); const b = pickArr([56, 48, 60]); const c = 4; const total = a * b; const ans = total / c;
-      return { vars: { a, b, c }, answer: ans, wrongs: [ans + 5, ans - 5, ans + 3, b ] }; }
+    /* the books have to divide over the shelves without a remainder, so the
+       number per box is chosen as a multiple of the number of shelves */
+    gen(level) { const c = pickArr([4, 5, 6]); const a = ri(3, 6);
+      const k = lvRange(level, 8, 22, 1.5); const b = c * k; const ans = a * k;
+      return { vars: { a, b, c }, answer: ans, wrongs: [ans + 5, ans - 5, ans + 3, b] }; }
   },
   {
     id: "twee-min-deel", cat: "tweestap",
@@ -461,7 +469,8 @@ const TEMPLATES = [
         en: "{name} baked {a} snacks. {b} are eaten right away. {He} divides the rest over {c} plates. How many snacks per plate?",
         tr: "{name} {a} köfte pişirdi. Hemen {b} tanesi yeniyor. Kalanı {c} tabağa paylaştırıyor. Her tabakta kaç köfte olur?" }
     ],
-    gen() { const c = pickArr([4, 5, 6]); const per = ri(11, 15); const b = pickArr([10, 6, 8]); const a = per * c + b; const ans = per;
+    gen(level) { const c = pickArr([4, 5, 6]); const per = lvRange(level, 8, 24, 1.5);
+      const b = ri(4, 14); const a = per * c + b; const ans = per;
       return { vars: { a, b, c }, answer: ans, wrongs: [ans + 1, ans - 1, ans + 2, c] }; }
   },
   {
@@ -471,7 +480,7 @@ const TEMPLATES = [
         en: "{name} raised {a} euros in the sponsor run. Dad doubles it, uncle doubles the new amount, grandpa doubles it once more. How much can {name} give to charity?",
         tr: "{name} sponsorlu koşuda {a} euro topladı. Baba iki katına çıkarıyor, amca yeni tutarı iki katına, dede bir kez daha iki katına çıkarıyor. {name} hayır için kaç euro verebilir?" }
     ],
-    gen() { const a = ri(15, 20); const ans = a * 8;
+    gen(level) { const a = lvRange(level, 12, 45, 1.5); const ans = a * 8;
       return { vars: { a }, answer: ans, wrongs: [a * 6, a * 4, ans + 8, ans - 8] }; }
   },
   {
@@ -482,7 +491,8 @@ const TEMPLATES = [
         en: "{name} buys a {obj} for the clubhouse. The {obj} costs {a} euros. {He} gets {b} euros discount. {name} shares the cost with {c} friends. How much does each person pay?",
         tr: "{name} kulüp için bir {obj} alıyor. {obj} {a} euro. {b} euro indirim alıyor. {name} masrafı {c} arkadaşıyla paylaşıyor. Kişi başı kaç euro öderler?" }
     ],
-    gen() { const c = pickArr([4, 5]); const per = ri(9, 12); const b = pickArr([6, 5]); const a = per * (c + 1) + b;
+    gen(level) { const c = pickArr([3, 4, 5]); const per = lvRange(level, 8, 25, 1.5);
+      const b = ri(4, 12); const a = per * (c + 1) + b;
       return { vars: { a, b, c }, answer: per, wrongs: [per + 1, per - 1, per + 2, c + 1] }; }
   },
   {
@@ -611,8 +621,8 @@ const TEMPLATES = [
         tr: "{name} akşam {klok} yatıyor. Bu, dijital saatte kaçtır?" }
     ],
     gen(level, v) {
-      const h = v === 1 ? ri(7, 9) : ri(1, 6);          // 12-hour clock hour
-      const m = pickArr([0, 15, 30, 45, 30, 20, 40, 25, 35, 10, 50]);
+      const h = v === 1 ? ri(7, 11) : ri(1, 6);         // 12-hour clock hour
+      const m = ri(0, 11) * 5;      // a spoken time only lands on five minutes
       const H = h + 12;                                  // afternoon / evening
       const ans = tFmt(H, m);
       const wrongs = [
@@ -685,8 +695,8 @@ const TEMPLATES = [
         en: "{name} cycled for {a} hours and {b} minutes. How many minutes is that in total?",
         tr: "{name} {a} saat {b} dakika bisiklet sürdü. Bu toplam kaç dakikadır?" }
     ],
-    gen() {
-      const a = ri(2, 4), b = pickArr([15, 20, 25, 35, 40, 45, 50]);
+    gen(level) {
+      const a = lvRange(level, 2, 6, 1.5), b = ri(1, 11) * 5 + ri(0, 4);
       const ans = a * 60 + b;
       return { vars: { a, b }, answer: ans,
         wrongs: [a * 100 + b, ans - 60, ans + 60, a * 60] };   // a*100+b = classic error

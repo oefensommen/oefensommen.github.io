@@ -163,6 +163,29 @@ const Engine = {
     return { options: all, answerIdx: all.indexOf(unit + ans) };
   },
 
+  /* What makes a som that som: which template, which phrasing, which numbers.
+     Names and objects are deliberately left out — the same sum with another
+     child's name in front of it is the same sum, and asking it again would be
+     asking the same question. Kept as a short fingerprint rather than the whole
+     thing, because this list is carried between devices. */
+  sig(q) {
+    const s = q.tplId + "|" + q.variantIdx + "|" + JSON.stringify(q.vars);
+    let h = 0;
+    for (let i = 0; i < s.length; i++) h = (Math.imul(h, 31) + s.charCodeAt(i)) | 0;
+    return (h >>> 0).toString(36);
+  },
+
+  /* A som out of this template that has never been asked before — or nothing,
+     when the template has no new som left to give at this level. */
+  freshFrom(tpl, level, seen, taken) {
+    for (let i = 0; i < 40; i++) {
+      const q = this.makeQuestion(tpl, level);
+      const s = this.sig(q);
+      if (!seen.has(s) && !taken.has(s)) { taken.add(s); return q; }
+    }
+    return null;
+  },
+
   /* Pick a template of a category, avoiding ones used in the last 2 days when possible */
   pickTemplate(cat, data, usedInTask) {
     let pool = TEMPLATES.filter(tp => tp.cat === cat);
@@ -238,13 +261,39 @@ const Engine = {
 
     const usedInTask = [];
     const questions = [];
+    const seen = new Set(data.seen || []);   // every som ever asked
+    const taken = new Set();                 // and the ones picked just now
+    let repeats = 0;
+
+    const fromTpl = (tpl) => this.freshFrom(tpl, Levels.of(data, tpl.cat), seen, taken);
 
     // every category carries its own level, so being good at tables does not
     // make the clock questions harder
     const add = (cat) => {
-      const tpl = this.pickTemplate(cat, data, usedInTask);
+      let tpl = null, q = null;
+      const tried = [];
+      // a template can run out of sommen it has not asked before at this level,
+      // so look in its neighbours before giving up on the category
+      for (let k = 0; k < 8 && !q; k++) {
+        tpl = this.pickTemplate(cat, data, usedInTask.concat(tried));
+        tried.push(tpl.id);
+        q = fromTpl(tpl);
+      }
+      if (!q) {
+        // Nothing new left anywhere in this category. A som asked long ago is
+        // better than an opdracht that comes up short — but twice in the SAME
+        // opdracht is never acceptable, so keep drawing until it is at least
+        // not one of today's.
+        const level = Levels.of(data, tpl.cat);
+        for (let i = 0; i < 200; i++) {
+          q = this.makeQuestion(tpl, level);
+          if (!taken.has(this.sig(q))) break;
+        }
+        taken.add(this.sig(q));
+        repeats++;
+      }
       usedInTask.push(tpl.id);
-      questions.push(this.makeQuestion(tpl, Levels.of(data, tpl.cat)));
+      questions.push(q);
     };
 
     for (let i = 0; i < nMain; i++) add(mainCat);
@@ -259,8 +308,10 @@ const Engine = {
     for (let i = 0; i < nMixed - klokQuota; i++) {
       const wrongId = data.wrongTpl[i];
       const wrongTpl = wrongId && TEMPLATES.find(tp => tp.id === wrongId && tp.cat !== "verrassing");
-      if (wrongTpl) {
-        questions.push(this.makeQuestion(wrongTpl, Levels.of(data, wrongTpl.cat)));
+      const q = wrongTpl && fromTpl(wrongTpl);
+      if (q) {
+        usedInTask.push(wrongTpl.id);
+        questions.push(q);
       } else {
         add(otherCats[Math.floor(Math.random() * otherCats.length)]);
       }
@@ -268,9 +319,11 @@ const Engine = {
 
     for (let i = 0; i < nSurprise; i++) add("verrassing");
 
-    // remember usage
+    // remember usage — the templates, and the sommen themselves
     const today = todayStr();
     usedInTask.forEach(id => { data.recentTpl[id] = today; });
+    data.seen = (data.seen || []).concat([...taken]).slice(-Store.SEEN_MAX);
+    if (repeats) console.log(`[Oefensommen] ${repeats} som(men) waren op: niets nieuws meer in die soort`);
     Store.save(data);
 
     return this.shuffle(questions);

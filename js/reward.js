@@ -10,10 +10,14 @@
    de cloud-synchronisatie: op de tablet gespeelde minuten zijn ook op de laptop
    op. */
 const Reward = {
-  /* Zo simpel als het maar kan: in één keer alles goed is 15 minuten waard,
-     al het andere 5. Foutloos werken is daarmee het enige dat telt. */
+  /* Alles goed is 20 minuten waard, één tot drie fouten 5, en vanaf vier
+     fouten is er vandaag geen speeltijd. Het verschil tussen foutloos en
+     bijna-foutloos moet groot genoeg zijn om de moeite waard te zijn. */
   minutesForScore(correct, total) {
-    return (total && correct === total) ? 15 : 5;
+    if (!total) return 0;
+    const wrong = Math.max(0, total - correct);
+    if (wrong === 0) return 20;
+    return wrong <= 3 ? 5 : 0;
   },
 
   _today(data) {

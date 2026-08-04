@@ -483,6 +483,13 @@ input:focus { border-color: var(--accent); }
 }
 .levelup-line span { display: inline-block; }
 
+/* the nudge to go and look at what went wrong */
+.review-hint {
+  margin: -12px 0 18px;
+  color: var(--muted);
+  font-size: .88rem;
+}
+
 /* per-category level pips in the parent's overview */
 .cat-level { display: inline-flex; gap: 3px; margin-left: 8px; vertical-align: middle; }
 .cat-level i {

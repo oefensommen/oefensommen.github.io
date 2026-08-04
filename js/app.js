@@ -333,10 +333,10 @@ function activeTask() {
   const a = data.active;
   if (!a || !a.questions || !a.questions.length) return null;
   if (a.date !== todayStr()) return null;                  // yesterday's leftovers
-  // Before there were two goes at a som, a wrong answer settled it on the spot
-  // and nothing was written down to say so. Carried over as it stands, such a
-  // som counts as never reached: it shows up blank in the overview and the
-  // opdracht can never finish. Say plainly what it was — wrong.
+  // An older build recorded a wrong answer without writing down that the som
+  // was settled. Carried over as it stands, such a som counts as never reached:
+  // it shows up blank in the overview and the opdracht can never finish. Say
+  // plainly what it was — wrong.
   a.questions.forEach(q => {
     if (!q.solved && !q.failed && !q.skipped && q.correctFirst === false && !q.tries) {
       q.failed = true;
@@ -414,8 +414,8 @@ function renderQuestion() {
     b.className = "answer";
     b.textContent = opt;
     if (session.review) {
-      // looking back at a settled som: what was picked, and what it should have
-      // been when the two chances ran out
+      // looking back from the report card: what was picked, and what it should
+      // have been — this is where a wrong som is there to be learned from
       b.disabled = true;
       if (i === q.chosen) b.classList.add(q.solved ? "correct" : "wrong");
       if (q.failed && i === q.answerIdx) b.classList.add("correct");
@@ -428,9 +428,6 @@ function renderQuestion() {
   if (!session.review) Live.push("task");
 }
 
-/* Two goes at a som, and no more. Guessing on until something sticks teaches
-   nothing, so after a second wrong answer the right one is shown and the som
-   is settled as wrong for good. */
 /* The whole opdracht beside the som being worked on, so the child can see how
    it is going without waiting for the report card. */
 function renderTaskMarks() {
@@ -439,44 +436,36 @@ function renderTaskMarks() {
     Live.marksPanelHTML(Live.marksOf(session.questions), session.queue[session.idx]);
 }
 
+/* One go at a som. The moment an answer is touched the som is settled — right
+   is right, wrong is wrong, and there is no going back over it. A wrong som
+   shows what it should have been before moving on, and can be opened again
+   from the report card afterwards. */
 function answer(i, btn) {
   const q = currentQ();
   const correct = i === q.answerIdx;
-  const lockAll = () => document.querySelectorAll(".answer").forEach(b => b.disabled = true);
 
-  q.tries = (q.tries || 0) + 1;
-  if (q.tries === 1) q.correctFirst = correct;   // only the first go counts for the score
+  document.querySelectorAll(".answer").forEach(b => b.disabled = true);
+  $("btn-skip").disabled = true;
+
+  q.tries = 1;
+  q.correctFirst = correct;
   q.chosen = i;
   btn.classList.add(correct ? "correct" : "wrong");
 
   if (correct) {
     q.solved = true;
-    lockAll();
-    $("btn-skip").disabled = true;
-    renderTaskMarks();
-    Live.push("task");
-    setTimeout(advance, 600);
-    return;
+  } else {
+    q.failed = true;
+    const right = document.querySelectorAll(".answer")[q.answerIdx];
+    if (right) right.classList.add("correct");   // so the good one is seen at least once
   }
 
-  if (q.tries < ATTEMPTS) {                      // one more chance, same som
-    btn.disabled = true;
-    Live.push("task");
-    return;
-  }
-
-  // out of chances: show what it should have been, then move on
-  q.failed = true;
-  lockAll();
-  $("btn-skip").disabled = true;
-  const right = document.querySelectorAll(".answer")[q.answerIdx];
-  if (right) right.classList.add("correct");
   renderTaskMarks();
   Live.push("task");
-  setTimeout(advance, 1800);
+  setTimeout(advance, correct ? 600 : 1800);
 }
 
-const ATTEMPTS = 2;                 // goes per som before it is settled
+const ATTEMPTS = 1;                 // one go per som, and it is settled
 
 /* A som nobody has answered yet: no verdict, neither right nor wrong. */
 function undecided(q) {
@@ -591,8 +580,8 @@ function renderResult() {
     ? partyMessage(LANG)
     : t("result_score").replace("{c}", nRight).replace("{t}", qs.length);
 
-  // numbered grid: right first time, right on the second go, wrong for good,
-  // or still to be done. No answers given away, and every som can be opened.
+  // numbered grid: right, wrong, or still to be done. No answers are given
+  // away here — a som has to be opened to see how it should have gone.
   const grid = $("result-grid");
   grid.innerHTML = "";
   qs.forEach((q, i) => {
@@ -614,6 +603,10 @@ function renderResult() {
   } else {
     timeEl.classList.add("hidden");
   }
+
+  // a wrong som is worth going back to: this is the only place the good answer
+  // can be seen, and it changes nothing about the score
+  $("result-hint").classList.toggle("hidden", !qs.some(q => q.failed));
 
   // only the soms that were put aside can still be done
   const left = qs.filter(q => !finished(q)).length;
@@ -638,9 +631,9 @@ function renderResult() {
   const rewardEl = $("result-reward");
   rewardEl.textContent = earned > 0 ? t("reward_earned").replace("{m}", earned) : "";
   rewardEl.classList.toggle("hidden", earned <= 0);
-  // The game waits until THIS opdracht is finished — every som answered, or its
-  // two chances used. How much time it is worth is the first-try score, so a
-  // day with mistakes still ends somewhere, just with less to play for.
+  // The game waits until THIS opdracht is finished — every som answered or put
+  // aside and then done. What it is worth is the score itself: faultless is
+  // twenty minutes, up to three mistakes five, and beyond that none.
   const playLeftSec = Reward.remaining(data);
   $("btn-play-result").classList.toggle("hidden", !(allDone && playLeftSec > 0));
   $("result-play-left").textContent = playLeftSec > 0 ? fmtTime(playLeftSec) : "";
@@ -715,7 +708,10 @@ function renderCalendar() {
     const rec = data.days[ds];
     const c = document.createElement("div");
     c.className = "cal-cell";
-    if (rec && rec.done100) c.classList.add("done");
+    // green says "100% goed", so it has to mean exactly that: every som right
+    // the first time. A day that was finished with mistakes was practised.
+    const flawless = rec && rec.solved > 0 && rec.firstCorrect === rec.solved;
+    if (flawless) c.classList.add("done");
     else if (rec && rec.solved > 0) c.classList.add("partial");
     if (ds === today) c.classList.add("today");
     c.textContent = d;
