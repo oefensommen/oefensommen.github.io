@@ -773,21 +773,68 @@ function renderCalendar() {
     const date = new Date(y, m, d);
     const ds = todayStr(date);
     const rec = data.days[ds];
-    const c = document.createElement("div");
+    const c = document.createElement("button");
     c.className = "cal-cell";
-    // green says "100% goed", so it has to mean exactly that: every som right
-    // the first time. A day that was finished with mistakes was practised.
-    const flawless = rec && rec.solved > 0 && rec.firstCorrect === rec.solved;
-    if (flawless) c.classList.add("done");
+    // green means the day's opdracht was finished — all twenty made. Fewer than
+    // that is a day that was practised but not seen through.
+    if (rec && rec.solved >= taskCount) c.classList.add("done");
     else if (rec && rec.solved > 0) c.classList.add("partial");
     if (ds === today) c.classList.add("today");
     c.innerHTML = `<span class="wd">${wd[(date.getDay() + 6) % 7]}</span>` +
                   `<span class="dnum">${d}</span>`;
-    if (rec && rec.solved > 0) {
-      c.title = `${d} · ${rec.firstCorrect}/${rec.solved}`;
-    }
+    if (rec && rec.solved > 0) c.title = `${d} · ${rec.firstCorrect}/${rec.solved}`;
+    c.addEventListener("click", () => showDay(ds));
     grid.appendChild(c);
   }
+  // a day that was open stays open when the month is redrawn
+  const box = $("cal-detail");
+  const open = box.dataset.day;
+  delete box.dataset.day;
+  if (open && open.slice(0, 7) === `${y}-${String(m + 1).padStart(2, "0")}`) showDay(open);
+  else hideDay();
+}
+
+function hideDay() {
+  const box = $("cal-detail");
+  box.classList.add("hidden");
+  box.innerHTML = "";
+  delete box.dataset.day;
+  document.querySelectorAll(".cal-cell.picked").forEach(c => c.classList.remove("picked"));
+}
+
+/* One day's report, right under the month: what was made, what went right and
+   what went wrong, and per soort som — the same reading the child gets on the
+   report card, kept for every day that was practised. */
+function showDay(ds) {
+  const box = $("cal-detail");
+  if (box.dataset.day === ds) return hideDay();      // tapping it again closes it
+  const rec = data.days[ds];
+  const [y, m, d] = ds.split("-").map(Number);
+  const head = `${d} ${t("months")[m - 1]}`;
+
+  document.querySelectorAll(".cal-cell.picked").forEach(c => c.classList.remove("picked"));
+  const cells = [...document.querySelectorAll("#cal-grid .cal-cell")];
+  if (cells[d - 1]) cells[d - 1].classList.add("picked");
+
+  if (!rec || !rec.solved) {
+    box.innerHTML = `<b>${head}</b><p class="day-none">${t("legend_empty")}</p>`;
+  } else {
+    const wrong = rec.solved - rec.firstCorrect;
+    const time = rec.timeSec ? `<span class="day-pill">⏱ ${fmtTime(rec.timeSec)}</span>` : "";
+    const cats = Object.keys(rec.cats || {})
+      .map(c => `<div class="day-cat"><span>${t("cats")[c] || c}</span><b>${rec.cats[c].c}/${rec.cats[c].n}</b></div>`)
+      .join("");
+    box.innerHTML =
+      `<div class="day-head"><b>${head}</b>${time}</div>
+       <div class="day-counts">
+         <span class="day-pill ok">✅ ${rec.firstCorrect} ${t("day_right")}</span>
+         <span class="day-pill no">❌ ${wrong} ${t("day_wrong")}</span>
+         <span class="day-pill">${t("result_score").replace("{c}", rec.firstCorrect).replace("{t}", rec.solved)}</span>
+       </div>
+       ${cats ? `<div class="day-cats">${cats}</div>` : ""}`;
+  }
+  box.dataset.day = ds;
+  box.classList.remove("hidden");
 }
 
 /* ---------- stats ---------- */

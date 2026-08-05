@@ -10,14 +10,21 @@
    de cloud-synchronisatie: op de tablet gespeelde minuten zijn ook op de laptop
    op. */
 const Reward = {
-  /* Alles goed is 20 minuten waard, één tot drie fouten 5, en vanaf vier
-     fouten is er vandaag geen speeltijd. Het verschil tussen foutloos en
-     bijna-foutloos moet groot genoeg zijn om de moeite waard te zijn. */
+  /* Iedere fout kost speeltijd, en de vierde kost alles wat er nog was:
+
+       0 fout  15 min      2 fout  6 min
+       1 fout   8 min      3 fout  4 min      4 of meer  niets
+
+     Zo levert elke som die goed gaat iets op, in plaats van alleen de
+     foutloze dag. Vier fouten is ook precies de dag die meetelt voor een
+     makkelijker niveau: wie geen speeltijd meer haalt, krijgt makkelijker
+     sommen — de twee grenzen liggen op dezelfde plek. */
+  MINUTES: [15, 8, 6, 4],
+
   minutesForScore(correct, total) {
     if (!total) return 0;
     const wrong = Math.max(0, total - correct);
-    if (wrong === 0) return 20;
-    return wrong <= 3 ? 5 : 0;
+    return wrong < this.MINUTES.length ? this.MINUTES[wrong] : 0;
   },
 
   _today(data) {

@@ -446,13 +446,40 @@ input:focus { border-color: var(--accent); }
   font-weight: 600;
   background: var(--bg);
   color: var(--muted);
+  border: none; padding: 0; font-family: inherit; cursor: pointer;
+  transition: transform .08s;
 }
+.cal-cell:active { transform: scale(0.94); }
+.cal-cell.picked { outline: 2.5px solid var(--ink); outline-offset: 1px; }
+.cal-cell.today.picked { outline-color: var(--accent); }
 /* the weekday sits on the day itself now that the month runs straight through */
 .cal-cell .wd { font-size: 0.58rem; font-weight: 700; opacity: .55; line-height: 1; }
 .cal-cell .dnum { line-height: 1; }
 .cal-cell.done { background: var(--green); color: #fff; }
 .cal-cell.partial { background: var(--amber); color: #fff; }
 .cal-cell.today { outline: 2.5px solid var(--accent); outline-offset: 1px; }
+/* one day's report, opened by tapping the day */
+.cal-detail {
+  margin-top: 16px; padding: 14px 16px;
+  background: var(--bg); border-radius: 14px;
+}
+.day-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.day-head b { font-size: 1.05rem; }
+.day-counts { display: flex; flex-wrap: wrap; gap: 7px; }
+.day-pill {
+  background: var(--card); border: 1px solid var(--line); border-radius: 999px;
+  padding: 4px 11px; font-size: 0.85rem; font-weight: 700; color: var(--muted);
+}
+.day-pill.ok { color: var(--green); border-color: var(--green-soft); background: var(--green-soft); }
+.day-pill.no { color: var(--red); border-color: var(--red-soft); background: var(--red-soft); }
+.day-cats { margin-top: 12px; display: grid; gap: 5px; }
+.day-cat {
+  display: flex; justify-content: space-between;
+  font-size: 0.85rem; color: var(--muted);
+  border-top: 1px solid var(--line); padding-top: 5px;
+}
+.day-cat b { color: var(--ink); }
+.day-none { color: var(--muted); font-size: 0.9rem; margin-top: 6px; }
 .cal-legend {
   display: flex; gap: 16px; justify-content: center; margin-top: 16px;
   font-size: 0.85rem; color: var(--muted); flex-wrap: wrap;
