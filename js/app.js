@@ -90,8 +90,6 @@ function show(id) {
   $("btn-skip").classList.toggle("hidden", id !== "screen-task");
   $("btn-logout-top").classList.toggle("hidden", id === "screen-login");
   renderLangPicker();          // the menu belongs to whoever is signed in now
-  if (id === "screen-login") $("level-pill").classList.add("hidden");
-  else renderLevelChip(Store.isParent());
 }
 
 /* ---------- language ---------- */
@@ -179,7 +177,6 @@ function renderHome() {
   $("home-greeting").textContent = parent
     ? t("parent_hello").replace("{name}", Store.watches().toUpperCase())
     : t("hello").replace("{name}", Store.deviceUser().toUpperCase());
-  $("streak-count").textContent = currentStreak();
 
   // an unfinished task takes over the button, so it cannot be thrown away by
   // accidentally starting a second one
@@ -210,40 +207,39 @@ function renderHome() {
   $("btn-watch").classList.toggle("hidden", !parent);
   $("nav-row").classList.toggle("hidden", !parent);
 
-  renderLevelChip(parent);
-  renderStreakTicks(parent);
+  renderLadder(parent);
   // spelen hoort bij het rapport van een afgeronde opdracht, niet hier
 }
 
-/* Five vakjes under the start button, one for every foutloze dag in a row.
-   A niveau costs five of them, which is a long way off when it is only a
-   number in a tooltip — as five squares it is something to fill in. */
-function renderStreakTicks(parent) {
+/* Where the child stands, all of it in one block under the start button:
+   five vakjes for the five foutloze dagen a niveau costs, then the niveau
+   itself and the reeks, then in words what the vakjes are for.
+
+   It used to be scattered — the reeks on its own line at the top, the niveau
+   as a badge in the bar that could only be read by hovering, which on a
+   tablet means never. One place, three lines, nothing to hunt for. */
+function renderLadder(parent) {
   const box = $("streak-ticks");
   if (parent) { box.classList.add("hidden"); return; }
   const st = Levels.overall(data);
-  if (st.level >= Levels.MAX) { box.classList.add("hidden"); return; }
+  const maxed = st.level >= Levels.MAX;
   const done = Math.min(st.streak, Levels.DAYS_NEEDED);
   const ticks = Array.from({ length: Levels.DAYS_NEEDED }, (_, i) =>
     `<span class="tick${i < done ? " on" : ""}${i === done - 1 ? " fresh" : ""}">✓</span>`).join("");
-  const togo = st.toGo === 1 ? t("level_togo_one") : t("level_togo").replace("{n}", st.toGo);
-  box.innerHTML = `<div class="ticks">${ticks}</div>
-                   <p class="streak-goal">${togo} → ${t("level")} ${st.level + 1}</p>`;
-  box.classList.remove("hidden");
-}
-
-/* The level lives in the top bar as a small badge: the number for the six
-   categories together, with the details in the tooltip. */
-function renderLevelChip(parent) {
-  const pill = $("level-pill");
-  if (parent) { pill.classList.add("hidden"); return; }
-  const st = Levels.overall(data);
-  pill.classList.remove("hidden");
-  pill.classList.toggle("maxed", st.level >= Levels.MAX);
-  $("level-num").textContent = st.level;
-  pill.title = t("level") + " " + st.level + " · " + (st.level >= Levels.MAX
+  const goal = maxed
     ? t("level_max")
-    : (st.toGo === 1 ? t("level_togo_one") : t("level_togo").replace("{n}", st.toGo)));
+    : (st.toGo === 1 ? t("level_togo_one") : t("level_togo").replace("{n}", st.toGo)) +
+      ` → ${t("level")} ${st.level + 1}`;
+  const days = currentStreak();
+
+  box.innerHTML =
+    `${maxed ? "" : `<div class="ticks">${ticks}</div>`}
+     <div class="standing">
+       <span class="chip lv${maxed ? " maxed" : ""}"><i>⭐</i><b>${t("level")} ${st.level}</b></span>
+       <span class="chip reeks"><i>🔥</i><b>${days}</b><em>${t("streak_days")}</em></span>
+     </div>
+     <p class="ladder-goal">${goal}</p>`;
+  box.classList.remove("hidden");
 }
 
 /* ---------- task flow ---------- */

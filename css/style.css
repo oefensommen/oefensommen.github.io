@@ -300,23 +300,9 @@ input:focus { border-color: var(--accent); }
 #screen-login input { margin-top: 4px; }
 
 /* Home */
-.streak-row { margin-bottom: 10px; }
-.streak { font-size: 1.05rem; color: var(--muted); }
-.streak b { color: var(--ink); font-size: 1.2rem; }
-.status { color: var(--muted); margin-bottom: 18px; font-size: 1.02rem; }
-.chip-row { display: flex; gap: 10px; justify-content: center; margin-bottom: 16px; }
-.chip {
-  border: 2px solid var(--line);
-  background: var(--card);
-  border-radius: 999px;
-  font-size: 1.1rem;
-  font-weight: 800;
-  font-family: inherit;
-  width: 62px; height: 46px;
-  cursor: pointer;
-  color: var(--muted);
-}
-.chip.active { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+.home-card { padding-bottom: 26px; }
+.home-card h1 { margin-bottom: 6px; }
+.status { color: var(--muted); margin-bottom: 20px; font-size: 1.02rem; }
 .nav-row { display: flex; gap: 10px; justify-content: center; margin-top: 18px; flex-wrap: wrap; }
 
 /* Task */
@@ -491,18 +477,6 @@ input:focus { border-color: var(--accent); }
 
 /* ---------- Level badge ----------
    A small gold pill in the top bar; the full story is in its tooltip. */
-.level-pill {
-  display: flex; align-items: center; gap: 4px;
-  padding: 4px 10px 4px 7px;
-  border-radius: 999px;
-  background: linear-gradient(135deg, #fffdf5, #fff3d4);
-  border: 1px solid #f0dca8;
-  font-weight: 800; font-size: .9rem; color: #6b4a00;
-  cursor: default; white-space: nowrap;
-}
-.level-pill.hidden { display: none; }
-.level-pill .star { font-size: .8rem; }
-.level-pill.maxed { border-color: #9ad9b6; background: linear-gradient(135deg, #f4fdf8, #dff5e9); color: #14663a; }
 
 /* the level a category just reached, announced on the result screen */
 .levelup-line {
@@ -513,28 +487,58 @@ input:focus { border-color: var(--accent); }
 }
 .levelup-line span { display: inline-block; }
 
-/* the ladder to the next niveau: five foutloze dagen, one square each */
-.streak-ticks { margin-top: 18px; }
-.ticks { display: flex; justify-content: center; gap: 9px; }
+/* Where the child stands: the ladder to the next niveau, then the niveau and
+   the reeks, then what the vakjes are for. One block, three lines. */
+.streak-ticks {
+  margin-top: 24px; padding-top: 22px;
+  border-top: 1px solid var(--line);
+}
+.ticks { display: flex; justify-content: center; gap: 10px; }
 .tick {
-  width: 34px; height: 34px; border-radius: 11px;
+  width: 36px; height: 36px; border-radius: 12px;
   display: flex; align-items: center; justify-content: center;
-  font-size: 1rem; font-weight: 800;
+  font-size: 1.05rem; font-weight: 800;
   background: var(--bg); color: transparent;
   border: 2px dashed var(--line);
-  transition: transform .18s ease, background .18s ease;
+  transition: transform .18s ease;
 }
 .tick.on {
-  background: var(--green); border: 2px solid var(--green); color: #fff;
-  box-shadow: 0 2px 8px rgba(34, 169, 92, .28);
+  color: #fff; border: none;
+  background: linear-gradient(160deg, #34c172, #1c9a53);
+  box-shadow: 0 3px 10px rgba(28, 154, 83, .32), inset 0 1px 0 rgba(255,255,255,.35);
 }
-.tick.on.fresh { animation: tick-pop .45s ease; }   /* the one just earned */
+.tick.on.fresh { animation: tick-pop .5s cubic-bezier(.2,1.5,.4,1); }  /* just earned */
 @keyframes tick-pop {
-  0%   { transform: scale(0.5); }
-  60%  { transform: scale(1.18); }
+  0%   { transform: scale(0.4); }
+  70%  { transform: scale(1.16); }
   100% { transform: scale(1); }
 }
-.streak-goal { margin-top: 9px; font-size: .85rem; color: var(--muted); }
+
+.standing { display: flex; justify-content: center; gap: 9px; margin-top: 20px; }
+.chip {
+  display: inline-flex; align-items: baseline; gap: 6px;
+  padding: 7px 15px; border-radius: 999px;
+  font-size: .92rem; letter-spacing: -0.01em;
+  border: 1px solid var(--line); background: var(--card);
+  box-shadow: 0 1px 2px rgba(29, 36, 51, .05);
+}
+.chip i { font-style: normal; font-size: .9rem; }
+.chip b { font-weight: 800; color: var(--ink); }
+.chip em { font-style: normal; color: var(--muted); font-size: .82rem; }
+/* the niveau is the thing worth working towards, so it wears the gold */
+.chip.lv {
+  border-color: #ecd699;
+  background: linear-gradient(180deg, #fffdf6 0%, #fdf3d8 100%);
+  box-shadow: 0 1px 2px rgba(154, 121, 24, .10), inset 0 1px 0 #fff;
+}
+.chip.lv b { color: #8a6a11; }
+.chip.lv.maxed {
+  border-color: #9ad9b6;
+  background: linear-gradient(180deg, #f7fdfa 0%, #ddf4e8 100%);
+}
+.chip.lv.maxed b { color: #14663a; }
+
+.ladder-goal { margin-top: 12px; font-size: .84rem; color: var(--muted); }
 
 /* the nudge to go and look at what went wrong */
 .review-hint {
