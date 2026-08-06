@@ -2,3 +2,5 @@
 references.local.md
 .env.local
 backups/
+_pfcheck.html
+_*.html
