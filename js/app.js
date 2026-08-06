@@ -209,7 +209,25 @@ function renderHome() {
   $("nav-row").classList.toggle("hidden", !parent);
 
   renderLevelChip(parent);
+  renderStreakTicks(parent);
   // spelen hoort bij het rapport van een afgeronde opdracht, niet hier
+}
+
+/* Five vakjes under the start button, one for every foutloze dag in a row.
+   A niveau costs five of them, which is a long way off when it is only a
+   number in a tooltip — as five squares it is something to fill in. */
+function renderStreakTicks(parent) {
+  const box = $("streak-ticks");
+  if (parent) { box.classList.add("hidden"); return; }
+  const st = Levels.overall(data);
+  if (st.level >= Levels.MAX) { box.classList.add("hidden"); return; }
+  const done = Math.min(st.streak, Levels.DAYS_NEEDED);
+  const ticks = Array.from({ length: Levels.DAYS_NEEDED }, (_, i) =>
+    `<span class="tick${i < done ? " on" : ""}${i === done - 1 ? " fresh" : ""}">✓</span>`).join("");
+  const togo = st.toGo === 1 ? t("level_togo_one") : t("level_togo").replace("{n}", st.toGo);
+  box.innerHTML = `<div class="ticks">${ticks}</div>
+                   <p class="streak-goal">${togo} → ${t("level")} ${st.level + 1}</p>`;
+  box.classList.remove("hidden");
 }
 
 /* The level lives in the top bar as a small badge: the number for the six
