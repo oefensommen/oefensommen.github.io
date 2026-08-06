@@ -1,10 +1,23 @@
 /* Storage layer.
-   localStorage is the working copy (instant, works offline); Supabase is the
-   shared copy so phone / tablet / laptop all continue where the last one left off.
 
-   Flow: login → pull cloud → merge with local → save both. Every later save
-   writes locally at once and pushes to the cloud debounced. If the network is
-   down the app keeps working and pushes on the next successful save. */
+   There is ONE record of the child's history and it lives in the cloud. What
+   sits in localStorage is a copy of it — fast to read, and enough to keep
+   working when the wifi drops — but it is never a second opinion. Whenever the
+   two disagree, the cloud is right.
+
+   Two devices used to argue. Both kept a history, and on every open the two
+   were merged field by field, taking whichever number was higher so that no
+   day's work could be lost. It did protect the work, but it also meant a value
+   could never be corrected: a mistake put right in the cloud came back the next
+   time a device with the old copy woke up, and there was no way to tell the two
+   apart. The higher number simply won, forever.
+
+   So each copy now carries a revision that counts up on every save, and the
+   rule is a single line: the copy with the higher revision is the truth. A
+   device that has been working offline is ahead, so it pushes; a device that
+   has been asleep is behind, so it takes what the cloud has and throws its own
+   away. Equal means the same state, and the cloud is taken anyway — which is
+   what makes a correction stick. */
 
 const Store = {
   KEY: "oefensommen_v1",
@@ -24,6 +37,7 @@ const Store = {
 
   _default() {
     return {
+      rev: 0,                    // counts up on every save; decides who is right
       level: 1,
       perfectStreak: 0,          // consecutive 100% first-pass tasks (for level-up)
       days: {},                  // "2026-08-01": { solved, firstCorrect, done100, timeSec, times, cats }
@@ -31,6 +45,15 @@ const Store = {
       wrongTpl: [],              // template ids answered wrong recently (repeat pool)
       seen: []                   // every som ever asked, so none is asked twice
     };
+  },
+
+  rev(d) { return (d && typeof d.rev === "number") ? d.rev : 0; },
+
+  /* Which of the two copies to keep. The cloud wins ties, because a tie is the
+     same state — and because a record put right in the cloud has to be able to
+     reach a device that still remembers the old one. */
+  newer(local, cloud) {
+    return this.rev(local) > this.rev(cloud) ? local : cloud;
   },
 
   load() {
@@ -48,8 +71,10 @@ const Store = {
   },
 
   save(data) {
+    if (this.isParent()) { this.saveLocal(data); return; }   // the parent never writes history
+    data.rev = this.rev(data) + 1;      // this copy is now ahead of the cloud
+    data.savedAt = Date.now();
     this.saveLocal(data);
-    if (this.isParent()) return;        // the parent side never writes history
     localStorage.setItem(this.DIRTY_KEY, "1");
     this.pushSoon(data);
   },
@@ -118,15 +143,21 @@ const Store = {
                  data: d };
       }
       const role = (acct && acct.role) || "child";
-      const merged = role === "parent"
-        ? (acct.data || {})                                  // the child's history, read-only
-        : mergeProgress(this.load(), (acct && acct.data) || {});
-      this.saveLocal(merged);
+      const cloud = (acct && acct.data) || {};
+      let keep;
+      if (role === "parent") {
+        keep = cloud;                       // the child's history, read-only
+      } else {
+        // whatever this device remembers only counts if it is ahead of the
+        // cloud, which happens when it was last used without a network
+        keep = this.newer(this.load(), cloud);
+      }
+      this.saveLocal(keep);
       this.markUnlocked(user, pass, role, (acct && acct.watches) || "");
       localStorage.removeItem(this.DIRTY_KEY);
-      if (role !== "parent") {
-        // push the merge back so the other devices see it too
-        Cloud.save(user, pass, merged).catch(() => localStorage.setItem(this.DIRTY_KEY, "1"));
+      if (role !== "parent" && keep !== cloud) {
+        // this device had unsent work: send it, and it becomes the record
+        Cloud.save(user, pass, keep).catch(() => localStorage.setItem(this.DIRTY_KEY, "1"));
       }
       return "ok";
     } catch (e) {
@@ -159,90 +190,26 @@ const Store = {
     }
   },
 
-  /* Pull the shared copy and merge it in — used when the app is re-opened,
-     so a task done on the tablet shows up on the laptop. */
+  /* Fetch the record — used when the app is re-opened, so a task done on the
+     tablet shows up on the laptop. The cloud is taken as it stands unless this
+     device is holding work it has not managed to send yet. */
   async pull() {
     if (!Cloud.configured()) return false;
     const u = localStorage.getItem(this.USER_KEY), p = localStorage.getItem(this.PASS_KEY);
     if (!u || !p) return false;
     try {
-      const cloud = await Cloud.load(u, p);
-      // the parent mirrors the child's history as-is; the child merges its own
-      const merged = this.isParent() ? (cloud || {}) : mergeProgress(this.load(), cloud || {});
-      this.saveLocal(merged);
-      if (!this.isParent() && localStorage.getItem(this.DIRTY_KEY)) await this.pushNow(merged);
-      return merged;
+      const cloud = (await Cloud.load(u, p)) || {};
+      if (this.isParent()) { this.saveLocal(cloud); return cloud; }
+      const keep = this.newer(this.load(), cloud);
+      this.saveLocal(keep);
+      if (keep !== cloud) await this.pushNow(keep);   // we were ahead: catch the cloud up
+      else localStorage.removeItem(this.DIRTY_KEY);
+      return keep;
     } catch (e) {
       return false;
     }
   }
 };
-
-/* Merge two progress objects without losing a day's work.
-   Days are merged field by field (best of both), so two devices used on the
-   same day still end up with one sensible record. */
-function mergeProgress(a, b) {
-  a = a || {}; b = b || {};
-  // an unfinished task: whichever device touched it last is the truth, so a
-  // som answered on the tablet is not undone by an older copy on the laptop
-  const actA = a.active, actB = b.active;
-  const active = (actA && actB) ? ((actA.at || 0) >= (actB.at || 0) ? actA : actB) : (actA || actB);
-
-  // the level is judged once a day, so both devices should agree; where they
-  // do not, the further-along side wins rather than the last one to sync
-  const out = {
-    level: Math.max(a.level || 1, b.level || 1),
-    streak: Math.max(a.streak || 0, b.streak || 0),
-    bad: Math.max(a.bad || 0, b.bad || 0),
-    levelDay: (a.levelDay || "") > (b.levelDay || "") ? a.levelDay : (b.levelDay || ""),
-    levelMerged: !!(a.levelMerged || b.levelMerged),
-    perfectStreak: Math.max(a.perfectStreak || 0, b.perfectStreak || 0),
-    days: {},
-    recentTpl: Object.assign({}, b.recentTpl || {}, a.recentTpl || {}),
-    wrongTpl: Array.from(new Set([...(a.wrongTpl || []), ...(b.wrongTpl || [])])).slice(0, 6),
-    // both devices asked their own sommen; neither list may be thrown away, or
-    // a som done on the tablet could come round again on the laptop
-    seen: Array.from(new Set([...(b.seen || []), ...(a.seen || [])])).slice(-Store.SEEN_MAX),
-    catLevel: Object.assign({}, b.catLevel || {}, a.catLevel || {}),
-    catStreak: Object.assign({}, b.catStreak || {}, a.catStreak || {}),
-    catBad: Object.assign({}, b.catBad || {}, a.catBad || {}),
-    catDay: Object.assign({}, b.catDay || {}, a.catDay || {})
-  };
-  if (active) out.active = active;
-  const dates = new Set([...Object.keys(a.days || {}), ...Object.keys(b.days || {})]);
-  for (const d of dates) {
-    const x = (a.days || {})[d], y = (b.days || {})[d];
-    if (!x) { out.days[d] = y; continue; }
-    if (!y) { out.days[d] = x; continue; }
-    const cats = {};
-    for (const c of new Set([...Object.keys(x.cats || {}), ...Object.keys(y.cats || {})])) {
-      const cx = (x.cats || {})[c] || { n: 0, c: 0 }, cy = (y.cats || {})[c] || { n: 0, c: 0 };
-      cats[c] = { n: Math.max(cx.n, cy.n), c: Math.max(cx.c, cy.c) };
-    }
-    out.days[d] = {
-      solved: Math.max(x.solved || 0, y.solved || 0),
-      firstCorrect: Math.max(x.firstCorrect || 0, y.firstCorrect || 0),
-      done100: !!(x.done100 || y.done100),
-      timeSec: x.timeSec || y.timeSec,
-      times: Array.from(new Set([...(x.times || []), ...(y.times || [])])),
-      cats,
-      reward: mergeReward(x.reward, y.reward)
-    };
-  }
-  return out;
-}
-
-/* Speeltijd. De verdiende minuten zijn per dag hetzelfde, maar er kan op twee
-   apparaten gespeeld zijn — de hoogste stand telt, anders levert overstappen
-   naar de tablet gratis speeltijd op. */
-function mergeReward(a, b) {
-  if (!a) return b;
-  if (!b) return a;
-  return {
-    sec: Math.max(a.sec || 0, b.sec || 0),
-    used: Math.max(a.used || 0, b.used || 0)
-  };
-}
 
 function todayStr(d = new Date()) {
   const p = n => String(n).padStart(2, "0");
