@@ -363,16 +363,12 @@ function saveActive(pushNow) {
   bankSettled();                         // count it first, then write it down,
   const snap = snapshotActive();         // so the snapshot carries the flags
   if (!snap) return;
-  data.active = snap;
+  // an opdracht with nothing left to answer is not something to carry on with;
+  // writing it back here is what kept a finished one sitting in the slot
+  if (session.questions.every(finished)) delete data.active;
+  else data.active = snap;
   Store.save(data);
   if (pushNow) Store.pushNow(data);      // a pause should reach the other device at once
-}
-
-function clearActive() {
-  if (!data.active) return;
-  delete data.active;
-  Store.save(data);
-  Store.pushNow(data);
 }
 
 /* The task to carry on with, or nothing */
@@ -1130,7 +1126,10 @@ document.addEventListener("DOMContentLoaded", () => {
   // task
   $("btn-quit").addEventListener("click", () => {
     if (session && session.fromResult) return backToResult();   // came from the report
-    if (confirm(t("quit_confirm"))) { clearActive(); goHome(); }
+    // Stopping puts the opdracht down; it does not throw it away. It used to
+    // delete it outright, which left the child with sommen half made, no way
+    // back to them and no "Verder gaan" — the opdracht had simply vanished.
+    if (confirm(t("quit_confirm"))) { saveActive(true); goHome(); }
   });
   $("btn-skip").addEventListener("click", skip);
   $("btn-pause").addEventListener("click", pauseTask);
