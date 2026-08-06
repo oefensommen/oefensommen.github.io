@@ -97,10 +97,12 @@ function show(id) {
 /* ---------- language ---------- */
 const LANG_FLAGS = { nl: "🇳🇱", en: "🇬🇧", tr: "🇹🇷" };
 
-/* Only the parent may read a som in another language; the child works in Dutch,
-   so the child simply sees the flag with nothing behind it. */
+/* The language picker belongs to the parent alone. The child works in Dutch
+   and has nothing to choose, so the flag is not there at all — a button that
+   does nothing is worse than no button. */
 function renderLangPicker() {
   const canSwitch = Store.isParent();
+  $("langpick").classList.toggle("hidden", !canSwitch);
   $("lang-flag").textContent = LANG_FLAGS[LANG] || LANG_FLAGS.nl;
   $("lang-current").classList.toggle("switchable", canSwitch);
   $("lang-caret").classList.toggle("hidden", !canSwitch);
