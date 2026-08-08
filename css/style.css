@@ -443,6 +443,17 @@ input:focus { border-color: var(--accent); }
 .cal-cell .dnum { line-height: 1; }
 .cal-cell.done { background: var(--green); color: #fff; }
 .cal-cell.partial { background: var(--amber); color: #fff; }
+.cal-cell.miss { background: var(--red); color: #fff; }
+/* a corner fold marks a day the parent coloured by hand */
+.cal-cell { position: relative; overflow: hidden; }
+.by-hand {
+  position: absolute; top: 0; right: 0;
+  border-width: 0 11px 11px 0; border-style: solid;
+  border-color: transparent rgba(255,255,255,.85) transparent transparent;
+}
+.cal-cell:not(.done):not(.partial):not(.miss) .by-hand {
+  border-right-color: var(--muted);
+}
 .cal-cell.today { outline: 2.5px solid var(--accent); outline-offset: 1px; }
 /* one day's report, opened by tapping the day */
 .cal-detail {
@@ -473,7 +484,35 @@ input:focus { border-color: var(--accent); }
 .dot { display: inline-block; width: 11px; height: 11px; border-radius: 4px; margin-right: 4px; }
 .dot.done { background: var(--green); }
 .dot.partial { background: var(--amber); }
+.dot.miss { background: var(--red); }
 .dot.empty { background: var(--line); }
+
+/* the parent's say over a day */
+.day-note {
+  margin-top: 12px; padding: 9px 12px;
+  background: var(--card); border: 1px solid var(--line); border-radius: 10px;
+  font-size: .87rem; color: var(--ink); text-align: left;
+}
+.day-edit { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line); }
+.mark-row { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
+.mark-btn {
+  border: 1.5px solid var(--line); background: var(--card);
+  border-radius: 999px; padding: 6px 12px;
+  font-size: .8rem; font-weight: 700; font-family: inherit;
+  color: var(--muted); cursor: pointer;
+  transition: border-color .12s, color .12s, background .12s;
+}
+.mark-btn.done.on    { background: var(--green); border-color: var(--green); color: #fff; }
+.mark-btn.partial.on { background: var(--amber); border-color: var(--amber); color: #fff; }
+.mark-btn.miss.on    { background: var(--red);   border-color: var(--red);   color: #fff; }
+.mark-btn.auto.on    { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+.day-note-input {
+  display: block; width: 100%; max-width: none; margin: 10px 0 0;
+  padding: 10px 12px; font-size: .9rem; text-align: left;
+  border: 1.5px solid var(--line); border-radius: 10px; font-family: inherit;
+}
+.day-save { margin-top: 9px; padding: 8px 18px; font-size: .88rem; }
+.day-saved { margin-left: 8px; color: var(--green); font-weight: 800; }
 
 /* ---------- Level badge ----------
    A small gold pill in the top bar; the full story is in its tooltip. */

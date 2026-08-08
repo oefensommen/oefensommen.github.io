@@ -769,6 +769,29 @@ function startRetry() {
 }
 
 /* ---------- calendar ---------- */
+
+/* What colour a day is.
+
+   Green means the opdracht was finished, amber that there was oefenen but not
+   a whole one, red that a school day went by with nothing done. Red only goes
+   back as far as the first day there is a record of — before that the child
+   was simply not using this yet — and never lands on today or on a day still
+   to come, which have not had their chance.
+
+   The parent has the last word. Not every day of oefenen happens in this app:
+   a day out of the book counts too, and the app has no way of knowing. A
+   colour set by hand beats anything worked out here. */
+function dayColour(ds, rec) {
+  const mark = (data.marks || {})[ds];
+  if (mark && mark.c) return mark.c;
+  if (rec && rec.solved >= taskCount) return "done";
+  if (rec && rec.solved > 0) return "partial";
+  const days = Object.keys(data.days || {});
+  if (!days.length) return "";
+  const first = days.sort()[0];
+  return (ds >= first && ds < todayStr()) ? "miss" : "";
+}
+
 function renderCalendar() {
   if (!calMonth) calMonth = new Date();
   const y = calMonth.getFullYear(), m = calMonth.getMonth();
@@ -787,14 +810,15 @@ function renderCalendar() {
     const rec = data.days[ds];
     const c = document.createElement("button");
     c.className = "cal-cell";
-    // green means the day's opdracht was finished — all twenty made. Fewer than
-    // that is a day that was practised but not seen through.
-    if (rec && rec.solved >= taskCount) c.classList.add("done");
-    else if (rec && rec.solved > 0) c.classList.add("partial");
+    const mark = (data.marks || {})[ds];
+    const colour = dayColour(ds, rec);
+    if (colour) c.classList.add(colour);
     if (ds === today) c.classList.add("today");
     c.innerHTML = `<span class="wd">${wd[(date.getDay() + 6) % 7]}</span>` +
-                  `<span class="dnum">${d}</span>`;
-    if (rec && rec.solved > 0) c.title = `${d} · ${rec.firstCorrect}/${rec.solved}`;
+                  `<span class="dnum">${d}</span>` +
+                  (mark ? `<span class="by-hand" aria-hidden="true"></span>` : "");
+    c.title = (rec && rec.solved > 0 ? `${d} · ${rec.firstCorrect}/${rec.solved}` : `${d}`) +
+              (mark && mark.note ? ` · ${mark.note}` : "");
     c.addEventListener("click", () => showDay(ds));
     grid.appendChild(c);
   }
@@ -828,15 +852,18 @@ function showDay(ds) {
   const cells = [...document.querySelectorAll("#cal-grid .cal-cell")];
   if (cells[d - 1]) cells[d - 1].classList.add("picked");
 
+  const mark = (data.marks || {})[ds];
+  let body;
   if (!rec || !rec.solved) {
-    box.innerHTML = `<b>${head}</b><p class="day-none">${t("legend_empty")}</p>`;
+    body = `<div class="day-head"><b>${head}</b></div>
+            <p class="day-none">${t("day_nothing")}</p>`;
   } else {
     const wrong = rec.solved - rec.firstCorrect;
     const time = rec.timeSec ? `<span class="day-pill">⏱ ${fmtTime(rec.timeSec)}</span>` : "";
     const cats = Object.keys(rec.cats || {})
       .map(c => `<div class="day-cat"><span>${t("cats")[c] || c}</span><b>${rec.cats[c].c}/${rec.cats[c].n}</b></div>`)
       .join("");
-    box.innerHTML =
+    body =
       `<div class="day-head"><b>${head}</b>${time}</div>
        <div class="day-counts">
          <span class="day-pill ok">✅ ${rec.firstCorrect} ${t("day_right")}</span>
@@ -845,8 +872,77 @@ function showDay(ds) {
        </div>
        ${cats ? `<div class="day-cats">${cats}</div>` : ""}`;
   }
+
+  // a note the parent left stands above whatever the app worked out — but not
+  // twice, so when the editor is open the note is only in the box you type in
+  if (mark && mark.note && !Store.isParent()) {
+    body += `<p class="day-note">📝 ${esc(mark.note)}</p>`;
+  }
+  if (Store.isParent()) body += dayEditorHTML(ds, mark);
+
+  box.innerHTML = body;
   box.dataset.day = ds;
   box.classList.remove("hidden");
+  if (Store.isParent()) wireDayEditor(ds);
+}
+
+function esc(s) {
+  return String(s).replace(/[&<>"]/g, ch =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[ch]));
+}
+
+/* The parent's say over a day: three colours, a short note, and a way back to
+   letting the app decide. */
+function dayEditorHTML(ds, mark) {
+  const cur = mark && mark.c;
+  const btn = (c, label) =>
+    `<button class="mark-btn ${c}${cur === c ? " on" : ""}" data-c="${c}">${label}</button>`;
+  return `<div class="day-edit">
+            <div class="mark-row">
+              ${btn("done", t("mark_green"))}
+              ${btn("partial", t("mark_amber"))}
+              ${btn("miss", t("mark_red"))}
+              <button class="mark-btn auto${cur ? "" : " on"}" data-c="">${t("mark_auto")}</button>
+            </div>
+            <input id="day-note" class="day-note-input" maxlength="140"
+                   placeholder="${t("note_ph")}" value="${esc((mark && mark.note) || "")}">
+            <button id="day-save" class="btn ghost day-save">${t("note_save")}</button>
+            <span id="day-saved" class="day-saved hidden">✓</span>
+          </div>`;
+}
+
+function wireDayEditor(ds) {
+  const box = $("cal-detail");
+  let colour = ((data.marks || {})[ds] || {}).c || "";
+  box.querySelectorAll(".mark-btn").forEach(b => {
+    b.addEventListener("click", () => {
+      colour = b.dataset.c;
+      box.querySelectorAll(".mark-btn").forEach(x => x.classList.toggle("on", x === b));
+    });
+  });
+  $("day-save").addEventListener("click", () => saveDayMark(ds, colour, $("day-note").value));
+  $("day-note").addEventListener("keydown", e => {
+    if (e.key === "Enter") saveDayMark(ds, colour, $("day-note").value);
+  });
+}
+
+async function saveDayMark(ds, colour, note) {
+  const btn = $("day-save");
+  const { u, p } = Store.creds();
+  if (!u || !p) return;
+  btn.disabled = true;
+  try {
+    const fresh = await Cloud.setDayMark(u, p, ds, colour || null, note || null);
+    data = fresh || data;
+    Store.saveLocal(data);
+    renderCalendar();                       // the day takes its new colour
+    const ok = $("day-saved");
+    if (ok) { ok.classList.remove("hidden"); setTimeout(() => ok.classList.add("hidden"), 1600); }
+  } catch (e) {
+    btn.textContent = t("note_failed");
+  } finally {
+    btn.disabled = false;
+  }
 }
 
 /* ---------- stats ---------- */

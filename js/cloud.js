@@ -35,5 +35,12 @@ const Cloud = {
 
   /* live mirroring: the child publishes, the parent reads */
   pushLive(u, p, s) { return this.rpc("push_live", { u, p, s }); },
-  readLive(u, p) { return this.rpc("read_live", { u, p }); }
+  readLive(u, p) { return this.rpc("read_live", { u, p }); },
+
+  /* the parent colours a day by hand and says why. This is the only thing the
+     parent side may write, and it cannot reach the child's history. Returns
+     the child's whole record back, revision and all. */
+  setDayMark(u, p, d, colour, note) {
+    return this.rpc("set_day_mark", { u, p, d, colour, note });
+  }
 };
