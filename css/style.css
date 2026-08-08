@@ -371,6 +371,16 @@ input:focus { border-color: var(--accent); }
 .result-tile.ok2 { background: #eaf7f0; }
 .mark-cell.ok2 { background: #eaf7f0; }
 .result-tile.no { background: var(--red-soft); }
+/* an unreviewed fout asks to be tapped */
+.result-tile.no { animation: tile-nudge 1.6s ease-in-out infinite; }
+@keyframes tile-nudge {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(229, 72, 77, 0); }
+  50%      { box-shadow: 0 0 0 4px rgba(229, 72, 77, .18); }
+}
+/* wrong, but gone over: corrected by the child, or the uitleg was read */
+.result-tile.fix { background: var(--red-soft); border: 1px solid #f0b9bb; }
+.result-tile.exp { background: var(--red-soft); border: 1px solid #f0b9bb; }
+.mark-cell.fix, .mark-cell.exp { background: var(--red-soft); }
 .result-tile.todo { background: #fff4e0; border: 1px dashed #e8b45c; }
 /* every som can be opened again from the report */
 .result-tile {
@@ -649,6 +659,18 @@ input:focus { border-color: var(--accent); }
   0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(229,72,77,.5); }
   50%      { opacity: .55; box-shadow: 0 0 0 7px rgba(229,72,77,0); }
 }
+/* the second chance and the uitleg, under the answers */
+.explain-box {
+  margin-top: 18px; padding: 15px 17px;
+  background: var(--bg); border-radius: 14px;
+  text-align: left;
+}
+.fix-hint { font-weight: 700; color: var(--ink); font-size: .98rem; }
+.fix-praise { font-weight: 800; color: var(--green); font-size: 1.05rem; }
+.explain-title { display: block; margin-bottom: 6px; color: var(--muted); font-size: .88rem; }
+.explain-text { font-size: 1.02rem; line-height: 1.6; }
+.explain-box .btn { margin-top: 14px; padding: 10px 22px; }
+
 /* the som being worked on, with the whole opdracht down the right-hand side —
    the same panel for the child and for the parent watching */
 .mirror-split, .task-split {

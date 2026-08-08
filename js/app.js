@@ -48,7 +48,6 @@ const SelfUpdate = {
 let data = Store.load();
 let session = null;           // { questions, idx, firstPass, queue }
 let calMonth = null;          // Date of shown calendar month
-let taskCount = 20;
 let timerInt = null;
 
 SelfUpdate.check();
@@ -206,6 +205,10 @@ function renderHome() {
   $("btn-start").classList.toggle("hidden", parent || !!open);
   $("btn-watch").classList.toggle("hidden", !parent);
   $("nav-row").classList.toggle("hidden", !parent);
+  // the day's report card stays reachable — the fouten to verbeter and the
+  // door to the spelletjes live there
+  $("btn-report").classList.toggle("hidden",
+    parent || !!open || !(data.report && data.report.date === todayStr()));
 
   renderLadder(parent);
   // spelen hoort bij het rapport van een afgeronde opdracht, niet hier
@@ -279,9 +282,20 @@ function runCountdown(then) {
   beat();
 }
 
+/* The opdracht starts at ten sommen and only grows if it has to.
+
+   Ten out of ten and the day is done — sharp work buys a short day. One or two
+   wrong and five more sommen appear; still at most two wrong after fifteen and
+   it ends there. Three or more wrong and it runs to the full twenty. Twenty are
+   built up front; the ones that are never reached go back to the bank unused,
+   because a som only counts as asked once it has been on the screen. */
+const TASK_START = 10, TASK_MID = 15, TASK_FULL = 20;
+
 function startTask() {
+  const built = Engine.buildTask(TASK_FULL, data);
   session = {
-    questions: Engine.buildTask(taskCount, data),
+    questions: built.slice(0, TASK_START),
+    pool: built.slice(TASK_START),   // dealt but not in play; spent only if needed
     idx: 0,
     firstPass: true,
     round: 1,                   // 1 = eerste poging, 2+ = verbeterrondes
@@ -314,6 +328,24 @@ function currentQ() {
    rides the normal cloud sync: pause on the phone, open the tablet, carry on
    at the same som. Only today's counts — an abandoned task does not follow
    the child into tomorrow. */
+function snapQ(q) {
+  return {
+    tplId: q.tplId, cat: q.cat, variantIdx: q.variantIdx, vars: q.vars,
+    name: q.name, name2: q.name2, obj: q.obj, obj2: q.obj2,
+    options: q.options, answerIdx: q.answerIdx,
+    chosen: q.chosen === undefined ? null : q.chosen,
+    correctFirst: q.correctFirst === undefined ? null : q.correctFirst,   // null = still waiting
+    tries: q.tries || 0,
+    solved: !!q.solved,
+    failed: !!q.failed,
+    skipped: !!q.skipped,
+    booked: !!q.booked,            // already counted in today's record
+    fixed: !!q.fixed,              // put right on the second chance
+    explained: !!q.explained,      // second chance also went wrong; uitleg shown
+    chosen2: q.chosen2 === undefined ? null : q.chosen2
+  };
+}
+
 function snapshotActive() {
   if (!session || !session.questions) return null;
   return {
@@ -330,18 +362,8 @@ function snapshotActive() {
     score: session.score || null,
     levelUp: session.levelUp || null,
     rewardMin: session.rewardMin || 0,
-    questions: session.questions.map(q => ({
-      tplId: q.tplId, cat: q.cat, variantIdx: q.variantIdx, vars: q.vars,
-      name: q.name, name2: q.name2, obj: q.obj, obj2: q.obj2,
-      options: q.options, answerIdx: q.answerIdx,
-      chosen: q.chosen === undefined ? null : q.chosen,
-      correctFirst: q.correctFirst === undefined ? null : q.correctFirst,   // null = still waiting
-      tries: q.tries || 0,
-      solved: !!q.solved,
-      failed: !!q.failed,
-      skipped: !!q.skipped,
-      booked: !!q.booked           // already counted in today's record
-    }))
+    questions: session.questions.map(snapQ),
+    pool: (session.pool || []).map(snapQ)   // the sommen still held in reserve
   };
 }
 
@@ -379,12 +401,24 @@ function saveActive(pushNow) {
   bankSettled();                         // count it first, then write it down,
   const snap = snapshotActive();         // so the snapshot carries the flags
   if (!snap) return;
-  // an opdracht with nothing left to answer is not something to carry on with;
-  // writing it back here is what kept a finished one sitting in the slot
-  if (session.questions.every(finished)) delete data.active;
+  // an opdracht with nothing left to answer is not something to carry on with —
+  // unless the mistakes just earned it extra sommen that have not appeared yet
+  if (session.questions.every(finished) && !storedExtension(session)) delete data.active;
   else data.active = snap;
   Store.save(data);
   if (pushNow) Store.pushNow(data);      // a pause should reach the other device at once
+}
+
+/* How many sommen the mistakes have earned, on top of what is in play.
+   Works on the live session and on the saved copy alike — both carry
+   `questions` and `pool`. Zero means the opdracht may end here. */
+function storedExtension(a) {
+  if (!a.pool || !a.pool.length) return 0;
+  const len = a.questions.length;
+  const wrong = a.questions.filter(q => q.failed).length;
+  if (len === TASK_START) return wrong === 0 ? 0 : (wrong <= 2 ? TASK_MID - TASK_START : TASK_FULL - TASK_START);
+  if (len === TASK_MID) return wrong <= 2 ? 0 : TASK_FULL - TASK_MID;
+  return 0;
 }
 
 /* The task to carry on with, or nothing */
@@ -408,10 +442,9 @@ function activeTask() {
       q.tries = ATTEMPTS;
     }
   });
-  // nothing left to do: a som is done whether it went right or wrong. Asking
-  // only about q.solved kept a finished opdracht hanging around all day, which
-  // took the start button away from a child who wanted to practise again.
-  if (a.questions.every(q => q.solved || q.failed)) return null;
+  // nothing left to do: a som is done whether it went right or wrong — but an
+  // opdracht whose mistakes have earned it extra sommen is not done yet
+  if (a.questions.every(q => q.solved || q.failed) && !storedExtension(a)) return null;
   return a;
 }
 
@@ -423,6 +456,7 @@ function resumeActive() {
   const pastEnd = a.idx >= a.queue.length;
   session = {
     questions: a.questions,
+    pool: a.pool || [],
     queue: a.queue,
     idx: pastEnd ? a.queue.length : Math.min(a.idx, a.queue.length - 1),
     firstPass: a.firstPass,
@@ -437,16 +471,20 @@ function resumeActive() {
   };
   Live.startHeartbeat();
   if (pastEnd) {
-    finishPass();                 // rebuilds what is left and draws the card
-    show("screen-result");
+    finishPass();       // draws the report card — or deals the extra sommen
     return;
   }
-  clearInterval(timerInt);
-  $("timerbox").classList.remove("hidden");
-  tickTimer();
-  timerInt = setInterval(tickTimer, 1000);
+  ensureTimer(true);
   renderQuestion();
   show("screen-task");
+}
+
+/* The clock on the wall: make sure it is visible and ticking. */
+function ensureTimer(restart) {
+  if (!session || session.pausedSec != null) return;
+  $("timerbox").classList.remove("hidden");
+  if (restart) clearInterval(timerInt), timerInt = null;
+  if (!timerInt) { tickTimer(); timerInt = setInterval(tickTimer, 1000); }
 }
 
 /* ---------- pause ----------
@@ -492,21 +530,39 @@ function renderQuestion() {
   const box = $("answers");
   box.innerHTML = "";
   box.classList.add("fresh");     // no answer may look chosen before it is touched
+  // a fout opened from the report card gets a second go before anything is
+  // given away; only after that does it become a page to read
+  const correcting = session.review && q.failed && !q.fixed && !q.explained;
   q.options.forEach((opt, i) => {
     const b = document.createElement("button");
     b.className = "answer";
     b.textContent = opt;
-    if (session.review) {
-      // looking back from the report card: what was picked, and what it should
-      // have been — this is where a wrong som is there to be learned from
+    if (correcting) {
+      if (i === q.chosen) { b.disabled = true; b.classList.add("wrong"); }
+      else b.onclick = () => secondChance(i, b);
+    } else if (session.review) {
+      // looking back at a som that is settled and dealt with
       b.disabled = true;
       if (i === q.chosen) b.classList.add(q.solved ? "correct" : "wrong");
+      if (q.chosen2 != null && i === q.chosen2 && i !== q.answerIdx) b.classList.add("wrong");
       if (q.failed && i === q.answerIdx) b.classList.add("correct");
     } else {
       b.onclick = () => answer(i, b);
     }
     box.appendChild(b);
   });
+
+  if (correcting) {
+    showExplainBox(`<p class="fix-hint">${esc(t("fix_hint"))}</p>`, false);
+  } else if (session.review && q.explained) {
+    // the uitleg stays readable whenever the som is opened again
+    showExplainBox(
+      `<b class="explain-title">${esc(t("explain_title"))}</b>
+       <p class="explain-text">${esc(Engine.explain(q, LANG))}</p>`, false);
+  } else {
+    hideExplainBox();
+  }
+
   renderTaskMarks();
   if (!session.review) Live.push("task");
 }
@@ -519,10 +575,10 @@ function renderTaskMarks() {
     Live.marksPanelHTML(Live.marksOf(session.questions), currentIdx());
 }
 
-/* One go at a som. The moment an answer is touched the som is settled — right
-   is right, wrong is wrong, and there is no going back over it. A wrong som
-   shows what it should have been before moving on, and can be opened again
-   from the report card afterwards. */
+/* One go at a som during the opdracht. The moment an answer is touched the som
+   is settled — right is right, wrong is wrong. The good answer is NOT shown
+   here: the report card gives a second chance at every fout, and that second
+   chance is only worth something if the answer has not been given away. */
 function answer(i, btn) {
   const q = currentQ();
   if (finished(q)) return;        // a settled som cannot be answered a second time
@@ -535,18 +591,62 @@ function answer(i, btn) {
   q.correctFirst = correct;
   q.chosen = i;
   btn.classList.add(correct ? "correct" : "wrong");
-
-  if (correct) {
-    q.solved = true;
-  } else {
-    q.failed = true;
-    const right = document.querySelectorAll(".answer")[q.answerIdx];
-    if (right) right.classList.add("correct");   // so the good one is seen at least once
-  }
+  if (!correct) q.failed = true;
+  else q.solved = true;
 
   renderTaskMarks();
   Live.push("task");
-  setTimeout(advance, correct ? 600 : 1800);
+  setTimeout(advance, correct ? 600 : 1100);
+}
+
+/* The second chance, on the report card. The wrong pick stands there in red;
+   every other answer is open. Get it right and the som is verbeterd. Get it
+   wrong again and the good answer is shown with one short uitleg of how the
+   som is actually solved — read it, press begrepen, and on to the next. */
+function secondChance(i, btn) {
+  const q = currentQ();
+  if (!q.failed || q.fixed || q.explained) return;
+  q.chosen2 = i;
+  document.querySelectorAll(".answer").forEach(b => b.disabled = true);
+
+  if (i === q.answerIdx) {
+    q.fixed = true;
+    btn.classList.add("correct");
+    showExplainBox(`<p class="fix-praise">🎯 ${esc(t("fixed_msg"))}</p>`, false);
+    persistCorrection();
+    Live.push("task");
+    setTimeout(backToResult, 1200);
+    return;
+  }
+
+  q.explained = true;
+  btn.classList.add("wrong");
+  const right = document.querySelectorAll(".answer")[q.answerIdx];
+  if (right) right.classList.add("correct");
+  showExplainBox(
+    `<b class="explain-title">${esc(t("explain_title"))}</b>
+     <p class="explain-text">${esc(Engine.explain(q, LANG))}</p>`, true);
+  persistCorrection();
+  Live.push("task");
+}
+
+/* A correction has to outlive this screen: into the running opdracht if there
+   still is one, into the day's report card once the opdracht is done. */
+function persistCorrection() {
+  if (session.banked) writeReport();
+  else saveActive();
+}
+
+function showExplainBox(html, withButton) {
+  $("explain-body").innerHTML = html;
+  $("btn-gotit").textContent = t("got_it");
+  $("btn-gotit").classList.toggle("hidden", !withButton);
+  $("explain-box").classList.remove("hidden");
+}
+
+function hideExplainBox() {
+  $("explain-box").classList.add("hidden");
+  $("explain-body").innerHTML = "";
 }
 
 const ATTEMPTS = 1;                 // one go per som, and it is settled
@@ -587,17 +687,40 @@ function advance() {
   else renderQuestion();
 }
 
-function finishPass() {
-  if (session.firstPass) {
-    // a pass that was already timed keeps its time; coming back to the report
-    // card later must not stretch it
-    if (session.lastSec == null) session.lastSec = elapsedSec();
-    stopTimer();
-  }
-  recordFirstPass();                 // waits until every som has been faced
+/* Deal the extra sommen the mistakes have earned, if any. */
+function maybeExtend() {
+  const add = storedExtension(session);
+  if (!add) return false;
+  const extra = session.pool.splice(0, add);
+  const base = session.questions.length;
+  extra.forEach((q, i) => { session.questions.push(q); session.queue.push(base + i); });
+  // land on the first som that still needs answering. The sweep leaves idx at
+  // the end of the old queue, but an extension reached from the report card —
+  // a skip resolved from its tile — leaves it pointing at an already-settled
+  // som, and the child would stand in front of buttons that do nothing.
+  const firstOpen = session.queue.findIndex(qi => !finished(session.questions[qi]));
+  session.idx = firstOpen === -1 ? session.queue.length : firstOpen;
+  session.review = false;
+  session.fromResult = false;
+  session.viewOne = null;
+  saveActive();
+  return true;
+}
 
+function finishPass() {
   // only soms that were put aside can still be done; a failed one is settled
   const open = session.questions.map((q, i) => i).filter(i => !finished(session.questions[i]));
+
+  // every som faced — but the mistakes may have earned extra sommen, and then
+  // the opdracht simply carries on instead of ending
+  if (open.length === 0 && maybeExtend()) {
+    ensureTimer();
+    renderQuestion();
+    show("screen-task");
+    return;
+  }
+
+  recordFirstPass();                 // waits until every som has been faced
   if (open.length === 0) {
     markDone100();          // this clears the active task — do not write it back
   } else {
@@ -605,6 +728,7 @@ function finishPass() {
     saveActive();           // still soms to do, so it stays resumable
   }
 
+  stopTimer();
   renderResult();
   show("screen-result");
 }
@@ -620,12 +744,13 @@ function recordFirstPass() {
   session.banked = true;
 
   bankSettled();                       // whatever is not counted yet
-  const secs = session.lastSec || elapsedSec();
+  const secs = session.lastSec != null ? session.lastSec : elapsedSec();
+  session.lastSec = secs;              // the moment the opdracht was completed
   const ds = todayStr();
   const day = data.days[ds] || { solved: 0, firstCorrect: 0, done100: false, cats: {} };
   const nCorrect = session.questions.filter(q => q.correctFirst).length;
 
-  // time log: how long the 20 questions took (first pass)
+  // time log: how long the whole opdracht took
   day.timeSec = secs;
   day.times = (day.times || []).concat(secs);
   const nSkipped = session.questions.filter(q => q.skipped).length;
@@ -652,7 +777,39 @@ function markDone100() {
   // speeltijd verdiend, puur op het cijfer van de eerste poging
   const sc = session.score || { correct: 0, total: session.questions.length };
   session.rewardMin = Reward.grant(data, sc.correct, sc.total);
+  writeReport();                   // saves; the report card outlives the session
+}
+
+/* The report card is kept for the rest of the day. Without this, closing the
+   app after the last som lost the way back to it — and with it the fouten
+   still to be verbeterd and the door to the spelletjes. It rides the normal
+   sync, so a correction made on the phone shows on the tablet. */
+function writeReport() {
+  data.report = {
+    date: todayStr(),
+    score: session.score || null,
+    lastSec: session.lastSec != null ? session.lastSec : null,
+    questions: session.questions.map(snapQ)
+  };
   Store.save(data);
+}
+
+function openReport() {
+  const r = data.report;
+  if (!r || r.date !== todayStr() || !r.questions || !r.questions.length) return;
+  session = {
+    questions: r.questions.map(q => Object.assign({}, q)),
+    pool: [],
+    queue: r.questions.map((_, i) => i),
+    idx: r.questions.length,
+    firstPass: false,
+    banked: true, rewarded: true,          // the day is already booked and paid
+    score: r.score, lastSec: r.lastSec,
+    levelUp: null, rewardMin: 0
+  };
+  Live.startHeartbeat();
+  renderResult();
+  show("screen-result");
 }
 
 /* ---------- result ---------- */
@@ -670,16 +827,21 @@ function renderResult() {
     ? partyMessage(LANG)
     : t("result_score").replace("{c}", nRight).replace("{t}", qs.length);
 
-  // numbered grid: right, wrong, or still to be done. No answers are given
-  // away here — a som has to be opened to see how it should have gone.
+  // numbered grid: right, wrong, corrected, explained, or still to be done.
+  // No answers are given away here — a wrong som has to be opened, and there
+  // the child gets a second go at it before the answer is shown.
   const grid = $("result-grid");
   grid.innerHTML = "";
   qs.forEach((q, i) => {
-    const state = q.correctFirst ? "ok" : (q.solved ? "ok2" : (q.failed ? "no" : "todo"));
-    const icon  = { ok: "✅", ok2: "✔️", no: "❌", todo: "⏭" }[state];
+    const state = q.correctFirst ? "ok"
+      : q.solved ? "ok2"
+      : q.failed ? (q.fixed ? "fix" : (q.explained ? "exp" : "no"))
+      : "todo";
+    const icon  = { ok: "✅", ok2: "✔️", fix: "✔️", exp: "💡", no: "❌", todo: "⏭" }[state];
     const cell = document.createElement("button");
     cell.className = "result-tile " + state;
-    cell.title = t({ ok: "tile_done", ok2: "tile_second", no: "tile_wrong", todo: "tile_todo" }[state]);
+    cell.title = t({ ok: "tile_done", ok2: "tile_second", fix: "tile_fixed",
+                     exp: "tile_explained", no: "tile_wrong", todo: "tile_todo" }[state]);
     cell.innerHTML = `<span class="num">${i + 1}</span><span class="mark">${icon}</span>`;
     cell.addEventListener("click", () => openQuestion(i));
     grid.appendChild(cell);
@@ -696,7 +858,6 @@ function renderResult() {
 
   // a wrong som is worth going back to: this is the only place the good answer
   // can be seen, and it changes nothing about the score
-  $("result-hint").classList.toggle("hidden", !qs.some(q => q.failed));
 
   // only the soms that were put aside can still be done
   const left = qs.filter(q => !finished(q)).length;
@@ -719,12 +880,22 @@ function renderResult() {
   const rewardEl = $("result-reward");
   rewardEl.textContent = earned > 0 ? t("reward_earned").replace("{m}", earned) : "";
   rewardEl.classList.toggle("hidden", earned <= 0);
-  // The game waits until THIS opdracht is finished — every som answered or put
-  // aside and then done. What it is worth is the score itself: faultless is
-  // twenty minutes, up to three mistakes five, and beyond that none.
+
+  // The game waits for two things: the opdracht finished, and every fout gone
+  // over — a second try, or the uitleg read. Mistakes are not a wall, they are
+  // the doorstep: look at them properly and the spelletjes open.
+  const unreviewed = qs.filter(q => q.failed && !q.fixed && !q.explained).length;
   const playLeftSec = Reward.remaining(data);
-  $("btn-play-result").classList.toggle("hidden", !(allDone && playLeftSec > 0));
+  $("btn-play-result").classList.toggle("hidden", !(allDone && !unreviewed && playLeftSec > 0));
   $("result-play-left").textContent = playLeftSec > 0 ? fmtTime(playLeftSec) : "";
+
+  const hint = $("result-hint");
+  if (allDone && unreviewed > 0) {
+    hint.textContent = playLeftSec > 0 ? t("fix_first") : t("fix_first_noplay");
+    hint.classList.remove("hidden");
+  } else {
+    hint.classList.add("hidden");
+  }
 
   Live.push("result");
 
@@ -751,6 +922,7 @@ function backToResult() {
   session.review = false;
   session.fromResult = false;
   session.viewOne = null;
+  hideExplainBox();
   renderResult();
   show("screen-result");
 }
@@ -784,7 +956,9 @@ function startRetry() {
 function dayColour(ds, rec) {
   const mark = (data.marks || {})[ds];
   if (mark && mark.c) return mark.c;
-  if (rec && rec.solved >= taskCount) return "done";
+  // green is a FINISHED opdracht, whatever its length: ten faultless sommen
+  // end the day just as green as twenty hard-fought ones
+  if (rec && rec.done100) return "done";
   if (rec && rec.solved > 0) return "partial";
   const days = Object.keys(data.days || {});
   if (!days.length) return "";
@@ -1251,6 +1425,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // result
   $("btn-retry").addEventListener("click", startRetry);
+  $("btn-report").addEventListener("click", openReport);
+  $("btn-gotit").addEventListener("click", backToResult);
 
   // speeltijd
   $("btn-play-result").addEventListener("click", openGames);

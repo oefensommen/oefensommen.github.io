@@ -20,8 +20,11 @@ const Live = {
   marksOf(questions) {
     return questions.map(q =>
       q.correctFirst ? "ok"                   // right first time
-        : (q.solved ? "ok2"                   // right on the second go
-          : (q.failed ? "no"                  // both chances used
+        : (q.solved ? "ok2"                   // (legacy) right on a later go
+          : (q.failed
+            ? (q.fixed ? "fix"                // wrong, put right on the second chance
+              : (q.explained ? "exp"          // wrong twice; the uitleg was shown
+                : "no"))                      // wrong, not yet gone over
             : (q.skipped ? "skip" : ""))));   // "" = not reached yet
   },
 
@@ -36,6 +39,7 @@ const Live = {
     if (session && (screen === "task" || screen === "pause")) {
       const cur = currentIdx();
       const q = session.questions[cur];
+      if (!q) return s;      // between soms; the parent just sees "busy"
       // a som opened from the report card is one of the twenty, not one of one
       s.n = (session.viewOne != null ? session.viewOne : session.idx) + 1;
       s.total = session.viewOne != null ? session.questions.length : session.queue.length;
@@ -127,7 +131,7 @@ const Live = {
      looked at, counted from zero. */
   marksPanelHTML(marks, at) {
     if (!marks || !marks.length) return "";
-    const icon = { ok: "✅", ok2: "✔️", no: "❌", skip: "⏭" };
+    const icon = { ok: "✅", ok2: "✔️", fix: "✔️", exp: "💡", no: "❌", skip: "⏭" };
     const tiles = marks.map((m, i) =>
       `<div class="mark-cell ${m || "open"}${i === at ? " here" : ""}">` +
       `<span class="n">${i + 1}</span><span class="i">${icon[m] || ""}</span></div>`).join("");
@@ -203,7 +207,7 @@ const Live = {
       el("mirror-status").textContent = t("live_done");
       el("mirror-time").textContent = state.elapsed ? "⏱ " + fmtTime(state.elapsed) : "";
       const marks = state.marks || (state.grid || []).map(ok => ok ? "ok" : "no");
-      const icon = { ok: "✅", ok2: "✔️", no: "❌", skip: "⏭" };
+      const icon = { ok: "✅", ok2: "✔️", fix: "✔️", exp: "💡", no: "❌", skip: "⏭" };
       const tiles = marks.map((m, i) =>
         `<div class="result-tile ${m === "skip" ? "todo" : (m || "no")}">` +
         `<span class="num">${i + 1}</span><span class="mark">${icon[m] || "❌"}</span></div>`).join("");

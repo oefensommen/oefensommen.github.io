@@ -223,10 +223,10 @@ const Engine = {
     };
   },
 
-  /* Render question text in the current language */
-  text(q, lang) {
-    const tpl = TEMPLATES.find(tp => tp.id === q.tplId);
-    let s = tpl.variants[q.variantIdx][lang] || tpl.variants[q.variantIdx].nl;
+  /* Fill a template string with everything this som knows: names, pronouns,
+     objects, the spoken clock time, and whatever numbers `vars` carries.
+     Shared by the question text and the uitleg under a som that went wrong. */
+  _render(s, q, lang, vars) {
     const pron = {
       nl: { cap: q.name.g === "f" ? "Zij" : "Hij", low: q.name.g === "f" ? "zij" : "hij" },
       en: { cap: q.name.g === "f" ? "She" : "He", low: q.name.g === "f" ? "she" : "he" },
@@ -236,7 +236,7 @@ const Engine = {
     if (lang === "tr") {
       s = s.replace(/\{name_(in|de|e|i)\}/g, (_, t) => trEk(q.name.n, t));
       s = s.replace(/\{name2_(in|de|e|i)\}/g, (_, t) => trEk(q.name2.n, t));
-      s = s.replace(/\{(t2?)_de\}/g, (_, k) => trTimeLoc(q.vars[k]));
+      s = s.replace(/\{(t2?)_de\}/g, (_, k) => trTimeLoc(vars[k]));
     }
     s = s.replace(/\{name2\}/g, q.name2.n).replace(/\{name\}/g, q.name.n);
     s = s.replace(/\{Hij\}|\{He\}/g, pron.cap).replace(/\{hij\}|\{he\}/g, pron.low);
@@ -247,8 +247,26 @@ const Engine = {
     const cap = w => w ? w.charAt(0).toUpperCase() + w.slice(1) : w;
     if (q.obj2) { const w = q.obj2[lang] || q.obj2.nl; s = s.replace(/\{Obj2\}/g, cap(w)).replace(/\{obj2\}/g, w); }
     if (q.obj) { const w = q.obj[lang] || q.obj.nl; s = s.replace(/\{Obj\}/g, cap(w)).replace(/\{obj\}/g, w); }
-    for (const k in q.vars) s = s.replace(new RegExp("\\{" + k + "\\}", "g"), q.vars[k]);
+    for (const k in vars) s = s.replace(new RegExp("\\{" + k + "\\}", "g"), vars[k]);
     return s;
+  },
+
+  /* Render question text in the current language */
+  text(q, lang) {
+    const tpl = TEMPLATES.find(tp => tp.id === q.tplId);
+    const s = tpl.variants[q.variantIdx][lang] || tpl.variants[q.variantIdx].nl;
+    return this._render(s, q, lang, q.vars);
+  },
+
+  /* One short paragraph on HOW this som is solved, with its own numbers.
+     Shown when the second chance on the report card also went wrong. */
+  explain(q, lang) {
+    let e = (typeof EXPLAIN !== "undefined") ? EXPLAIN[q.tplId] : null;
+    if (Array.isArray(e)) e = e[q.variantIdx] || e[0];
+    if (!e) return "";
+    const extra = e.v ? e.v(q.vars, q) : {};
+    const vars = Object.assign({}, q.vars, extra, { ans: q.options[q.answerIdx] });
+    return this._render(e[lang] || e.nl, q, lang, vars);
   },
 
   /* Build a full task of n questions */
@@ -267,6 +285,7 @@ const Engine = {
     // handed out twice either
     if (data.active && data.active.date === todayStr() && data.active.questions) {
       data.active.questions.forEach(q => seen.add(this.sig(q)));
+      (data.active.pool || []).forEach(q => seen.add(this.sig(q)));
     }
     const taken = new Set();                 // the ones picked just now
     let repeats = 0;
