@@ -40,15 +40,24 @@ const pickArr = arr => arr[ri(0, arr.length - 1)];
 
 /* Difficulty is deliberately set a notch ABOVE CITO/DIA M5/E5 level, so the
    real test feels easier than the practice. lvRange grows the range with the
-   hidden adaptive level (1..5): level 1 = base range, level 5 = range * grow. */
+   hidden adaptive level: level 1 = base range, level 5 = range * grow.
+
+   The scale also runs BELOW 1, down to -1. Those are the comfort bands: after
+   a wrong answer the sommen of that soort quietly get smaller numbers, even
+   for a child already playing at niveau 1. The formula keeps shrinking below
+   L=1, floored so no template ever sees numbers too small to make sense. */
 function lvRange(level, lo, hi, grow) {
-  const L = Math.max(1, Math.min(5, level || 1));
-  const f = 1 + (grow - 1) * (L - 1) / 4;
-  return ri(Math.round(lo * f), Math.round(hi * f));
+  const L = Math.max(-1, Math.min(5, level == null ? 1 : level));
+  const f = L < 1 ? (L === 0 ? 0.6 : 0.45)               // comfort bands
+                  : 1 + (grow - 1) * (L - 1) / 4;
+  const a = Math.max(1, Math.round(lo * f));
+  const b = Math.max(a, Math.round(hi * f));
+  return ri(a, b);
 }
 /* pick from a table list that widens with level (multiplication/division facts) */
 function lvTable(level) {
-  const L = Math.max(1, Math.min(5, level || 1));
+  const L = Math.min(5, level == null ? 1 : level);
+  if (L < 1) return pickArr([2, 3, 4, 5, 10]);   // comfort band: the easy tables
   const pools = [[3,4,5,10],[3,4,5,6,10],[4,6,7,8,10],[6,7,8,9,11],[6,7,8,9,11,12]];
   return pickArr(pools[L - 1]);
 }
@@ -111,7 +120,7 @@ const TEMPLATES = [
         en: "{name} works in the supermarket. There are {a} packs of {obj} left. {b} new ones are delivered. How many packs of {obj} now?",
         tr: "{name} süpermarkette çalışıyor. {a} paket {obj} kaldı. {b} yeni paket geldi. Şimdi kaç paket {obj} var?" }
     ],
-    gen() { const a = ri(41, 79), b = ri(88, 99); const ans = a + b;
+    gen(level) { const a = lvRange(level, 41, 79, 1), b = lvRange(level, 88, 99, 1); const ans = a + b;
       return { vars: { a, b }, answer: ans, wrongs: near(ans) }; }
   },
   {
@@ -162,7 +171,7 @@ const TEMPLATES = [
         en: "{name}'s hockey club has {a} members. {b} new members join. How many members now?",
         tr: "{name_in} hokey kulübünde {a} üye var. {b} yeni üye katılıyor. Şimdi kaç üye var?" }
     ],
-    gen() { const a = ri(520, 545), b = ri(2, 5); const ans = a + b;
+    gen(level) { const a = lvRange(level, 520, 545, 1), b = ri(2, 5); const ans = a + b;
       return { vars: { a, b }, answer: ans, wrongs: [ans + 1, ans - 1, ans + 2, ans - 2] }; }
   },
 
@@ -185,7 +194,7 @@ const TEMPLATES = [
         en: "{name} sees a {obj} of {a} euros. In the sale the {obj} now costs only {b} euros. How many euros cheaper is the {obj}?",
         tr: "{name} {a} euroluk bir {obj} görüyor. İndirimde {obj} şimdi sadece {b} euro. {Obj} kaç euro ucuzladı?" }
     ],
-    gen() { const a = ri(210, 340), b = ri(90, 190); const ans = a - b;
+    gen(level) { const a = lvRange(level, 210, 340, 1), b = lvRange(level, 90, 190, 1); const ans = a - b;
       return { vars: { a, b }, answer: ans, wrongs: near(ans, [a + b]) }; }
   },
   {
@@ -199,9 +208,9 @@ const TEMPLATES = [
         tr: "{name} {a} soru çözmeli. {b} tanesini bitirdi bile. Kaç soru kaldı?" }
     ],
     gen(level, v) {
-      if (v === 0) { const a = ri(420, 470), b = pickArr([30, 40, 25]); const ans = a - b;
+      if (v === 0) { const a = lvRange(level, 420, 470, 1), b = pickArr([30, 40, 25]); const ans = a - b;
         return { vars: { a, b }, answer: ans, wrongs: [ans + 10, ans - 10, ans + 5, ans - 5] }; }
-      const a = ri(45, 58), b = ri(38, 42); const ans = a - b;
+      const a = lvRange(level, 45, 58, 1), b = Math.min(lvRange(level, 38, 42, 1), a - 2); const ans = a - b;
       return { vars: { a, b }, answer: ans, wrongs: near(ans) };
     }
   },
@@ -213,7 +222,7 @@ const TEMPLATES = [
         en: "{name} starts the game with {a} {obj}. {He} loses {b}. How many {obj} are left?",
         tr: "{name} oyuna {a} {obj} ile başlıyor. {b} tanesini kaybediyor. Kaç {obj} kaldı?" }
     ],
-    gen() { const a = ri(80, 99), b = ri(38, 55); const ans = a - b;
+    gen(level) { const a = lvRange(level, 80, 99, 1), b = Math.min(lvRange(level, 38, 55, 1), a - 5); const ans = a - b;
       return { vars: { a, b }, answer: ans, wrongs: near(ans, [a + b]) }; }
   },
   {
@@ -415,7 +424,11 @@ const TEMPLATES = [
         en: "{name} earned {a} euros. {He} spends {b} euros on phone credit and {c} euros on sweets. How many euros are left?",
         tr: "{name} yaz işinden {a} euro kazandı. {b} euroyu kontöre, {c} euroyu şekere harcadı. Kaç euro kaldı?" }
     ],
-    gen(level) { const a = lvRange(level, 80, 99, 2.4), b = ri(25, 45), c = ri(6, 18); const ans = a - b - c;
+    gen(level) { const a = lvRange(level, 80, 99, 2.4);
+      // spent amounts scale with what was earned, so an eased som stays possible
+      const b = ri(Math.max(8, Math.floor(a * 0.25)), Math.max(9, Math.floor(a * 0.4)));
+      const c = ri(3, Math.max(4, Math.floor(a * 0.18)));
+      const ans = a - b - c;
       return { vars: { a, b, c }, answer: ans, wrongs: [a - b + c, ans + 1, ans - 1, ans + 2] }; }
   },
   {
@@ -425,7 +438,7 @@ const TEMPLATES = [
         en: "{name} divides {a} snacks over {b} plates. From the first plate {c} snacks are eaten. How many snacks are left on that plate?",
         tr: "{name} {a} atıştırmalığı {b} tabağa paylaştırıyor. İlk tabaktan {c} tane yeniyor. O tabakta kaç tane kaldı?" }
     ],
-    gen() { const b = pickArr([4, 5, 6]); const per = pickArr([30, 45, 40, 50]); const a = per * b; const c = ri(15, 25); const ans = per - c;
+    gen(level) { const b = pickArr([4, 5, 6]); const per = lvRange(level, 30, 50, 1); const a = per * b; const c = Math.min(ri(15, 25), per - 3); const ans = per - c;
       return { vars: { a, b, c }, answer: ans, wrongs: [per, ans + 5, ans - 5, ans + 10] }; }
   },
   {
@@ -436,7 +449,7 @@ const TEMPLATES = [
         en: "{name} divides {a} {obj} over {b} tubs. Then {he} adds {c} {obj} to each tub. How many {obj} are now in each tub?",
         tr: "{name} {a} {obj} {b} kaba paylaştırıyor. Sonra her kaba {c} {obj} ekliyor. Şimdi her kapta kaç {obj} var?" }
     ],
-    gen() { const b = pickArr([8, 6, 4]); const per = pickArr([60, 80, 40]); const a = per * b; const c = ri(20, 30); const ans = per + c;
+    gen(level) { const b = pickArr([8, 6, 4]); const per = lvRange(level, 40, 80, 1); const a = per * b; const c = ri(20, 30); const ans = per + c;
       return { vars: { a, b, c }, answer: ans, wrongs: [per, ans + 10, ans - 10, ans - c + 10] }; }
   },
   {
@@ -446,7 +459,7 @@ const TEMPLATES = [
         en: "There are {a} people on the bus. At the stops {b}, {c} and {d} people get off. How many people are on the bus now?",
         tr: "Otobüste {a} kişi var. Duraklarda sırayla {b}, {c} ve {d} kişi iniyor. Şimdi otobüste kaç kişi var?" }
     ],
-    gen() { const a = ri(50, 60), b = ri(2, 6), c = ri(3, 6), d = ri(2, 5); const ans = a - b - c - d;
+    gen(level) { const a = lvRange(level, 50, 60, 1), b = ri(2, 6), c = ri(3, 6), d = ri(2, 5); const ans = a - b - c - d;
       return { vars: { a, b, c, d }, answer: ans, wrongs: [ans + 1, ans - 1, a - b - c, ans + 2] }; }
   },
   {
@@ -504,7 +517,7 @@ const TEMPLATES = [
         en: "{name} buys a {obj} and a {obj2}. The {obj} costs {a} euros. The {obj2} costs {b} euros. How much at the till?",
         tr: "{name} bir {obj} ve bir {obj2} alacak. {obj} {a} euro. {obj2} {b} euro. Kasada kaç euro öder?" }
     ],
-    gen() { const a = ri(20, 28), b = ri(12, 18); const ans = a + b;
+    gen(level) { const a = lvRange(level, 20, 28, 1), b = lvRange(level, 12, 18, 1); const ans = a + b;
       return { vars: { a, b }, answer: ans, wrongs: [ans + 1, ans - 1, ans + 2, Math.abs(a - b)] }; }
   },
 
@@ -545,7 +558,7 @@ const TEMPLATES = [
                  wrongs: [a + b + cc + d, a + b - cc - d, ans + 10, ans - 10, ans + 1] };
       }
       if (v === 2) {                                   // a − b + c
-        const bb = ri(12, a - 12);
+        const bb = ri(Math.max(3, Math.floor(a * 0.25)), Math.max(4, Math.floor(a * 0.6)));
         const ans = a - bb + c;
         return { vars: { a, b: bb, c }, answer: ans,
                  wrongs: [a - bb - c, a + bb + c, ans + 10, ans - 10, ans + 1] };
@@ -622,7 +635,8 @@ const TEMPLATES = [
     ],
     gen(level, v) {
       const h = v === 1 ? ri(7, 11) : ri(1, 6);         // 12-hour clock hour
-      const m = ri(0, 11) * 5;      // a spoken time only lands on five minutes
+      const m = level < 1 ? pickArr([0, 30, 15, 45])    // comfort band: familiar times
+                          : ri(0, 11) * 5;   // a spoken time only lands on five minutes
       const H = h + 12;                                  // afternoon / evening
       const ans = tFmt(H, m);
       const wrongs = [
@@ -643,9 +657,10 @@ const TEMPLATES = [
         en: "{name} starts homework at {t}. It takes {a} minutes. What time is {he} finished?",
         tr: "{name} ödeve {t_de} başlıyor. {a} dakika sürüyor. Saat kaçta biter?" }
     ],
-    gen() {
-      const h = ri(9, 19), m = pickArr([5, 10, 15, 20, 25, 35, 40, 45, 50]);
-      const a = pickArr([25, 35, 40, 45, 50, 55, 75, 90]);
+    gen(level) {
+      const h = ri(9, 19);
+      const m = level < 1 ? pickArr([0, 30]) : pickArr([5, 10, 15, 20, 25, 35, 40, 45, 50]);
+      const a = level < 1 ? pickArr([15, 30, 60]) : pickArr([25, 35, 40, 45, 50, 55, 75, 90]);
       const e = tAdd(h, m, a);
       const w1 = tAdd(h, m, a + 10), w2 = tAdd(h, m, a - 10), w3 = tAdd(h + 1, m, a);
       return { vars: { t: tFmt(h, m), a },
@@ -660,9 +675,10 @@ const TEMPLATES = [
         en: "{name}'s train arrives at {t}. The journey takes {a} minutes. What time did the train leave?",
         tr: "{name_in} treni {t_de} varıyor. Yolculuk {a} dakika sürüyor. Tren saat kaçta kalktı?" }
     ],
-    gen() {
-      const h = ri(10, 20), m = pickArr([0, 5, 10, 15, 20, 25, 30, 40, 45]);
-      const a = pickArr([25, 35, 40, 45, 50, 70, 85]);
+    gen(level) {
+      const h = ri(10, 20);
+      const m = level < 1 ? pickArr([0, 30]) : pickArr([0, 5, 10, 15, 20, 25, 30, 40, 45]);
+      const a = level < 1 ? pickArr([15, 30, 60]) : pickArr([25, 35, 40, 45, 50, 70, 85]);
       const s = tAdd(h, m, -a);
       const w1 = tAdd(h, m, a), w2 = tAdd(h, m, -a + 10), w3 = tAdd(h, m, -a - 10);
       return { vars: { t: tFmt(h, m), a },
@@ -680,9 +696,10 @@ const TEMPLATES = [
         en: "The pool opens at {t} and closes at {t2}. How many minutes is the pool open?",
         tr: "Havuz {t_de} açılıp {t2_de} kapanıyor. Havuz kaç dakika açık kalır?" }
     ],
-    gen() {
-      const h = ri(8, 18), m = pickArr([0, 10, 15, 20, 25, 30, 45, 50]);
-      const dur = pickArr([35, 40, 45, 50, 55, 65, 75, 80, 90]);
+    gen(level) {
+      const h = ri(8, 18);
+      const m = level < 1 ? pickArr([0, 30]) : pickArr([0, 10, 15, 20, 25, 30, 45, 50]);
+      const dur = level < 1 ? pickArr([30, 45, 60, 90]) : pickArr([35, 40, 45, 50, 55, 65, 75, 80, 90]);
       const e = tAdd(h, m, dur);
       return { vars: { t: tFmt(h, m), t2: tFmt(e.h, e.m) },
         answer: dur, wrongs: [dur + 10, dur - 10, dur + 5, dur - 5, dur + 40] };
@@ -696,7 +713,8 @@ const TEMPLATES = [
         tr: "{name} {a} saat {b} dakika bisiklet sürdü. Bu toplam kaç dakikadır?" }
     ],
     gen(level) {
-      const a = lvRange(level, 2, 6, 1.5), b = ri(1, 11) * 5 + ri(0, 4);
+      const a = lvRange(level, 2, 6, 1.5);
+      const b = level < 1 ? pickArr([15, 30, 45]) : ri(1, 11) * 5 + ri(0, 4);
       const ans = a * 60 + b;
       return { vars: { a, b }, answer: ans,
         wrongs: [a * 100 + b, ans - 60, ans + 60, a * 60] };   // a*100+b = classic error
@@ -709,9 +727,11 @@ const TEMPLATES = [
         en: "{name}'s training starts at {t} and lasts {a} minutes. Then {he} cycles home for {b} minutes. What time is {he} home?",
         tr: "{name_in} antrenmanı {t_de} başlıyor ve {a} dakika sürüyor. Sonra {b} dakika bisikletle eve gidiyor. Saat kaçta evde olur?" }
     ],
-    gen() {
-      const h = ri(15, 19), m = pickArr([0, 15, 20, 30, 45]);
-      const a = pickArr([45, 50, 55, 60, 75]), b = pickArr([10, 15, 20, 25]);
+    gen(level) {
+      const h = ri(15, 19);
+      const m = level < 1 ? pickArr([0, 30]) : pickArr([0, 15, 20, 30, 45]);
+      const a = level < 1 ? pickArr([30, 60]) : pickArr([45, 50, 55, 60, 75]);
+      const b = level < 1 ? pickArr([10, 15, 30]) : pickArr([10, 15, 20, 25]);
       const e = tAdd(h, m, a + b);
       // offsets chosen so all four options stay distinct for every b (b >= 10):
       // w1 = forgot the cycle home, w2/w3 = ±slips that can never equal w1

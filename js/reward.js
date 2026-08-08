@@ -45,6 +45,17 @@ const Reward = {
     return min;
   },
 
+  /* The floor under a hard day: finishing the whole opdracht and going over
+     every fout on the report card is worth three minutes, even when the score
+     itself earned none. Facing the fouten IS the work being rewarded. */
+  grantFloor(data) {
+    const day = this._today(data);
+    if (!day) return 0;
+    if (!day.reward) day.reward = { sec: 0, used: 0 };
+    day.reward.sec += 180;
+    return 3;
+  },
+
   earnedMin(data) {
     const day = this._today(data);
     return day && day.reward ? Math.round(day.reward.sec / 60) : 0;

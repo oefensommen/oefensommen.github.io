@@ -53,7 +53,8 @@ const Live = {
         name: q.name, name2: q.name2, obj: q.obj, obj2: q.obj2,
         options: q.options, answerIdx: q.answerIdx,
         chosen: (q.chosen === undefined ? null : q.chosen),
-        skipped: !!q.skipped
+        skipped: !!q.skipped,
+        hinted: !!q.hinted
       };
     }
     if (session && screen === "result") {
@@ -268,6 +269,7 @@ const Live = {
            <div class="mirror-options">${opts}</div>
            ${verdict}
            ${q.skipped ? `<div class="mirror-note">⏭ ${t("skip")}</div>` : ""}
+           ${q.hinted ? `<div class="mirror-note">💡 ${t("hint_used")}</div>` : ""}
            ${footer}
          </div>
          ${this.marksPanel(state)}

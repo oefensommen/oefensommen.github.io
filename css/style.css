@@ -659,6 +659,26 @@ input:focus { border-color: var(--accent); }
   0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(229,72,77,.5); }
   50%      { opacity: .55; box-shadow: 0 0 0 7px rgba(229,72,77,0); }
 }
+/* the 💡: help with UNDERSTANDING the som, tucked under the question */
+.hint-btn {
+  display: inline-flex; align-items: center; gap: 5px;
+  margin: -8px 0 14px;
+  padding: 6px 13px; border-radius: 999px;
+  border: 1.5px dashed #e3c76e; background: #fffbea;
+  font-size: .85rem; font-weight: 700; font-family: inherit;
+  color: #8a6a11; cursor: pointer;
+  transition: background .12s, transform .08s;
+}
+.hint-btn:hover { background: #fdf3d0; }
+.hint-btn:active { transform: scale(0.96); }
+.hint-bubble {
+  margin: -4px 0 16px;
+  padding: 11px 14px;
+  background: #fffbea; border: 1px solid #f0e2ae; border-radius: 12px;
+  font-size: .95rem; line-height: 1.55; color: var(--ink);
+  text-align: left;
+}
+
 /* the second chance and the uitleg, under the answers */
 .explain-box {
   margin-top: 18px; padding: 15px 17px;

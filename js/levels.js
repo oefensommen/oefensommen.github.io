@@ -20,6 +20,59 @@
    elkaar gebeurt zo goed als nooit. In een schooljaar van 180 dagen kwam
    alleen klokkijken (twee sommen per dag) ooit een niveau verder. */
 
+/* De dagknop per soort som — de schokdemper van de dag.
+
+   Elke soort begint de ochtend op 5. Een fout zet hem één lager, twee goede
+   antwoorden op rij in die soort zetten hem één hoger. Onder de 5 worden de
+   sommen van die soort kleiner — desnoods tot onder niveau 1, in de twee
+   stille comfortbanden — zodat een kind dat net gestruikeld is meteen weer
+   sommen krijgt die het kán. Niets hiervan is te zien; de sommen worden
+   gewoon vriendelijker, en weer gewoon als het weer loopt.
+
+   's Nachts wordt alles weer 5: gisteren blijft niet plakken. De stand reist
+   met het record mee, dus wisselen van apparaat verandert er niets aan.
+   Het niveau van de lange termijn (vijf foutloze dagen) staat hier los van:
+   de knop dempt de dag, het niveau meet de maand. */
+const Dial = {
+  MAX: 5,
+  RUN_NEEDED: 2,            // twee goede op rij om een stap terug omhoog te gaan
+
+  ensure(data) {
+    if (!data.dial || data.dial.date !== todayStr()) {
+      data.dial = { date: todayStr(), lvl: {}, run: {} };
+    }
+    return data.dial;
+  },
+
+  of(data, cat) {
+    const d = this.ensure(data);
+    return typeof d.lvl[cat] === "number" ? d.lvl[cat] : this.MAX;
+  },
+
+  wrong(data, cat) {
+    const d = this.ensure(data);
+    d.lvl[cat] = Math.max(1, this.of(data, cat) - 1);
+    d.run[cat] = 0;
+  },
+
+  right(data, cat) {
+    const d = this.ensure(data);
+    d.run[cat] = (d.run[cat] || 0) + 1;
+    if (d.run[cat] >= this.RUN_NEEDED && this.of(data, cat) < this.MAX) {
+      d.lvl[cat] = this.of(data, cat) + 1;
+      d.run[cat] = 0;
+    }
+  },
+
+  /* The level the generators actually see: the child's own niveau, pulled
+     down one step for every notch the dial is under 5. May go to -1 — the
+     comfort bands with genuinely smaller numbers. */
+  eff(data, cat) {
+    const down = this.MAX - this.of(data, cat);
+    return Math.max(-1, Math.min(5, Levels.of(data) - down));
+  }
+};
+
 const Levels = {
   MAX: 5,
   DAYS_NEEDED: 5,          // evenveel dagen omhoog als omlaag

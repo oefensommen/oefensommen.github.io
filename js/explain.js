@@ -378,3 +378,244 @@ const EXPLAIN = {
     tr: "Tür tür hesapla. Kalemler: {c} × {a} = {p1} euro. Defterler: {d} × {b} = {p2} euro. Toplam: {p1} + {p2} = {ans} euro."
   }
 };
+
+/* Eén regel hulp per som — de 💡.
+
+   A hint is not half an answer. It says what KIND of som this is and which
+   operation the story is hiding, in the child's own words, and then gets out
+   of the way. The numbers stay the child's job. Free to use; quietly noted,
+   so the report card can show where help was wanted. */
+const HINTS = {
+
+  /* ---- optellen: something comes on top of something ---- */
+  "opt-sparen-krijgt": {
+    nl: "Er komt geld bíj. Erbij = optellen (+).",
+    en: "Money is ADDED on top. More means plus (+).",
+    tr: "Paranın üstüne para geliyor. Üstüne gelmek = toplama (+)." },
+  "opt-voorraad": {
+    nl: "Er waren al pakken, en er komen nieuwe bij. Samen tellen = optellen (+).",
+    en: "There were packs, and new ones arrive. Counting together = adding (+).",
+    tr: "Zaten paket vardı, yenileri geliyor. Hepsini saymak = toplama (+)." },
+  "opt-twee-collecties": {
+    nl: "Twee groepen, één verzameling. Alles samen = optellen (+).",
+    en: "Two groups, one collection. All together = adding (+).",
+    tr: "İki grup, tek koleksiyon. Hepsi birlikte = toplama (+)." },
+  "opt-dagdeel": {
+    nl: "Eerst een deel, later nog een deel. Samen = optellen (+).",
+    en: "First one part, later another. Together = adding (+).",
+    tr: "Önce bir kısım, sonra bir kısım daha. Toplam = toplama (+)." },
+  "opt-tellen-vooruit": {
+    nl: "Tel vier keer dezelfde sprong vooruit. Stap voor stap: {a}, en dan vier sprongen van {b}.",
+    en: "Count on with the same jump, four times. Step by step: {a}, then four jumps of {b}.",
+    tr: "Aynı adımla dört kez ileri say. Adım adım: {a}, sonra dört kez {b} ekle." },
+  "opt-club-erbij": {
+    nl: "Er komen leden bíj de club. Erbij = optellen (+).",
+    en: "Members JOIN the club. Joining = adding (+).",
+    tr: "Kulübe üye katılıyor. Katılmak = toplama (+)." },
+
+  /* ---- aftrekken: something goes away, or a difference is asked ---- */
+  "aft-vrijlaten": {
+    nl: "Er gaan vogels wég. Weg = eraf halen (−).",
+    en: "Birds LEAVE. Leaving = taking away (−).",
+    tr: "Kuşlar gidiyor. Gitmek = çıkarma (−)." },
+  "aft-korting-verschil": {
+    nl: "„Hoeveel goedkoper?” vraagt naar het VERSCHIL: grote prijs min kleine prijs (−).",
+    en: "\"How much cheaper?\" asks for the DIFFERENCE: big price minus small price (−).",
+    tr: "\"Ne kadar ucuzladı?\" FARKI sorar: büyük fiyattan küçüğü çıkar (−)." },
+  "aft-nog-doen": {
+    nl: "Wat al klaar is hoeft niet meer. Haal het eraf (−).",
+    en: "What is already done is out of the way. Take it off (−).",
+    tr: "Biten kısım işten düşer. Onu çıkar (−)." },
+  "aft-verliezen": {
+    nl: "Verliezen betekent kwijtraken. Kwijt = eraf (−).",
+    en: "Losing means they are gone. Gone = minus (−).",
+    tr: "Kaybetmek elden gitmek demek. Giden = çıkarma (−)." },
+  "aft-tellen-terug": {
+    nl: "Tel vier keer dezelfde sprong terúg. Start bij {a} en spring vier keer {b} omlaag.",
+    en: "Count BACK with the same jump, four times. Start at {a}, jump down {b} four times.",
+    tr: "Aynı adımla dört kez geriye say. {a}'dan başla, dört kez {b} çıkar." },
+  "aft-helft": {
+    nl: "De helft = verdelen in twee gelijke stukken. Welk getal past twee keer in {a}?",
+    en: "Half = two equal parts. What number fits twice into {a}?",
+    tr: "Yarısı = iki eşit parça. Hangi sayı {a} içinde iki kez var?" },
+  "aft-restant-bellen": {
+    nl: "Gebruikte minuten zijn óp. Haal ze van het totaal af (−).",
+    en: "Used minutes are gone. Take them off the total (−).",
+    tr: "Kullanılan dakikalar bitti. Toplamdan çıkar (−)." },
+  "aft-voordat": {
+    nl: "Pas op: je rekent terug in de tijd. Ervóór was er minder — haal de opbrengst eraf (−).",
+    en: "Careful: you are going BACK in time. Before, there was less — take the earnings off (−).",
+    tr: "Dikkat: zamanda geriye gidiyorsun. Öncesinde daha azdı — kazancı çıkar (−)." },
+
+  /* ---- vermenigvuldigen: equal groups ---- */
+  "verm-kisten": {
+    nl: "Gelijke kisten met steeds evenveel erin. Gelijke groepen = keer (×).",
+    en: "Equal crates with the same amount in each. Equal groups = times (×).",
+    tr: "Her kasada aynı sayıda var. Eşit gruplar = çarpma (×)." },
+  "verm-dagen-afstand": {
+    nl: "Elke dag hetzelfde stuk. Zoveel dagen keer dat stuk (×).",
+    en: "The same distance every day. Days times distance (×).",
+    tr: "Her gün aynı mesafe. Gün sayısı çarpı mesafe (×)." },
+  "verm-rijen": {
+    nl: "Rijen met steeds evenveel. Rijen keer wat er in één rij staat (×).",
+    en: "Rows with the same amount each. Rows times one row (×).",
+    tr: "Her sırada aynı sayıda. Sıra sayısı çarpı bir sıra (×)." },
+  "verm-hoofdstukken": {
+    nl: "Elk hoofdstuk evenveel sommen. Hoofdstukken keer sommen (×).",
+    en: "Each chapter has the same number of sums. Chapters times sums (×).",
+    tr: "Her bölümde eşit soru. Bölüm sayısı çarpı soru (×)." },
+  "verm-loten": {
+    nl: "Elk lot kost hetzelfde. Aantal loten keer de prijs (×).",
+    en: "Every ticket costs the same. Tickets times the price (×).",
+    tr: "Her biletin fiyatı aynı. Bilet sayısı çarpı fiyat (×)." },
+  "verm-cola-halve": {
+    nl: "€ 1,50 = 1 euro + 50 cent. Reken de euro's en de halve euro's apart.",
+    en: "€ 1.50 = 1 euro + 50 cents. Count the euros and the half-euros separately.",
+    tr: "€ 1,50 = 1 euro + 50 sent. Euroları ve yarım euroları ayrı hesapla." },
+
+  /* ---- delen: sharing out, or how-many-fit ---- */
+  "deel-eerlijk": {
+    nl: "Eerlijk verdelen over de honden = delen (:).",
+    en: "Sharing fairly among the dogs = dividing (:).",
+    tr: "Köpeklere eşit paylaştırmak = bölme (:)." },
+  "deel-hoeveel-groepen": {
+    nl: "Hoe vaak past een groepje van {b} in {a}? Passen = delen (:).",
+    en: "How many groups of {b} fit into {a}? Fitting = dividing (:).",
+    tr: "{a} içinde {b} kişilik kaç grup var? Sığdırmak = bölme (:)." },
+  "deel-per-stuk": {
+    nl: "Het totaal wordt verdeeld over de kinderen. Per stuk = delen (:).",
+    en: "The total is shared by the children. Each = dividing (:).",
+    tr: "Toplam, çocuklara bölünüyor. Kişi başı = bölme (:)." },
+  "deel-boeken-dozen": {
+    nl: "Alles eerlijk over de dozen. Verdelen = delen (:).",
+    en: "Everything shared over the boxes. Sharing = dividing (:).",
+    tr: "Hepsi kutulara eşit dağıtılıyor. Paylaştırmak = bölme (:)." },
+  "deel-vullen-vol": {
+    nl: "Hoe vaak past {b} in {a}? Alleen de VOLLE doosjes tellen.",
+    en: "How many times does {b} fit into {a}? Only FULL boxes count.",
+    tr: "{b}, {a} içine kaç kez sığar? Sadece DOLU kutular sayılır." },
+  "deel-rest-over": {
+    nl: "Vul eerst zoveel mogelijk volle zakjes. De vraag is wat er daarna OVERBLIJFT.",
+    en: "First fill as many full bags as you can. The question is what is LEFT OVER.",
+    tr: "Önce olabildiğince tam paket yap. Soru, geriye NE KALDIĞI." },
+  "deel-prijs-aantal": {
+    nl: "Hoe vaak past € 2,50 in het totaal? Tip: twee bakjes samen zijn € 5.",
+    en: "How many times does € 2.50 fit into the total? Tip: two portions make € 5.",
+    tr: "€ 2,50 toplamın içine kaç kez sığar? İpucu: iki porsiyon € 5 eder." },
+
+  /* ---- tweestap: two operations, in order ---- */
+  "twee-min-min": {
+    nl: "Twee dingen worden gekocht, allebei eraf. Eerst het één eraf, dan het ander (− −).",
+    en: "Two things are bought, both come off. Take off one, then the other (− −).",
+    tr: "İki şey harcanıyor, ikisi de düşülür. Önce birini, sonra öbürünü çıkar (− −)." },
+  "twee-deel-min": {
+    nl: "Twee stappen: éérst verdelen (:), dán wat opgegeten is eraf (−).",
+    en: "Two steps: FIRST divide (:), THEN take off what was eaten (−).",
+    tr: "İki adım: ÖNCE paylaştır (:), SONRA yeneni çıkar (−)." },
+  "twee-deel-plus": {
+    nl: "Twee stappen: éérst verdelen (:), dán komt er per bakje wat bij (+).",
+    en: "Two steps: FIRST divide (:), THEN some are added to each tub (+).",
+    tr: "İki adım: ÖNCE paylaştır (:), SONRA her kaba ekle (+)." },
+  "twee-bus": {
+    nl: "Bij elke halte stappen er mensen úit. Haal ze er één halte tegelijk af (−).",
+    en: "People get OFF at each stop. Take them off one stop at a time (−).",
+    tr: "Her durakta insanlar iniyor. Durak durak çıkar (−)." },
+  "twee-maal-deel": {
+    nl: "Éérst alle boeken tellen (×), dán over de planken verdelen (:).",
+    en: "FIRST count all the books (×), THEN divide over the shelves (:).",
+    tr: "ÖNCE tüm kitapları say (×), SONRA raflara paylaştır (:)." },
+  "twee-min-deel": {
+    nl: "Éérst wat opgegeten is eraf (−), dán de rest verdelen (:).",
+    en: "FIRST take off what was eaten (−), THEN divide the rest (:).",
+    tr: "ÖNCE yeneni çıkar (−), SONRA kalanı paylaştır (:)." },
+  "twee-verdubbel": {
+    nl: "Verdubbelen = keer 2. Het gebeurt drie keer achter elkaar: vader, oom, opa.",
+    en: "Doubling = times 2. It happens three times in a row: dad, uncle, grandpa.",
+    tr: "İki katı = 2 ile çarp. Üç kez üst üste oluyor: baba, amca, dede." },
+  "twee-korting-deel": {
+    nl: "Eerst de korting eraf (−). En let op: {name} doet zélf ook mee met betalen!",
+    en: "First take the discount off (−). And careful: {name} also pays a share!",
+    tr: "Önce indirimi düş (−). Ve dikkat: {name} de ödemeye katılıyor!" },
+  "twee-koop-twee": {
+    nl: "Twee prijzen, samen afrekenen. Samen = optellen (+).",
+    en: "Two prices, paid together. Together = adding (+).",
+    tr: "İki fiyat, birlikte ödeniyor. Birlikte = toplama (+)." },
+  "kaal-ketting": {
+    nl: "Reken van links naar rechts, één stap tegelijk. Schrijf elke tussenstap op.",
+    en: "Work from left to right, one step at a time. Write down each step.",
+    tr: "Soldan sağa, her seferinde tek işlem. Her ara sonucu not et." },
+  "twee-kassa-drie": {
+    nl: "Eerst alles wat gekocht is optellen (+). Terugkrijgen = betaald min totaal (−).",
+    en: "First add up everything bought (+). Change = paid minus total (−).",
+    tr: "Önce alınanları topla (+). Para üstü = verilen eksi toplam (−)." },
+  "twee-club-ketting": {
+    nl: "Erbij, erbij, eraf — in die volgorde. Eén stap tegelijk.",
+    en: "Join, join, leave — in that order. One step at a time.",
+    tr: "Katılan, katılan, ayrılan — bu sırayla. Adım adım." },
+  "twee-spaar-ketting": {
+    nl: "Erbij, erbij, eraf — in die volgorde. Eén stap tegelijk.",
+    en: "In, in, out — in that order. One step at a time.",
+    tr: "Gelen, gelen, giden — bu sırayla. Adım adım." },
+
+  /* ---- klok ---- */
+  "klok-woord-digitaal": {
+    nl: "'s Middags en 's avonds: tel 12 bij het uur op. En pas op met „half”: half zes is vóór zes.",
+    en: "Afternoon and evening: add 12 to the hour. And careful with \"half past\".",
+    tr: "Öğleden sonra ve akşam: saate 12 ekle. \"Buçuk\"lara dikkat." },
+  "klok-duur-vooruit": {
+    nl: "Tel vooruit via het hele uur: eerst tot het hele uur, dan de rest.",
+    en: "Count on via the full hour: first up to the whole hour, then the rest.",
+    tr: "Tam saate uğrayarak ilerle: önce tam saate kadar, sonra kalanı." },
+  "klok-duur-terug": {
+    nl: "Dit gaat TERUG in de tijd: de aankomst is het einde, jij zoekt het begin.",
+    en: "This goes BACK in time: the arrival is the end, you want the start.",
+    tr: "Bu soru GERİYE gider: varış son, sen başlangıcı arıyorsun." },
+  "klok-hoelang": {
+    nl: "Reken via het hele uur: van begin tot het hele uur, en dan verder tot het einde.",
+    en: "Work via the full hour: start to the whole hour, then on to the end.",
+    tr: "Tam saat üzerinden hesapla: baştan tam saate, oradan sona." },
+  "klok-omrekenen": {
+    nl: "1 uur = 60 minuten. Eerst de uren omrekenen, dan de losse minuten erbij.",
+    en: "1 hour = 60 minutes. Convert the hours first, then add the loose minutes.",
+    tr: "1 saat = 60 dakika. Önce saatleri çevir, sonra kalan dakikaları ekle." },
+  "klok-twee-stappen": {
+    nl: "Twee stukken tijd achter elkaar. Tel ze eerst samen, en tel dan pas verder op de klok.",
+    en: "Two stretches of time, one after the other. Add them first, then count on.",
+    tr: "Peş peşe iki süre. Önce ikisini topla, sonra saatte ilerle." },
+
+  /* ---- verrassing ---- */
+  "verr-briefjes": {
+    nl: "Reken per soort: eerst de honderdjes, dan de tientjes, dan de losse euro's.",
+    en: "Count per kind: hundreds first, then tens, then loose euros.",
+    tr: "Tür tür say: önce yüzlükler, sonra onluklar, sonra tek eurolar." },
+  "verr-rekening": {
+    nl: "Drie bedragen bij elkaar. Tel eerst de hele euro's, dan de centen.",
+    en: "Three amounts together. Add the whole euros first, then the cents.",
+    tr: "Üç tutar toplanacak. Önce tam euroları, sonra sentleri topla." },
+  "verr-welkesom": [
+    { nl: "De zieke kinderen zijn NIET op school. Gaan ze erbij of eraf?",
+      en: "The sick children are NOT at school. Do they come on or off?",
+      tr: "Hasta çocuklar okulda DEĞİL. Eklenir mi, çıkarılır mı?" },
+    { nl: "Er komen stickers BIJ. Komt er dan een plus of een min?",
+      en: "Stickers are ADDED. Does that make a plus or a minus?",
+      tr: "Çıkartmalar EKLENİYOR. Artı mı olur, eksi mi?" } ],
+  "verr-schatten": {
+    nl: "Eerst gewoon uitrekenen, daarna afronden op het dichtstbijzijnde honderdtal.",
+    en: "Work it out exactly first, then round to the nearest hundred.",
+    tr: "Önce normal hesapla, sonra en yakın yüzlüğe yuvarla." },
+  "verr-meten-cm": {
+    nl: "Zet eerst alles in centimeters: 1 meter = 100 cm. Dan pas eraf halen.",
+    en: "Put everything in centimetres first: 1 metre = 100 cm. Then take off.",
+    tr: "Önce her şeyi santimetreye çevir: 1 metre = 100 cm. Sonra çıkar." },
+  "verr-gewicht": [
+    { nl: "Gelijke pakken = keer (×). Aantal pakken keer het gewicht van één pak.",
+      en: "Equal bags = times (×). Bags times the weight of one bag.",
+      tr: "Eşit paketler = çarpma (×). Paket sayısı çarpı bir paketin ağırlığı." },
+    { nl: "1 kilo = 1000 gram. Hoeveel keer 1000 is dat hier?",
+      en: "1 kilo = 1000 grams. How many thousands is that here?",
+      tr: "1 kilo = 1000 gram. Burada kaç kez 1000 var?" } ],
+  "verr-prijslijst": {
+    nl: "Twee soorten apart uitrekenen: eerst alle pennen (×), dan alle schriften (×), dan samen (+).",
+    en: "Work out each kind on its own: all pens (×), all notebooks (×), then together (+).",
+    tr: "İki türü ayrı hesapla: önce kalemler (×), sonra defterler (×), sonra topla (+)." }
+};

@@ -340,6 +340,7 @@ function snapQ(q) {
     failed: !!q.failed,
     skipped: !!q.skipped,
     booked: !!q.booked,            // already counted in today's record
+    hinted: !!q.hinted,            // the 💡 was used on this som
     fixed: !!q.fixed,              // put right on the second chance
     explained: !!q.explained,      // second chance also went wrong; uitleg shown
     chosen2: q.chosen2 === undefined ? null : q.chosen2
@@ -552,6 +553,14 @@ function renderQuestion() {
     box.appendChild(b);
   });
 
+  // the 💡: one line that helps the som be understood, never the answer.
+  // The flag MUST be a real boolean: classList.toggle treats undefined as
+  // "no second argument" and flip-flops the class on every render.
+  const hintText = Engine.hint(q, LANG);
+  const showHint = !!hintText && (!session.review || correcting);
+  $("btn-hint").classList.toggle("hidden", !showHint);
+  $("hint-bubble").classList.add("hidden");
+
   if (correcting) {
     showExplainBox(`<p class="fix-hint">${esc(t("fix_hint"))}</p>`, false);
   } else if (session.review && q.explained) {
@@ -591,12 +600,40 @@ function answer(i, btn) {
   q.correctFirst = correct;
   q.chosen = i;
   btn.classList.add(correct ? "correct" : "wrong");
-  if (!correct) q.failed = true;
-  else q.solved = true;
+  if (!correct) {
+    q.failed = true;
+    // the day's shock absorber: this soort gets a notch easier, and the next
+    // sommen come from the same soort so the footing comes back right away
+    Dial.wrong(data, q.cat);
+    comfortSwap(q.cat);
+  } else {
+    q.solved = true;
+    Dial.right(data, q.cat);   // two right in a row wind the notch back up
+  }
 
   renderTaskMarks();
   Live.push("task");
   setTimeout(advance, correct ? 600 : 1100);
+}
+
+/* Right after a fout, the next one or two UNSHOWN sommen are quietly swapped
+   for fresh ones of the same soort at the dial's new, gentler level. The som
+   that was about to come simply never appears (unshown, so not spent), and in
+   its place comes one the child can win — that is where the confidence comes
+   back. Only during the linear first sweep; the report card is its own world. */
+function comfortSwap(cat) {
+  if (!session.firstPass || session.viewOne != null) return;
+  const avoid = new Set(session.questions.concat(session.pool || []).map(q => Engine.sig(q)));
+  let swapped = 0;
+  for (let k = session.idx + 1; k < session.queue.length && swapped < 2; k++) {
+    const slot = session.queue[k];
+    if (finished(session.questions[slot]) || session.questions[slot].skipped) continue;
+    const fresh = Engine.oneFrom(cat, data, avoid);
+    if (!fresh) break;
+    avoid.add(Engine.sig(fresh));
+    session.questions[slot] = fresh;
+    swapped++;
+  }
 }
 
 /* The second chance, on the report card. The wrong pick stands there in red;
@@ -633,8 +670,39 @@ function secondChance(i, btn) {
 /* A correction has to outlive this screen: into the running opdracht if there
    still is one, into the day's report card once the opdracht is done. */
 function persistCorrection() {
-  if (session.banked) writeReport();
-  else saveActive();
+  if (session.banked) {
+    maybeGrantFloor();
+    writeReport();
+  } else saveActive();
+}
+
+/* The floor under a hard day. Four or more fout earns no speeltijd from the
+   tiers — but a child who finished the whole opdracht AND went over every
+   fout on the report card has done the real work, and gets three minutes for
+   it. Once per opdracht, remembered in the report so it survives a reload. */
+function maybeGrantFloor() {
+  if (session.floorGiven) return;
+  const qs = session.questions;
+  if (!qs.every(finished)) return;
+  if (qs.filter(q => q.failed).length < 4) return;         // the tiers paid already
+  if (qs.some(q => q.failed && !q.fixed && !q.explained)) return;
+  session.floorGiven = true;
+  session.rewardMin = (session.rewardMin || 0) + Reward.grantFloor(data);
+}
+
+function toggleHint() {
+  const q = currentQ();
+  const bubble = $("hint-bubble");
+  if (!bubble.classList.contains("hidden")) { bubble.classList.add("hidden"); return; }
+  const text = Engine.hint(q, LANG);
+  if (!text) return;
+  bubble.textContent = "💡 " + text;
+  bubble.classList.remove("hidden");
+  if (!q.hinted) {
+    q.hinted = true;                 // quietly noted, so the parent can see
+    if (session.banked) writeReport(); else saveActive();
+    Live.push("task");
+  }
 }
 
 function showExplainBox(html, withButton) {
@@ -691,7 +759,14 @@ function advance() {
 function maybeExtend() {
   const add = storedExtension(session);
   if (!add) return false;
-  const extra = session.pool.splice(0, add);
+  // the reserve was dealt at the morning's level; the afternoon may need a
+  // gentler hand, so every extra som is dealt again at the dial's level now
+  const avoid = new Set(session.questions.concat(session.pool).map(q => Engine.sig(q)));
+  const extra = session.pool.splice(0, add).map(q => {
+    const f = Engine.refresh(q, data, avoid);
+    avoid.add(Engine.sig(f));
+    return f;
+  });
   const base = session.questions.length;
   extra.forEach((q, i) => { session.questions.push(q); session.queue.push(base + i); });
   // land on the first som that still needs answering. The sweep leaves idx at
@@ -789,6 +864,7 @@ function writeReport() {
     date: todayStr(),
     score: session.score || null,
     lastSec: session.lastSec != null ? session.lastSec : null,
+    floor: !!session.floorGiven,
     questions: session.questions.map(snapQ)
   };
   Store.save(data);
@@ -804,6 +880,7 @@ function openReport() {
     idx: r.questions.length,
     firstPass: false,
     banked: true, rewarded: true,          // the day is already booked and paid
+    floorGiven: !!r.floor,
     score: r.score, lastSec: r.lastSec,
     levelUp: null, rewardMin: 0
   };
@@ -841,7 +918,8 @@ function renderResult() {
     const cell = document.createElement("button");
     cell.className = "result-tile " + state;
     cell.title = t({ ok: "tile_done", ok2: "tile_second", fix: "tile_fixed",
-                     exp: "tile_explained", no: "tile_wrong", todo: "tile_todo" }[state]);
+                     exp: "tile_explained", no: "tile_wrong", todo: "tile_todo" }[state]) +
+                 (q.hinted ? " · 💡" : "");
     cell.innerHTML = `<span class="num">${i + 1}</span><span class="mark">${icon}</span>`;
     cell.addEventListener("click", () => openQuestion(i));
     grid.appendChild(cell);
@@ -1427,6 +1505,7 @@ document.addEventListener("DOMContentLoaded", () => {
   $("btn-retry").addEventListener("click", startRetry);
   $("btn-report").addEventListener("click", openReport);
   $("btn-gotit").addEventListener("click", backToResult);
+  $("btn-hint").addEventListener("click", toggleHint);
 
   // speeltijd
   $("btn-play-result").addEventListener("click", openGames);

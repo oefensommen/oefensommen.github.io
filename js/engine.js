@@ -290,7 +290,7 @@ const Engine = {
     const taken = new Set();                 // the ones picked just now
     let repeats = 0;
 
-    const fromTpl = (tpl) => this.freshFrom(tpl, Levels.of(data), seen, taken);
+    const fromTpl = (tpl) => this.freshFrom(tpl, Dial.eff(data, tpl.cat), seen, taken);
 
     // every category carries its own level, so being good at tables does not
     // make the clock questions harder
@@ -309,7 +309,7 @@ const Engine = {
         // better than an opdracht that comes up short — but twice in the SAME
         // opdracht is never acceptable, so keep drawing until it is at least
         // not one of today's.
-        const level = Levels.of(data);
+        const level = Dial.eff(data, tpl.cat);
         for (let i = 0; i < 200; i++) {
           q = this.makeQuestion(tpl, level);
           if (!taken.has(this.sig(q))) break;
@@ -354,6 +354,41 @@ const Engine = {
     Store.save(data);
 
     return this.shuffle(questions);
+  },
+
+  /* One fresh som of a category at the dial's current level — used to slip a
+     couple of winnable sommen in right after a fout. avoid = the sigs already
+     in this opdracht, so the swap cannot create a duplicate. */
+  oneFrom(cat, data, avoid) {
+    const seen = new Set([...(data.seen || []), ...avoid]);
+    const taken = new Set();
+    const tried = [];
+    for (let k = 0; k < 8; k++) {
+      const tpl = this.pickTemplate(cat, data, tried);
+      tried.push(tpl.id);
+      const q = this.freshFrom(tpl, Dial.eff(data, cat), seen, taken);
+      if (q) return q;
+    }
+    return null;
+  },
+
+  /* The same som slot, dealt again at the dial's current level. Used when the
+     reserve sommen finally come into play: they were built at the morning's
+     level, and the afternoon may call for a gentler one. */
+  refresh(q, data, avoid) {
+    const tpl = TEMPLATES.find(tp => tp.id === q.tplId);
+    if (!tpl) return q;
+    const seen = new Set([...(data.seen || []), ...avoid]);
+    return this.freshFrom(tpl, Dial.eff(data, tpl.cat), seen, new Set()) || q;
+  },
+
+  /* One line that helps the som be UNDERSTOOD — which operation and why —
+     without giving the answer away. */
+  hint(q, lang) {
+    let h = (typeof HINTS !== "undefined") ? HINTS[q.tplId] : null;
+    if (Array.isArray(h)) h = h[q.variantIdx] || h[0];
+    if (!h) return "";
+    return this._render(h[lang] || h.nl, q, lang, q.vars);
   },
 
   /* This som has now been in front of the child, so it is asked and will never
