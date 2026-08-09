@@ -871,3 +871,16 @@ input:focus { border-color: var(--accent); }
   color: var(--muted); font-size: 1rem; padding: 2px 4px; line-height: 1;
 }
 .lesson-undo:hover { color: var(--red); }
+
+/* how many 💡 are left, and what it looks like when there are none */
+.hint-count {
+  background: #f0e2ae; color: #7a5c0d;
+  border-radius: 999px; min-width: 17px; padding: 0 5px;
+  font-size: .72rem; line-height: 17px; text-align: center;
+}
+.hint-count:empty { display: none; }
+.hint-btn.spent {
+  border-style: solid; border-color: var(--line);
+  background: var(--bg); color: var(--muted);
+  cursor: default; opacity: .65;
+}

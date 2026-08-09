@@ -368,6 +368,7 @@ function snapshotActive() {
     paused: session.pausedSec != null,
     lastSec: session.lastSec || null,
     banked: !!session.banked,          // whether the score has already been booked
+    hintsUsed: session.hintsUsed || 0,
     score: session.score || null,
     levelUp: session.levelUp || null,
     rewardMin: session.rewardMin || 0,
@@ -472,6 +473,7 @@ function resumeActive() {
     round: a.round || 1,
     lastSec: a.lastSec,
     banked: !!a.banked,
+    hintsUsed: a.hintsUsed || 0,
     score: a.score,
     levelUp: a.levelUp || null,
     rewardMin: a.rewardMin || 0,
@@ -561,12 +563,8 @@ function renderQuestion() {
     box.appendChild(b);
   });
 
-  // the 💡: one line that helps the som be understood, never the answer.
-  // The flag MUST be a real boolean: classList.toggle treats undefined as
-  // "no second argument" and flip-flops the class on every render.
-  const hintText = Engine.hint(q, LANG);
-  const showHint = !!hintText && (!session.review || correcting);
-  $("btn-hint").classList.toggle("hidden", !showHint);
+  // the 💡: help with understanding the som, never the answer, and rationed
+  renderHintButton(q);
   $("hint-bubble").classList.add("hidden");
 
   if (correcting) {
@@ -716,19 +714,56 @@ function maybeGrantFloor() {
   session.rewardMin = (session.rewardMin || 0) + Reward.grantFloor(data);
 }
 
+/* One 💡 per five sommen, earned as the opdracht goes on rather than handed
+   over all at once. A child who could ask for help on every som never has to
+   read the story properly; a child with one hint in their pocket spends it on
+   the som that really has them stuck. The count is per opdracht and travels
+   with it, so switching devices does not top it up. */
+const HINTS_PER = 5;
+
+function hintsAllowed() {
+  if (!session) return 0;
+  const shown = Math.min(session.idx, session.queue.length);
+  return Math.floor(shown / HINTS_PER) + 1;
+}
+
+function hintsLeft() {
+  return Math.max(0, hintsAllowed() - (session.hintsUsed || 0));
+}
+
 function toggleHint() {
   const q = currentQ();
   const bubble = $("hint-bubble");
   if (!bubble.classList.contains("hidden")) { bubble.classList.add("hidden"); return; }
   const text = Engine.hint(q, LANG);
   if (!text) return;
+  // already open on this som once: reading it again is free
+  if (!q.hinted && hintsLeft() <= 0) return;
+
   bubble.textContent = "💡 " + text;
   bubble.classList.remove("hidden");
   if (!q.hinted) {
     q.hinted = true;                 // quietly noted, so the parent can see
+    session.hintsUsed = (session.hintsUsed || 0) + 1;
+    renderHintButton(q);
     if (session.banked) writeReport(); else saveActive();
     Live.push("task");
   }
+}
+
+/* the 💡 itself: how many are left, and whether it can be pressed at all */
+function renderHintButton(q) {
+  const btn = $("btn-hint");
+  const text = Engine.hint(q, LANG);
+  const inTask = !session.review;
+  if (!text || !inTask) { btn.classList.add("hidden"); return; }
+  const left = hintsLeft();
+  const usable = q.hinted || left > 0;
+  btn.classList.remove("hidden");
+  btn.classList.toggle("spent", !usable);
+  btn.disabled = !usable;
+  $("hint-count").textContent = q.hinted ? "" : String(left);
+  btn.title = usable ? "" : t("hint_none").replace("{n}", HINTS_PER);
 }
 
 function showExplainBox(html, withButton) {
