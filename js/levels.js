@@ -73,6 +73,32 @@ const Dial = {
   }
 };
 
+/* Wat de ouder erover te zeggen heeft.
+
+   De app ziet DAT een som fout ging, niet waarom. Een ouder die ernaast zit
+   ziet dat wel: deze soort som is nog te veel gevraagd, die andere kan het
+   kind allang. Elk oordeel schuift dat ene sjabloon een stap op, tot twee
+   stappen, en dat blijft staan tot de ouder er weer aan draait.
+
+   Los van de dagknop: de knop dempt vandaag, dit verandert het sjabloon zelf.
+   Ze tellen bij elkaar op, en samen kunnen ze niet verder dan de schaal reikt. */
+const Tuning = {
+  of(data, tplId) {
+    const t = (data.tuning || {})[tplId];
+    const adj = t && typeof t.adj === "number" ? t.adj : 0;
+    return Math.max(-2, Math.min(2, adj));
+  },
+
+  /* Everything the parent has marked, newest first — the lessons learned. */
+  list(data) {
+    const tun = data.tuning || {};
+    return Object.keys(tun)
+      .map(id => ({ id, adj: this.of(data, id), at: tun[id].at || 0 }))
+      .filter(x => x.adj !== 0)
+      .sort((a, b) => b.at - a.at);
+  }
+};
+
 const Levels = {
   MAX: 5,
   DAYS_NEEDED: 5,          // evenveel dagen omhoog als omlaag

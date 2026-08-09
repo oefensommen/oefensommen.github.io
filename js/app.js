@@ -143,6 +143,7 @@ function setLang(lang) {
   if (!$("screen-games").classList.contains("hidden")) renderGames();
   if (!$("screen-calendar").classList.contains("hidden")) renderCalendar();
   if (!$("screen-stats").classList.contains("hidden")) renderStats();
+  if (!$("screen-sommen").classList.contains("hidden")) renderSommen();
   if (!$("screen-mirror").classList.contains("hidden")) Live.rerender();
 }
 
@@ -631,14 +632,32 @@ function answer(i, btn) {
 function comfortSwap(cat) {
   if (!session.firstPass || session.viewOne != null) return;
   const avoid = new Set(session.questions.concat(session.pool || []).map(q => Engine.sig(q)));
-  let swapped = 0;
-  for (let k = session.idx + 1; k < session.queue.length && swapped < 2; k++) {
+
+  // the open slots still ahead, in order
+  const slots = [];
+  for (let k = session.idx + 1; k < session.queue.length; k++) {
     const slot = session.queue[k];
-    if (finished(session.questions[slot]) || session.questions[slot].skipped) continue;
+    if (!finished(session.questions[slot]) && !session.questions[slot].skipped) slots.push(slot);
+  }
+  if (!slots.length) return;
+
+  // A breather first. Coming straight back with the same soort right after a
+  // fout reads as being kept behind on it — and the child has not had a moment
+  // to shake the mistake off. So the very next som is deliberately something
+  // else; only after that do the gentler sommen of the difficult soort come.
+  const others = CATS.filter(c => c !== cat);
+  if (session.questions[slots[0]].cat === cat) {
+    const away = Engine.oneFrom(others[Math.floor(Math.random() * others.length)], data, avoid);
+    if (away) { avoid.add(Engine.sig(away)); session.questions[slots[0]] = away; }
+  }
+
+  // then up to two of the difficult soort, at the dial's gentler level
+  let swapped = 0;
+  for (let k = 1; k < slots.length && swapped < 2; k++) {
     const fresh = Engine.oneFrom(cat, data, avoid);
     if (!fresh) break;
     avoid.add(Engine.sig(fresh));
-    session.questions[slot] = fresh;
+    session.questions[slots[k]] = fresh;
     swapped++;
   }
 }
@@ -1023,6 +1042,102 @@ function startRetry() {
   saveActive();                    // the correction round is resumable too
   renderQuestion();
   show("screen-task");
+}
+
+/* ---------- sommen: the parent's say over the questions themselves ----------
+
+   The app can see THAT a som went wrong. It cannot see whether the child was
+   beaten by the arithmetic, by the story, or simply by a bad morning. A parent
+   sitting beside them can. Every som of today can be marked too hard or too
+   easy, and each verdict shifts that SOORT som — not just this one — a step
+   for good. What has been marked collects at the bottom: the lessons learned,
+   with a way to take any of them back. */
+function todaysQuestions() {
+  const r = data.report;
+  if (r && r.date === todayStr() && r.questions && r.questions.length) return r.questions;
+  const a = data.active;
+  if (a && a.date === todayStr() && a.questions) return a.questions.filter(q => q.chosen != null || finished(q));
+  return [];
+}
+
+function renderSommen() {
+  const qs = todaysQuestions();
+  const list = $("sommen-list");
+  $("sommen-sub").textContent = qs.length
+    ? t("sommen_sub").replace("{n}", qs.length)
+    : t("sommen_none");
+  list.innerHTML = "";
+
+  qs.forEach((q, i) => {
+    const state = q.correctFirst ? "ok" : (q.failed ? "no" : "todo");
+    const icon = { ok: "✅", no: "❌", todo: "⏭" }[state];
+    const adj = Tuning.of(data, q.tplId);
+    const row = document.createElement("div");
+    row.className = "som-row";
+    row.innerHTML =
+      `<div class="som-head">
+         <span class="som-n">${icon} ${i + 1}</span>
+         <span class="som-cat">${esc(t("cats")[q.cat] || q.cat)}</span>
+         ${q.hinted ? `<span class="som-hint">💡</span>` : ""}
+       </div>
+       <p class="som-text">${esc(Engine.text(q, LANG))}</p>
+       <div class="som-rate">
+         <button class="rate-btn hard${adj < 0 ? " on" : ""}" data-tpl="${esc(q.tplId)}" data-v="hard">😓 ${esc(t("too_hard"))}</button>
+         <button class="rate-btn easy${adj > 0 ? " on" : ""}" data-tpl="${esc(q.tplId)}" data-v="easy">😀 ${esc(t("too_easy"))}</button>
+         ${adj ? `<span class="rate-now">${esc(adjLabel(adj))}</span>` : ""}
+       </div>`;
+    list.appendChild(row);
+  });
+
+  list.querySelectorAll(".rate-btn").forEach(b =>
+    b.addEventListener("click", () => rateSom(b.dataset.tpl, b.dataset.v)));
+
+  renderLessons();
+}
+
+function adjLabel(adj) {
+  return (adj < 0 ? t("tuned_easier") : t("tuned_harder")).replace("{n}", Math.abs(adj));
+}
+
+function renderLessons() {
+  const box = $("lessons");
+  const marked = Tuning.list(data);
+  if (!marked.length) { box.innerHTML = ""; box.classList.add("hidden"); return; }
+  box.classList.remove("hidden");
+  box.innerHTML =
+    `<h3>${esc(t("lessons_title"))}</h3>
+     <p class="lessons-sub">${esc(t("lessons_sub"))}</p>` +
+    marked.map(m => {
+      const tpl = TEMPLATES.find(x => x.id === m.id);
+      const cat = tpl ? (t("cats")[tpl.cat] || tpl.cat) : m.id;
+      const sample = tpl ? sampleText(tpl) : m.id;
+      return `<div class="lesson">
+                <div class="lesson-what"><b>${esc(cat)}</b><span>${esc(sample)}</span></div>
+                <span class="lesson-adj ${m.adj < 0 ? "easier" : "harder"}">${esc(adjLabel(m.adj))}</span>
+                <button class="lesson-undo" data-tpl="${esc(m.id)}" title="${esc(t("undo"))}">✕</button>
+              </div>`;
+    }).join("");
+  box.querySelectorAll(".lesson-undo").forEach(b =>
+    b.addEventListener("click", () => rateSom(b.dataset.tpl, null)));
+}
+
+/* the bare phrasing of a template, tokens and all, shortened — enough for the
+   parent to recognise which som it was without generating a whole new one */
+function sampleText(tpl) {
+  const s = (tpl.variants[0][LANG] || tpl.variants[0].nl)
+    .replace(/\{[a-zA-Z_0-9]+\}/g, "…")
+    .replace(/^…\s*/, "");                    // never open on an ellipsis
+  return s.length > 74 ? s.slice(0, 72) + "…" : s;
+}
+
+async function rateSom(tplId, verdict) {
+  const { u, p } = Store.creds();
+  if (!u || !p || !Store.isParent()) return;
+  try {
+    const fresh = await Cloud.setTuning(u, p, tplId, verdict);
+    if (fresh) { data = fresh; Store.saveLocal(data); }
+    renderSommen();
+  } catch (e) { /* offline: leave the screen as it was */ }
 }
 
 /* ---------- calendar ---------- */
@@ -1514,6 +1629,8 @@ document.addEventListener("DOMContentLoaded", () => {
   $("btn-report").addEventListener("click", openReport);
   $("btn-gotit").addEventListener("click", backToResult);
   $("btn-hint").addEventListener("click", toggleHint);
+  $("btn-sommen").addEventListener("click", () => { renderSommen(); show("screen-sommen"); });
+  $("sommen-back").addEventListener("click", goHome);
 
   // speeltijd
   $("btn-play-result").addEventListener("click", openGames);
@@ -1563,4 +1680,5 @@ async function refreshFromCloud() {
   if (isOn("screen-home")) renderHome();
   else if (isOn("screen-calendar")) renderCalendar();
   else if (isOn("screen-stats")) renderStats();
+  else if (isOn("screen-sommen")) renderSommen();
 }

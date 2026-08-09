@@ -42,5 +42,10 @@ const Cloud = {
      the child's whole record back, revision and all. */
   setDayMark(u, p, d, colour, note) {
     return this.rpc("set_day_mark", { u, p, d, colour, note });
+  },
+
+  /* the parent says a soort som is too hard or too easy; it shifts one step */
+  setTuning(u, p, tpl, verdict) {
+    return this.rpc("set_tuning", { u, p, tpl, verdict });
   }
 };

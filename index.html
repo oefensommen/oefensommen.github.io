@@ -4,8 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <title>Oefensommen</title>
-  <link rel="stylesheet" href="css/style.css?v=202608091148">
-  <link rel="stylesheet" href="css/games.css?v=202608091148">
+  <link rel="stylesheet" href="css/style.css?v=202608092014">
+  <link rel="stylesheet" href="css/games.css?v=202608092014">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧮</text></svg>">
 </head>
 <body>
@@ -79,6 +79,7 @@
         <div id="nav-row" class="nav-row hidden">
           <button id="btn-calendar" class="btn ghost">📅 <span data-i18n="calendar">Kalender</span></button>
           <button id="btn-stats" class="btn ghost">📊 <span data-i18n="stats">Overzicht</span></button>
+          <button id="btn-sommen" class="btn ghost">📝 <span data-i18n="sommen">Sommen</span></button>
         </div>
       </div>
     </section>
@@ -159,6 +160,20 @@
       </div>
     </section>
 
+    <!-- SOMMEN: the parent rates today's sommen, and sees what was learned -->
+    <section id="screen-sommen" class="screen hidden">
+      <div class="card">
+        <div class="cal-head">
+          <button id="sommen-back" class="link-btn">←</button>
+          <h2>📝 <span data-i18n="sommen">Sommen</span></h2>
+          <span></span>
+        </div>
+        <p id="sommen-sub" class="status"></p>
+        <div id="sommen-list"></div>
+        <div id="lessons" class="lessons"></div>
+      </div>
+    </section>
+
     <!-- COUNTDOWN -->
     <section id="screen-count" class="screen hidden">
       <div class="count-stage">
@@ -227,17 +242,17 @@
 
   <div id="confetti"></div>
 
-  <script src="js/i18n.js?v=202608091148"></script>
-  <script src="js/celebrate.js?v=202608091148"></script>
-  <script src="js/config.js?v=202608091148"></script>
-  <script src="js/cloud.js?v=202608091148"></script>
-  <script src="js/storage.js?v=202608091148"></script>
-  <script src="js/templates.js?v=202608091148"></script>
-  <script src="js/explain.js?v=202608091148"></script>
-  <script src="js/levels.js?v=202608091148"></script>
-  <script src="js/engine.js?v=202608091148"></script>
-  <script src="js/live.js?v=202608091148"></script>
-  <script src="js/reward.js?v=202608091148"></script>
-  <script src="js/app.js?v=202608091148"></script>
+  <script src="js/i18n.js?v=202608092014"></script>
+  <script src="js/celebrate.js?v=202608092014"></script>
+  <script src="js/config.js?v=202608092014"></script>
+  <script src="js/cloud.js?v=202608092014"></script>
+  <script src="js/storage.js?v=202608092014"></script>
+  <script src="js/templates.js?v=202608092014"></script>
+  <script src="js/explain.js?v=202608092014"></script>
+  <script src="js/levels.js?v=202608092014"></script>
+  <script src="js/engine.js?v=202608092014"></script>
+  <script src="js/live.js?v=202608092014"></script>
+  <script src="js/reward.js?v=202608092014"></script>
+  <script src="js/app.js?v=202608092014"></script>
 </body>
 </html>

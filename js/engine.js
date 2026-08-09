@@ -290,7 +290,7 @@ const Engine = {
     const taken = new Set();                 // the ones picked just now
     let repeats = 0;
 
-    const fromTpl = (tpl) => this.freshFrom(tpl, Dial.eff(data, tpl.cat), seen, taken);
+    const fromTpl = (tpl) => this.freshFrom(tpl, this.levelFor(tpl, data), seen, taken);
 
     // every category carries its own level, so being good at tables does not
     // make the clock questions harder
@@ -309,7 +309,7 @@ const Engine = {
         // better than an opdracht that comes up short — but twice in the SAME
         // opdracht is never acceptable, so keep drawing until it is at least
         // not one of today's.
-        const level = Dial.eff(data, tpl.cat);
+        const level = this.levelFor(tpl, data);
         for (let i = 0; i < 200; i++) {
           q = this.makeQuestion(tpl, level);
           if (!taken.has(this.sig(q))) break;
@@ -356,6 +356,13 @@ const Engine = {
     return this.shuffle(questions);
   },
 
+  /* The level a given template is built at: the day's dial for its soort, plus
+     whatever the parent said about this particular som. Clamped to the scale,
+     comfort bands included. */
+  levelFor(tpl, data) {
+    return Math.max(-1, Math.min(5, Dial.eff(data, tpl.cat) + Tuning.of(data, tpl.id)));
+  },
+
   /* One fresh som of a category at the dial's current level — used to slip a
      couple of winnable sommen in right after a fout. avoid = the sigs already
      in this opdracht, so the swap cannot create a duplicate. */
@@ -366,7 +373,7 @@ const Engine = {
     for (let k = 0; k < 8; k++) {
       const tpl = this.pickTemplate(cat, data, tried);
       tried.push(tpl.id);
-      const q = this.freshFrom(tpl, Dial.eff(data, cat), seen, taken);
+      const q = this.freshFrom(tpl, this.levelFor(tpl, data), seen, taken);
       if (q) return q;
     }
     return null;
@@ -379,7 +386,7 @@ const Engine = {
     const tpl = TEMPLATES.find(tp => tp.id === q.tplId);
     if (!tpl) return q;
     const seen = new Set([...(data.seen || []), ...avoid]);
-    return this.freshFrom(tpl, Dial.eff(data, tpl.cat), seen, new Set()) || q;
+    return this.freshFrom(tpl, this.levelFor(tpl, data), seen, new Set()) || q;
   },
 
   /* One line that helps the som be UNDERSTOOD — which operation and why —
