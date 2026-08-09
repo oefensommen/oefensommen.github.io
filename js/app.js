@@ -123,8 +123,15 @@ function toggleLangMenu() {
   $("lang-current").setAttribute("aria-expanded", String(opening));
 }
 
+/* The parent reads everything in English unless they picked otherwise; the
+   choice is remembered per device. The child is untouched — always Dutch. */
+function applyRoleLang() {
+  if (Store.isParent()) setLang(localStorage.getItem("oefensommen_plang") || "en");
+}
+
 function setLang(lang) {
   LANG = lang;
+  if (Store.isParent()) localStorage.setItem("oefensommen_plang", lang);
   applyI18n();
   renderLangPicker();
   closeLangMenu();
@@ -1307,6 +1314,7 @@ async function tryLogin() {
     $("login-error").classList.add("hidden");
     data = Store.load();                    // may have just been merged with the cloud
     openDoor(() => {
+      applyRoleLang();               // the parent lands in their own language
       goHome();
       if (Store.isParent()) startParentWatch();
     });
@@ -1537,6 +1545,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // entry
   if (Store.isLoggedIn()) {
+    applyRoleLang();
     goHome();
     refreshFromCloud();
     if (Store.isParent()) startParentWatch();
