@@ -31,19 +31,22 @@ const Reward = {
     return (data && data.days && data.days[todayStr()]) || null;
   },
 
-  /* Called the moment an opdracht is finished. Every finished opdracht earns
-     its own speeltijd on its own score, so a day that started badly can still
-     be turned around by sitting down and doing another twenty properly. The
-     minutes go into one pot for the day, which is what the games spend from.
-     Returns the minutes just earned. */
-  grant(data, correct, total) {
+  /* What a score is worth, before anything has been paid out. */
+  deserved(correct, total) { return this.minutesForScore(correct, total); },
+
+  /* Put minutes into the day's pot. Every finished opdracht earns its own
+     speeltijd on its own score, so a day that started badly can still be
+     turned around — and a fout put right afterwards tops the same opdracht up
+     rather than starting a second one. */
+  top(data, minutes) {
     const day = this._today(data);
-    if (!day) return 0;
-    const min = this.minutesForScore(correct, total);
+    if (!day || minutes <= 0) return 0;
     if (!day.reward) day.reward = { sec: 0, used: 0 };
-    day.reward.sec += min * 60;
-    return min;
+    day.reward.sec += minutes * 60;
+    return minutes;
   },
+
+  grant(data, correct, total) { return this.top(data, this.deserved(correct, total)); },
 
   /* The floor under a hard day: finishing the whole opdracht and going over
      every fout on the report card is worth three minutes, even when the score

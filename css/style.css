@@ -884,3 +884,13 @@ input:focus { border-color: var(--accent); }
   background: var(--bg); color: var(--muted);
   cursor: default; opacity: .65;
 }
+
+/* the parent's copy of a day's report card */
+.day-pill.fix { color: #8a6a11; background: #fdf0d5; border-color: #ecd699; }
+.day-run { font-size: .78rem; font-weight: 700; color: var(--muted); margin: 12px 0 4px; }
+.day-aschild {
+  margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--line);
+  font-size: .84rem; color: var(--muted); font-style: italic;
+}
+.cal-detail .result-grid { margin: 10px 0 14px; gap: 7px; }
+.cal-detail .result-tile { animation: none; cursor: default; }

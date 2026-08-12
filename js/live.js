@@ -20,12 +20,14 @@ const Live = {
   marksOf(questions) {
     return questions.map(q =>
       q.correctFirst ? "ok"                   // right first time
-        : (q.solved ? "ok2"                   // (legacy) right on a later go
-          : (q.failed
-            ? (q.fixed ? "fix"                // wrong, put right on the second chance
-              : (q.explained ? "exp"          // wrong twice; the uitleg was shown
-                : "no"))                      // wrong, not yet gone over
-            : (q.skipped ? "skip" : ""))));   // "" = not reached yet
+        : (q.fixed ? "fix"                    // wrong, then put right — good, and
+                                              // shown as such to the child; the
+                                              // parent's mirror keeps the ✔️
+          : (q.solved ? "ok2"                 // (legacy) right on a later go
+            : (q.failed
+              ? (q.explained ? "exp"          // wrong twice; the uitleg was shown
+                : "no")                       // wrong, not yet gone over
+              : (q.skipped ? "skip" : "")))));  // "" = not reached yet
   },
 
   snapshot(screen, extra) {
@@ -130,8 +132,12 @@ const Live = {
   /* Shared by both sides: the child sees it beside the som it is working on,
      the parent sees the same thing in the mirror. `at` is the question being
      looked at, counted from zero. */
-  marksPanelHTML(marks, at) {
+  /* forParent keeps the ✔️ that tells a som put right apart from one that was
+     right straight away. The child is shown no such difference — a fout they
+     corrected themselves is simply good. */
+  marksPanelHTML(marks, at, forParent) {
     if (!marks || !marks.length) return "";
+    if (!forParent) marks = marks.map(m => m === "fix" ? "ok" : m);
     const icon = { ok: "✅", ok2: "✔️", fix: "✔️", exp: "💡", no: "❌", skip: "⏭" };
     const tiles = marks.map((m, i) =>
       `<div class="mark-cell ${m || "open"}${i === at ? " here" : ""}">` +
@@ -140,14 +146,14 @@ const Live = {
     return `<div class="mark-grid">${tiles}</div>
             <div class="mark-tally">
               <span>✅ ${count("ok")}</span>
-              <span>✔️ ${count("ok2")}</span>
-              <span>❌ ${count("no")}</span>
+              ${forParent ? `<span>✔️ ${count("fix")}</span>` : ""}
+              <span>❌ ${count("no") + count("exp")}</span>
               <span>⏭ ${count("skip")}</span>
             </div>`;
   },
 
   marksPanel(state) {
-    const html = this.marksPanelHTML(state.marks, state.cur);
+    const html = this.marksPanelHTML(state.marks, state.cur, true);   // parent side
     return html ? `<aside class="marks-panel">${html}</aside>` : "";
   },
 

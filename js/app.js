@@ -695,6 +695,8 @@ function secondChance(i, btn) {
    still is one, into the day's report card once the opdracht is done. */
 function persistCorrection() {
   if (session.banked) {
+    writeTiles();                  // the day's report card follows the correction
+    settleTask();                  // a fout put right can raise both niveau and time
     maybeGrantFloor();
     writeReport();
   } else saveActive();
@@ -710,8 +712,10 @@ function maybeGrantFloor() {
   if (!qs.every(finished)) return;
   if (qs.filter(q => q.failed).length < 4) return;         // the tiers paid already
   if (qs.some(q => q.failed && !q.fixed && !q.explained)) return;
+  if ((session.rewardMin || 0) > 0) return;    // the tiers already paid
   session.floorGiven = true;
-  session.rewardMin = (session.rewardMin || 0) + Reward.grantFloor(data);
+  session.rewardMin = 3;
+  Reward.grantFloor(data);
 }
 
 /* One 💡 per five sommen, earned as the opdracht goes on rather than handed
@@ -893,11 +897,72 @@ function recordFirstPass() {
   data.days[ds] = day;
   console.log(`[Oefensommen] ${ds}: ${session.questions.length} sommen in ${fmtTime(secs)} — ${nCorrect} goed (1e keer), ${nSkipped} overgeslagen`);
 
-  session.score = { correct: nCorrect, total: session.questions.length };
-  // five faultless days and everything gets a bit harder; five days with four
-  // or more mistakes and it gets easier again
-  session.levelUp = Levels.record(data, session.score);
+  session.score = { correct: nCorrect, total: session.questions.length, first: nCorrect, fixed: 0 };
+  // the niveau waits for settleTask: a fout that is still going to be put
+  // right must not be judged as a fout
   Store.save(data);
+}
+
+/* How the opdracht stands, the way the CHILD is told it.
+
+   A som that went wrong and was then put right on the second chance counts as
+   good. Not as a favour: the child looked at the mistake, worked out what it
+   should have been and got there — which is the whole point of the exercise.
+   Telling them it still counts as a fout would teach that correcting yourself
+   is pointless.
+
+   The honest split is kept underneath — first is what went right straight
+   away, fixed is what was put right afterwards — because the parent should be
+   able to see the difference even when the child is not shown one. */
+function scoreNow(qs) {
+  const first = qs.filter(q => q.correctFirst).length;
+  const fixed = qs.filter(q => !q.correctFirst && q.fixed).length;
+  return { first, fixed, correct: first + fixed, total: qs.length };
+}
+
+/* One letter per som, kept in the day record so a report card can still be
+   drawn for a day long after the opdracht itself is gone:
+   o = right away, f = put right, e = uitleg read, n = fout, t = not done. */
+function tilesOf(qs) {
+  return qs.map(q => q.correctFirst ? "o"
+    : q.fixed ? "f"
+    : q.explained ? "e"
+    : q.failed ? "n" : "t").join("");
+}
+
+function writeTiles() {
+  const day = data.days[todayStr()];
+  if (!day) return;
+  day.tiles = day.tiles || [];
+  if (session.tileSlot == null) { day.tiles.push(""); session.tileSlot = day.tiles.length - 1; }
+  day.tiles[session.tileSlot] = tilesOf(session.questions);
+  const sc = scoreNow(session.questions);
+  day.fixed = day.tiles.join("").split("").filter(c => c === "f").length;
+  return sc;
+}
+
+/* Everything that can only be judged once the opdracht is really done with:
+   the niveau and the speeltijd. Held back until every fout has been gone over,
+   because a fout put right counts as good — and that verdict is not in until
+   the child has had their second look. Idempotent: it only ever tops up. */
+function settleTask() {
+  const qs = session.questions;
+  if (!qs.every(finished)) return;
+  if (qs.some(q => q.failed && !q.fixed && !q.explained)) return;   // still to review
+
+  const sc = scoreNow(qs);
+  session.score = { correct: sc.correct, total: sc.total, first: sc.first, fixed: sc.fixed };
+
+  if (!session.levelJudged) {
+    session.levelJudged = true;
+    session.levelUp = Levels.record(data, sc);
+  }
+  const deserved = Reward.deserved(sc.correct, sc.total);
+  const given = session.rewardMin || 0;
+  if (deserved > given) {
+    session.rewardMin = deserved;
+    Reward.top(data, deserved - given);
+  }
 }
 
 function markDone100() {
@@ -910,9 +975,8 @@ function markDone100() {
   session.nextQueue = null;
   session.celebrate = true;
   delete data.active;              // the day is done; nothing left to carry on with
-  // speeltijd verdiend, puur op het cijfer van de eerste poging
-  const sc = session.score || { correct: 0, total: session.questions.length };
-  session.rewardMin = Reward.grant(data, sc.correct, sc.total);
+  writeTiles();                    // a report card that outlives the opdracht
+  settleTask();                    // niveau and speeltijd, if nothing is left to review
   writeReport();                   // saves; the report card outlives the session
 }
 
@@ -926,6 +990,9 @@ function writeReport() {
     score: session.score || null,
     lastSec: session.lastSec != null ? session.lastSec : null,
     floor: !!session.floorGiven,
+    tileSlot: session.tileSlot == null ? null : session.tileSlot,
+    levelJudged: !!session.levelJudged,
+    rewardMin: session.rewardMin || 0,
     questions: session.questions.map(snapQ)
   };
   Store.save(data);
@@ -942,6 +1009,9 @@ function openReport() {
     firstPass: false,
     banked: true, rewarded: true,          // the day is already booked and paid
     floorGiven: !!r.floor,
+    tileSlot: r.tileSlot == null ? null : r.tileSlot,
+    levelJudged: !!r.levelJudged,
+    rewardMin: r.rewardMin || 0,
     score: r.score, lastSec: r.lastSec,
     levelUp: null, rewardMin: 0
   };
@@ -954,8 +1024,9 @@ function openReport() {
 function renderResult() {
   const qs = session.questions;
   const allDone = qs.every(finished);                       // nothing left to answer
-  const perfect = allDone && qs.every(q => q.correctFirst);  // right first time, all of them
-  const nRight = qs.filter(q => q.correctFirst).length;
+  const sc = scoreNow(qs);                 // a fout put right counts as good
+  const perfect = allDone && sc.correct === sc.total;
+  const nRight = sc.correct;
 
   $("result-title").textContent =
     perfect ? t("result_perfect") : (allDone ? t("result_done") : t("result_almost"));
@@ -971,14 +1042,16 @@ function renderResult() {
   const grid = $("result-grid");
   grid.innerHTML = "";
   qs.forEach((q, i) => {
-    const state = q.correctFirst ? "ok"
+    // to the child a som is good or it is not — a som put right is good, and
+    // it looks it. The parent sees the difference on their own screens.
+    const state = (q.correctFirst || q.fixed) ? "ok"
       : q.solved ? "ok2"
-      : q.failed ? (q.fixed ? "fix" : (q.explained ? "exp" : "no"))
+      : q.failed ? (q.explained ? "exp" : "no")
       : "todo";
-    const icon  = { ok: "✅", ok2: "✔️", fix: "✔️", exp: "💡", no: "❌", todo: "⏭" }[state];
+    const icon  = { ok: "✅", ok2: "✔️", exp: "💡", no: "❌", todo: "⏭" }[state];
     const cell = document.createElement("button");
     cell.className = "result-tile " + state;
-    cell.title = t({ ok: "tile_done", ok2: "tile_second", fix: "tile_fixed",
+    cell.title = t({ ok: q.fixed ? "tile_fixed" : "tile_done", ok2: "tile_second",
                      exp: "tile_explained", no: "tile_wrong", todo: "tile_todo" }[state]) +
                  (q.hinted ? " · 💡" : "");
     cell.innerHTML = `<span class="num">${i + 1}</span><span class="mark">${icon}</span>`;
@@ -1263,10 +1336,36 @@ function showDay(ds) {
 
   const mark = (data.marks || {})[ds];
   let body;
-  if (!rec || !rec.solved) {
+  if (rec && rec.tiles && rec.tiles.length) {
+    // the same report card the child saw, kept for the parent — and here the
+    // ✔️ stays visible, because a parent should be able to tell a som that was
+    // right straight away from one that was put right afterwards
+    const wrong = rec.solved - rec.firstCorrect;
+    const time = rec.timeSec ? `<span class="day-pill">⏱ ${fmtTime(rec.timeSec)}</span>` : "";
+    const icon = { o: "✅", f: "✔️", e: "💡", n: "❌", t: "⏭" };
+    const cls  = { o: "ok", f: "fix", e: "exp", n: "no", t: "todo" };
+    const grids = rec.tiles.map((run, ri) => {
+      const tiles = run.split("").map((c, i) =>
+        `<div class="result-tile ${cls[c] || "no"}"><span class="num">${i + 1}</span>` +
+        `<span class="mark">${icon[c] || "❌"}</span></div>`).join("");
+      const head = rec.tiles.length > 1
+        ? `<p class="day-run">${t("day_run").replace("{n}", ri + 1)}</p>` : "";
+      return head + `<div class="result-grid">${tiles}</div>`;
+    }).join("");
+    const fixed = rec.fixed || 0;
+    body =
+      `<div class="day-head"><b>${head}</b>${time}</div>
+       ${grids}
+       <div class="day-counts">
+         <span class="day-pill ok">✅ ${rec.firstCorrect} ${t("day_first_try")}</span>
+         ${fixed ? `<span class="day-pill fix">✔️ ${fixed} ${t("day_fixed")}</span>` : ""}
+         <span class="day-pill no">❌ ${wrong - fixed} ${t("day_wrong")}</span>
+       </div>
+       <p class="day-aschild">${t("day_as_child").replace("{c}", rec.firstCorrect + fixed).replace("{t}", rec.solved)}</p>`;
+  } else if (!rec || !rec.solved) {
     body = `<div class="day-head"><b>${head}</b></div>
             <p class="day-none">${t("day_nothing")}</p>`;
-  } else {
+  } else {                        // a day from before the report cards were kept
     const wrong = rec.solved - rec.firstCorrect;
     const time = rec.timeSec ? `<span class="day-pill">⏱ ${fmtTime(rec.timeSec)}</span>` : "";
     const cats = Object.keys(rec.cats || {})
