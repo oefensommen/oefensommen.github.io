@@ -186,9 +186,16 @@ const Engine = {
     return null;
   },
 
-  /* Pick a template of a category, avoiding ones used in the last 2 days when possible */
+  /* Pick a template of a category, avoiding ones used in the last 2 days when
+     possible — and never one the parent has switched off, unless switching
+     them off has left the category with nothing at all, in which case the
+     opdracht wins: a som the parent dislikes beats no som to ask. */
   pickTemplate(cat, data, usedInTask) {
-    let pool = TEMPLATES.filter(tp => tp.cat === cat);
+    let pool = Rules.allowedIn(data, cat);
+    if (!pool.length) {
+      pool = TEMPLATES.filter(tp => tp.cat === cat);
+      console.log(`[Oefensommen] alles uitgezet in "${cat}" — de regels zijn hier even opzij gezet`);
+    }
     const today = new Date();
     const fresh = pool.filter(tp => {
       if (usedInTask.includes(tp.id)) return false;
@@ -332,7 +339,8 @@ const Engine = {
     const otherCats = CATS.filter(c => c !== mainCat && c !== "klok");
     for (let i = 0; i < nMixed - klokQuota; i++) {
       const wrongId = data.wrongTpl[i];
-      const wrongTpl = wrongId && TEMPLATES.find(tp => tp.id === wrongId && tp.cat !== "verrassing");
+      const wrongTpl = wrongId && TEMPLATES.find(tp => tp.id === wrongId && tp.cat !== "verrassing" &&
+                                                       Rules.allows(data, tp));
       const q = wrongTpl && fromTpl(wrongTpl);
       if (q) {
         usedInTask.push(wrongTpl.id);

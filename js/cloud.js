@@ -45,6 +45,16 @@ const Cloud = {
   },
 
   /* the parent says a soort som is too hard or too easy; it shifts one step */
+  /* the parent switches a soort som — or a whole property — off and on */
+  setRule(u, p, kind, key, blocked) {
+    return this.rpc("set_rule", { u, p, kind, key, blocked });
+  },
+
+  /* a note in the parent's own words, hung on the soort som it is about */
+  addNote(u, p, tpl, note) {
+    return this.rpc("add_note", { u, p, tpl, note });
+  },
+
   setTuning(u, p, tpl, verdict) {
     return this.rpc("set_tuning", { u, p, tpl, verdict });
   }

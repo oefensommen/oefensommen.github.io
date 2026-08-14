@@ -980,3 +980,48 @@ input:focus { border-color: var(--accent); }
   .sprint-q { font-size: 2.1rem; margin: 0 0 14px; }
   .sprint-opt { font-size: 1.35rem; padding: 14px 4px; }
 }
+
+/* ---------- one som, opened out: what it was and what may be done with it ---------- */
+.som-head, .som-text { cursor: pointer; }
+.som-more { margin-left: auto; color: var(--muted); font-size: .8rem; transition: transform .15s; }
+.som-row.open .som-more { transform: rotate(180deg); }
+.som-row.off .som-text { opacity: .55; text-decoration: line-through; }
+.som-off {
+  font-size: .68rem; font-weight: 800; text-transform: uppercase; letter-spacing: .04em;
+  color: #8a6a11; background: #fdf0d5; border-radius: 999px; padding: 3px 8px;
+}
+.som-detail { margin-top: 12px; border-top: 1px dashed var(--line); padding-top: 12px; }
+.det-label { font-size: .8rem; color: var(--muted); margin-bottom: 6px; }
+.det-q { font-size: .95rem; line-height: 1.5; margin-bottom: 10px; }
+.det-opts { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.det-opt {
+  font-size: .82rem; font-weight: 700; border-radius: 8px; padding: 5px 10px;
+  background: var(--bg); border: 1px solid var(--line);
+}
+.det-opt.right  { background: var(--green-soft); border-color: #b9e3cd; }
+.det-opt.picked { background: var(--red-soft); border-color: #f0b9bb; }
+.det-explain {
+  font-size: .87rem; line-height: 1.55; background: var(--bg);
+  border-radius: 10px; padding: 10px 12px; margin-bottom: 12px;
+}
+.det-rules { margin-bottom: 12px; }
+.det-rules > b, .det-note > b { display: block; font-size: .8rem; margin-bottom: 6px; }
+.det-rule {
+  display: flex; align-items: center; gap: 8px;
+  font-size: .87rem; padding: 5px 0; cursor: pointer;
+}
+.det-rule input { width: 16px; height: 16px; accent-color: var(--red); }
+.det-off {
+  font-size: .68rem; font-weight: 800; text-transform: uppercase;
+  color: #8a6a11; background: #fdf0d5; border-radius: 999px; padding: 2px 7px; font-style: normal;
+}
+.det-hint { font-size: .75rem; color: var(--muted); margin-top: 4px; }
+.det-note-line { font-size: .85rem; color: var(--muted); margin-bottom: 4px; }
+.note-box {
+  width: 100%; font-family: inherit; font-size: .87rem;
+  border: 1.5px solid var(--line); border-radius: 10px; padding: 8px 10px; resize: vertical;
+}
+.det-note-btns { display: flex; gap: 7px; margin-top: 7px; }
+.btn.small { padding: 6px 13px; font-size: .8rem; }
+.lesson-adj.off { background: #fdf0d5; color: #8a6a11; }
+.lesson.note .lesson-what span { font-style: italic; }

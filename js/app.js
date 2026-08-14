@@ -1357,14 +1357,19 @@ function todaysQuestions() {
    just a template id with a tile letter (an earlier day, where only the soort
    was kept). */
 function somRowHTML(i, opts) {
-  const { state, hinted, cat, text, tplId } = opts;
+  const { state, hinted, cat, text, tplId, key, qIdx } = opts;
   const icon = { o: "✅", f: "✅", e: "❌", n: "❌", t: "⏭" }[state] || "❌";
   const adj = Tuning.of(data, tplId);
-  return `<div class="som-row">
+  const tpl = TEMPLATES.find(x => x.id === tplId);
+  const off = tpl && !Rules.allows(data, tpl);
+  return `<div class="som-row${off ? " off" : ""}" data-key="${esc(key || "")}"
+               data-tpl="${esc(tplId)}"${qIdx == null ? "" : ` data-q="${qIdx}"`}>
             <div class="som-head">
               <span class="som-n">${icon} ${i + 1}</span>
               <span class="som-cat">${esc(cat)}</span>
               ${hinted ? `<span class="som-hint">💡</span>` : ""}
+              ${off ? `<span class="som-off">${esc(t("rule_is_off"))}</span>` : ""}
+              <span class="som-more">▾</span>
             </div>
             <p class="som-text">${esc(text)}</p>
             <div class="som-rate">
@@ -1372,7 +1377,84 @@ function somRowHTML(i, opts) {
               <button class="rate-btn easy${adj > 0 ? " on" : ""}" data-tpl="${esc(tplId)}" data-v="easy">😀 ${esc(t("too_easy"))}</button>
               ${adj ? `<span class="rate-now">${esc(adjLabel(adj))}</span>` : ""}
             </div>
+            <div class="som-detail hidden"></div>
           </div>`;
+}
+
+/* ---------- what the parent may do with one som ----------
+
+   Opening a som shows it whole: the answers as the child saw them, which one
+   was picked, and how it is worked out. Underneath are the three ways a parent
+   can act on it, in rising order of how far it reaches:
+
+     the verdict   — too hard, too easy: this soort som moves a level
+     the switch    — this soort som, or everything with this property, stops
+                     being asked at all
+     the note      — what does not fit in a switch, in their own words
+
+   The note does not change the bank by itself; it is a record, and it is what
+   a new rule gets written from. */
+let openSom = null;                       // which som is unfolded, across renders
+const sampleQ = {};                       // one worked example per soort som
+
+function sampleQuestion(tplId) {
+  if (sampleQ[tplId]) return sampleQ[tplId];
+  const tpl = TEMPLATES.find(x => x.id === tplId);
+  if (!tpl) return null;
+  const q = Engine.freshFrom(tpl, Engine.levelFor(tpl, data), new Set(), new Set());
+  if (q) sampleQ[tplId] = q;
+  return q;
+}
+
+function somDetailHTML(tplId, q) {
+  const tpl = TEMPLATES.find(x => x.id === tplId);
+  if (!tpl) return "";
+  const real = !!q;
+  const shown = q || sampleQuestion(tplId);
+  let body = "";
+
+  if (shown) {
+    if (!real) body += `<p class="det-label">${esc(t("q_sample"))}</p>
+                        <p class="det-q">${esc(Engine.text(shown, LANG))}</p>`;
+    body += `<div class="det-opts">` + shown.options.map((o, j) => {
+      const right = j === shown.answerIdx;
+      const picked = real && shown.chosen === j;
+      return `<span class="det-opt${right ? " right" : ""}${picked && !right ? " picked" : ""}">
+                ${esc(String(o))}${right ? " ✅" : (picked ? " ❌" : "")}
+              </span>`;
+    }).join("") + `</div>`;
+    if (real && shown.chosen != null) {
+      body += `<p class="det-label">${esc(shown.chosen === shown.answerIdx
+        ? t("verdict_right") : t("q_picked").replace("{a}", shown.options[shown.chosen]))}</p>`;
+    }
+    const ex = Engine.explain(shown, LANG);
+    if (ex) body += `<div class="det-explain"><b>${esc(t("explain_title"))}</b> ${ex}</div>`;
+  }
+
+  // the switches: this soort som, and every property it happens to have
+  const rows = [{ kind: "tpl", key: tplId, label: t("rule_this_som") }]
+    .concat(Traits.of(tpl).map(tr => ({ kind: "trait", key: tr, label: t("traits")[tr] || tr })));
+  body += `<div class="det-rules"><b>${esc(t("rules_head"))}</b>` + rows.map(r => {
+    const off = Rules.blocked(data, r.kind, r.key);
+    return `<label class="det-rule">
+              <input type="checkbox" class="rule-box" data-kind="${r.kind}" data-key="${esc(r.key)}"${off ? " checked" : ""}>
+              <span>${esc(r.label)}</span>
+              ${off ? `<i class="det-off">${esc(t("rule_is_off"))}</i>` : ""}
+            </label>`;
+  }).join("") + `<p class="det-hint">${esc(t("rules_hint"))}</p></div>`;
+
+  // and what does not fit in a switch
+  const notes = Rules.notes(data, tplId);
+  body += `<div class="det-note"><b>${esc(t("note_head"))}</b>
+             ${notes.map(n => `<p class="det-note-line">“${esc(n.text)}”</p>`).join("")}
+             <textarea class="note-box" rows="2" data-tpl="${esc(tplId)}"
+                       placeholder="${esc(t("note_ph_som"))}"></textarea>
+             <div class="det-note-btns">
+               <button class="btn ghost small note-save" data-tpl="${esc(tplId)}">${esc(t("note_save"))}</button>
+               ${notes.length ? `<button class="btn ghost small note-clear" data-tpl="${esc(tplId)}">${esc(t("note_clear"))}</button>` : ""}
+             </div>
+           </div>`;
+  return body;
 }
 
 /* The sommen of one particular day, for the parent to rate. Today comes from
@@ -1388,7 +1470,8 @@ function dayQuestionsHTML(ds, rec) {
       return qs.map((q, i) => somRowHTML(i, {
         state: q.correctFirst ? "o" : q.fixed ? "f" : q.explained ? "e" : q.failed ? "n" : "t",
         hinted: !!q.hinted, cat: t("cats")[q.cat] || q.cat,
-        text: Engine.text(q, LANG), tplId: q.tplId
+        text: Engine.text(q, LANG), tplId: q.tplId,
+        key: ds + "|" + i, qIdx: i
       })).join("");
     }
   }
@@ -1402,7 +1485,8 @@ function dayQuestionsHTML(ds, rec) {
       return somRowHTML(i, {
         state: key, hinted,
         cat: tpl ? (t("cats")[tpl.cat] || tpl.cat) : id,
-        text: tpl ? sampleText(tpl) : id, tplId: id
+        text: tpl ? sampleText(tpl) : id, tplId: id,
+        key: ds + "|" + ri + "|" + i
       });
     }).join("");
   }).join("");
@@ -1426,26 +1510,65 @@ function adjLabel(adj) {
   return (adj < 0 ? t("tuned_easier") : t("tuned_harder")).replace("{n}", Math.abs(adj));
 }
 
+/* Everything the parent has said, in one place, and every bit of it can be
+   taken back: the levels that were nudged, the sommen that were switched off,
+   and the notes that were left. */
 function renderLessons() {
   const box = $("lessons");
   const marked = Tuning.list(data);
-  if (!marked.length) { box.innerHTML = ""; box.classList.add("hidden"); return; }
+  const rules = Rules.list(data);
+  const notes = Rules.allNotes(data);
+  if (!marked.length && !rules.length && !notes.length) {
+    box.innerHTML = ""; box.classList.add("hidden"); return;
+  }
   box.classList.remove("hidden");
-  box.innerHTML =
-    `<h3>${esc(t("lessons_title"))}</h3>
-     <p class="lessons-sub">${esc(t("lessons_sub"))}</p>` +
-    marked.map(m => {
-      const tpl = TEMPLATES.find(x => x.id === m.id);
-      const cat = tpl ? (t("cats")[tpl.cat] || tpl.cat) : m.id;
-      const sample = tpl ? sampleText(tpl) : m.id;
-      return `<div class="lesson">
-                <div class="lesson-what"><b>${esc(cat)}</b><span>${esc(sample)}</span></div>
-                <span class="lesson-adj ${m.adj < 0 ? "easier" : "harder"}">${esc(adjLabel(m.adj))}</span>
-                <button class="lesson-undo" data-tpl="${esc(m.id)}" title="${esc(t("undo"))}">✕</button>
-              </div>`;
-    }).join("");
-  box.querySelectorAll(".lesson-undo").forEach(b =>
-    b.addEventListener("click", () => rateSom(b.dataset.tpl, null)));
+  const what = id => {
+    const tpl = TEMPLATES.find(x => x.id === id);
+    return { cat: tpl ? (t("cats")[tpl.cat] || tpl.cat) : id, sample: tpl ? sampleText(tpl) : id };
+  };
+
+  let html = "";
+  if (marked.length) {
+    html += `<h3>${esc(t("lessons_title"))}</h3>
+             <p class="lessons-sub">${esc(t("lessons_sub"))}</p>` +
+      marked.map(m => {
+        const w = what(m.id);
+        return `<div class="lesson">
+                  <div class="lesson-what"><b>${esc(w.cat)}</b><span>${esc(w.sample)}</span></div>
+                  <span class="lesson-adj ${m.adj < 0 ? "easier" : "harder"}">${esc(adjLabel(m.adj))}</span>
+                  <button class="lesson-undo" data-tpl="${esc(m.id)}" title="${esc(t("undo"))}">✕</button>
+                </div>`;
+      }).join("");
+  }
+  if (rules.length) {
+    html += `<h3>${esc(t("rules_title"))}</h3>` +
+      rules.map(r => {
+        const w = r.kind === "tpl" ? what(r.key)
+                                   : { cat: t("traits")[r.key] || r.key, sample: t("rule_everywhere") };
+        return `<div class="lesson">
+                  <div class="lesson-what"><b>${esc(w.cat)}</b><span>${esc(w.sample)}</span></div>
+                  <span class="lesson-adj off">${esc(t("rule_is_off"))}</span>
+                  <button class="lesson-undo" data-kind="${r.kind}" data-key="${esc(r.key)}" title="${esc(t("undo"))}">✕</button>
+                </div>`;
+      }).join("");
+  }
+  if (notes.length) {
+    html += `<h3>${esc(t("notes_title"))}</h3>` +
+      notes.map(n => {
+        const w = what(n.tplId);
+        return `<div class="lesson note">
+                  <div class="lesson-what"><b>${esc(w.cat)}</b><span>“${esc(n.text)}”</span></div>
+                  <button class="lesson-undo" data-note="${esc(n.tplId)}" title="${esc(t("undo"))}">✕</button>
+                </div>`;
+      }).join("");
+  }
+  box.innerHTML = html;
+
+  box.querySelectorAll(".lesson-undo").forEach(b => b.addEventListener("click", () => {
+    if (b.dataset.tpl) return rateSom(b.dataset.tpl, null);
+    if (b.dataset.note) return saveNote(b.dataset.note, null);
+    setRule(b.dataset.kind, b.dataset.key, false);
+  }));
 }
 
 /* the bare phrasing of a template, tokens and all, shortened — enough for the
@@ -1459,7 +1582,49 @@ function sampleText(tpl) {
 
 function wireRateButtons(root) {
   root.querySelectorAll(".rate-btn").forEach(b =>
-    b.addEventListener("click", () => rateSom(b.dataset.tpl, b.dataset.v)));
+    b.addEventListener("click", e => { e.stopPropagation(); rateSom(b.dataset.tpl, b.dataset.v); }));
+  root.querySelectorAll(".som-row").forEach(row => {
+    const open = () => toggleSomRow(row);
+    row.querySelector(".som-head").addEventListener("click", open);
+    row.querySelector(".som-text").addEventListener("click", open);
+    if (row.dataset.key && row.dataset.key === openSom) fillSomRow(row, true);
+  });
+}
+
+function fillSomRow(row, on) {
+  const box = row.querySelector(".som-detail");
+  row.classList.toggle("open", !!on);
+  box.classList.toggle("hidden", !on);
+  if (!on) { box.innerHTML = ""; return; }
+  const q = row.dataset.q != null ? todaysQuestions()[+row.dataset.q] : null;
+  box.innerHTML = somDetailHTML(row.dataset.tpl, q);
+  wireSomDetail(box);
+}
+
+function toggleSomRow(row) {
+  const on = openSom !== row.dataset.key;
+  document.querySelectorAll(".som-row.open").forEach(r => fillSomRow(r, false));
+  openSom = on ? row.dataset.key : null;
+  fillSomRow(row, on);
+}
+
+function wireSomDetail(box) {
+  box.querySelectorAll(".rule-box").forEach(b =>
+    b.addEventListener("change", () => setRule(b.dataset.kind, b.dataset.key, b.checked)));
+  box.querySelectorAll(".note-save").forEach(b =>
+    b.addEventListener("click", () => {
+      const ta = box.querySelector(".note-box");
+      if (ta && ta.value.trim()) saveNote(b.dataset.tpl, ta.value.trim());
+    }));
+  box.querySelectorAll(".note-clear").forEach(b =>
+    b.addEventListener("click", () => saveNote(b.dataset.tpl, null)));
+}
+
+/* whichever of the two parent screens is showing the sommen redraws itself,
+   with the som that was open still open */
+function redrawSoms() {
+  if (isOn("screen-calendar")) renderCalendar();       // keeps the open day open
+  else if (isOn("screen-sommen")) renderSommen();
 }
 
 async function rateSom(tplId, verdict) {
@@ -1468,9 +1633,38 @@ async function rateSom(tplId, verdict) {
   try {
     const fresh = await Cloud.setTuning(u, p, tplId, verdict);
     if (fresh) { data = fresh; Store.saveLocal(data); }
-    if (isOn("screen-calendar")) renderCalendar();     // keeps the open day open
-    else renderSommen();
+    redrawSoms();
   } catch (e) { /* offline: leave the screen as it was */ }
+}
+
+/* A soort som, or a whole property, on or off. Switching something off that
+   would leave a category with nothing to ask is allowed — but not by accident,
+   so it is said out loud first. */
+async function setRule(kind, key, blocked) {
+  const { u, p } = Store.creds();
+  if (!u || !p || !Store.isParent()) return;
+  if (blocked) {
+    const empty = Rules.wouldEmpty(data, kind, key);
+    if (empty.length) {
+      const cats = empty.map(c => t("cats")[c] || c).join(", ");
+      if (!confirm(t("rule_warn_empty").replace("{c}", cats))) return redrawSoms();
+    }
+  }
+  try {
+    const fresh = await Cloud.setRule(u, p, kind, key, blocked);
+    if (fresh) { data = fresh; Store.saveLocal(data); }
+  } catch (e) { /* offline: the switch springs back on the redraw */ }
+  redrawSoms();
+}
+
+async function saveNote(tplId, text) {
+  const { u, p } = Store.creds();
+  if (!u || !p || !Store.isParent()) return;
+  try {
+    const fresh = await Cloud.addNote(u, p, tplId, text);
+    if (fresh) { data = fresh; Store.saveLocal(data); }
+  } catch (e) { /* offline: the note is not lost, it is simply not saved */ }
+  redrawSoms();
 }
 
 /* ---------- calendar ---------- */
