@@ -299,7 +299,169 @@ function runCountdown(then) {
    because a som only counts as asked once it has been on the screen. */
 const TASK_START = 10, TASK_MID = 15, TASK_FULL = 20;
 
+/* ---------- Tafelsprint: the five tafels the day opens with ----------
+
+   Once a day, before the sommen: 6 × 8, three answers, five seconds. Wrong or
+   too slow and the next one is already there — the clock is the point, so
+   there is nothing to go back to and nothing to put right. It is scored on its
+   own and kept on its own, out of the twenty: the sommen are judged on
+   thinking, this is judged on knowing it by heart. */
+let sprint = null;
+let sprintOff = false;             // no facts to ask: don't stall the opdracht
+
+function sprintOfDay(ds) { const d = data.days[ds || todayStr()]; return d && d.sprint; }
+function sprintDone() { return sprintOff || !!sprintOfDay(); }
+
+function startSprint(then) {
+  const qs = Sprint.build(data);
+  if (!qs.length) { sprintOff = true; return then(); }
+  sprint = { qs, i: 0, tiles: "", facts: [], then, tick: null, locked: true };
+  Live.startHeartbeat();
+  // a beat to look up before the first clock starts — five seconds is short
+  // enough without spending two of them working out what is happening
+  $("sprint-progress").textContent = `1/${qs.length}`;
+  $("sprint-question").textContent = "⚡";
+  $("sprint-answers").innerHTML = "";
+  $("sprint-count").textContent = Sprint.SECS;
+  $("sprint-flash").textContent = t("sprint_ready");
+  $("sprint-flash").className = "sprint-flash";
+  show("screen-sprint");
+  Live.push("sprint");
+  setTimeout(() => { if (sprint) renderSprint(); }, 1600);
+}
+
+function renderSprint() {
+  const q = sprint.qs[sprint.i];
+  sprint.locked = false;
+  $("sprint-progress").textContent = `${sprint.i + 1}/${sprint.qs.length}`;
+  $("sprint-question").textContent = `${q.a} × ${q.b}`;
+  $("sprint-flash").textContent = "";
+  $("sprint-flash").className = "sprint-flash";
+
+  const box = $("sprint-answers");
+  box.innerHTML = "";
+  q.options.forEach((v, i) => {
+    const b = document.createElement("button");
+    b.className = "sprint-opt";
+    b.textContent = v;
+    b.addEventListener("click", () => answerSprint(i, b));
+    box.appendChild(b);
+  });
+
+  startSprintClock();
+  Live.push("sprint");
+}
+
+/* The ring beside the som empties in five seconds and the number counts down
+   with it — the child can see the time going without having to read a clock. */
+const SPRINT_CIRC = 214;                       // 2πr, r = 34
+
+function startSprintClock() {
+  const arc = $("sprint-arc"), num = $("sprint-count");
+  sprint.endAt = Date.now() + Sprint.SECS * 1000;
+  arc.style.transition = "none";
+  arc.style.strokeDashoffset = "0";
+  arc.classList.remove("low");
+  void arc.offsetWidth;
+  arc.style.transition = `stroke-dashoffset ${Sprint.SECS}s linear`;
+  arc.style.strokeDashoffset = String(SPRINT_CIRC);
+
+  clearInterval(sprint.tick);
+  const paint = () => {
+    const left = Math.max(0, sprint.endAt - Date.now());
+    num.textContent = Math.ceil(left / 1000);
+    const low = left <= 2000;
+    num.classList.toggle("low", low);
+    arc.classList.toggle("low", low);
+    if (left <= 0) { clearInterval(sprint.tick); timeoutSprint(); }
+  };
+  paint();
+  sprint.tick = setInterval(paint, 100);
+}
+
+function stopSprintClock() {
+  clearInterval(sprint.tick);
+  const arc = $("sprint-arc");
+  const at = getComputedStyle(arc).strokeDashoffset;      // freeze where it is
+  arc.style.transition = "none";
+  arc.style.strokeDashoffset = at;
+}
+
+function answerSprint(i, btn) {
+  if (sprint.locked) return;
+  sprint.locked = true;
+  stopSprintClock();
+  const q = sprint.qs[sprint.i];
+  const ok = i === q.answerIdx;
+  btn.classList.add(ok ? "right" : "wrong");
+  if (!ok) markRightOption();
+  settleSprintQ(ok ? "o" : "n", ok ? t("sprint_yes") : t("sprint_no"), ok);
+}
+
+function timeoutSprint() {
+  if (sprint.locked) return;
+  sprint.locked = true;
+  markRightOption();
+  settleSprintQ("t", t("sprint_late"), false);
+}
+
+function markRightOption() {
+  const q = sprint.qs[sprint.i];
+  const btns = $("sprint-answers").querySelectorAll(".sprint-opt");
+  if (btns[q.answerIdx]) btns[q.answerIdx].classList.add("right");
+}
+
+function settleSprintQ(tile, msg, ok) {
+  const q = sprint.qs[sprint.i];
+  sprint.tiles += tile;
+  sprint.facts.push(`${q.a}x${q.b}`);
+  Sprint.remember(data, q, ok);
+  const flash = $("sprint-flash");
+  flash.textContent = msg;
+  flash.className = "sprint-flash " + (ok ? "good" : "bad");
+  Live.push("sprint");
+  setTimeout(nextSprint, ok ? 650 : 1100);
+}
+
+function nextSprint() {
+  sprint.i++;
+  if (sprint.i < sprint.qs.length) return renderSprint();
+  finishSprint();
+}
+
+function finishSprint() {
+  const ds = todayStr();
+  const right = sprint.tiles.split("").filter(c => c === "o").length;
+  const day = data.days[ds] || { solved: 0, firstCorrect: 0, done100: false, cats: {} };
+  day.sprint = { n: sprint.qs.length, right, tiles: sprint.tiles, facts: sprint.facts };
+  data.days[ds] = day;
+  Store.save(data);
+
+  $("sprint-question").textContent = `${right}/${sprint.qs.length}`;
+  $("sprint-answers").innerHTML = "";
+  const flash = $("sprint-flash");
+  flash.textContent = right === sprint.qs.length ? t("sprint_all") : t("sprint_next");
+  flash.className = "sprint-flash " + (right === sprint.qs.length ? "good" : "");
+  clearInterval(sprint.tick);
+  const then = sprint.then;
+  setTimeout(() => { sprint = null; then(); }, 1200);
+}
+
+/* one line of tafels, for the report card and for the parent's kalender */
+function sprintStripHTML(sp) {
+  const icon = { o: "✅", n: "❌", t: "⏱" };
+  const tiles = (sp.facts || []).map((f, i) => {
+    const ch = (sp.tiles || "")[i] || "n";
+    const [a, b] = f.split("x");
+    return `<span class="sprint-chip ${ch}">${icon[ch] || "❌"} ${a}×${b}</span>`;
+  }).join("");
+  return `<div class="sprint-line"><b>⚡ ${esc(t("sprint_title"))}</b>
+            <span>${sp.right}/${sp.n}</span></div>
+          <div class="sprint-chips">${tiles}</div>`;
+}
+
 function startTask() {
+  if (!sprintDone()) return startSprint(startTask);      // the tafels come first
   const built = Engine.buildTask(TASK_FULL, data);
   session = {
     questions: built.slice(0, TASK_START),
@@ -922,23 +1084,39 @@ function scoreNow(qs) {
 
 /* One letter per som, kept in the day record so a report card can still be
    drawn for a day long after the opdracht itself is gone:
-   o = right away, f = put right, e = uitleg read, n = fout, t = not done. */
+   o = right away, f = put right, e = uitleg read, n = fout, t = not done.
+   A capital says the 💡 was used on that som. */
 function tilesOf(qs) {
-  return qs.map(q => q.correctFirst ? "o"
-    : q.fixed ? "f"
-    : q.explained ? "e"
-    : q.failed ? "n" : "t").join("");
+  return qs.map(q => {
+    const c = q.correctFirst ? "o" : q.fixed ? "f" : q.explained ? "e" : q.failed ? "n" : "t";
+    return q.hinted ? c.toUpperCase() : c;
+  }).join("");
 }
+
+function tileState(ch) {
+  return { key: ch.toLowerCase(), hinted: ch !== ch.toLowerCase() };
+}
+
+/* How many days of question lists to keep. The parent looks back at yesterday,
+   not at March, and only the soort som is needed to judge it — so a fortnight
+   of template ids costs a few kilobytes rather than the whole opdracht. */
+const TPLS_KEEP_DAYS = 14;
 
 function writeTiles() {
   const day = data.days[todayStr()];
   if (!day) return;
   day.tiles = day.tiles || [];
+  day.tpls = day.tpls || [];
   if (session.tileSlot == null) { day.tiles.push(""); session.tileSlot = day.tiles.length - 1; }
   day.tiles[session.tileSlot] = tilesOf(session.questions);
-  const sc = scoreNow(session.questions);
-  day.fixed = day.tiles.join("").split("").filter(c => c === "f").length;
-  return sc;
+  day.tpls[session.tileSlot] = session.questions.map(q => q.tplId);
+  day.fixed = day.tiles.join("").toLowerCase().split("").filter(c => c === "f").length;
+
+  // let the older question lists go; the tiles themselves stay forever
+  const cut = new Date(); cut.setDate(cut.getDate() - TPLS_KEEP_DAYS);
+  const cutStr = todayStr(cut);
+  for (const ds in data.days) if (ds < cutStr && data.days[ds].tpls) delete data.days[ds].tpls;
+  return scoreNow(session.questions);
 }
 
 /* Everything that can only be judged once the opdracht is really done with:
@@ -1039,6 +1217,11 @@ function renderResult() {
   // numbered grid: right, wrong, corrected, explained, or still to be done.
   // No answers are given away here — a wrong som has to be opened, and there
   // the child gets a second go at it before the answer is shown.
+  const sp = sprintOfDay();
+  const strip = $("result-sprint");
+  strip.innerHTML = sp ? sprintStripHTML(sp) : "";
+  strip.classList.toggle("hidden", !sp);
+
   const grid = $("result-grid");
   grid.innerHTML = "";
   qs.forEach((q, i) => {
@@ -1048,13 +1231,14 @@ function renderResult() {
       : q.solved ? "ok2"
       : q.failed ? (q.explained ? "exp" : "no")
       : "todo";
-    const icon  = { ok: "✅", ok2: "✔️", exp: "💡", no: "❌", todo: "⏭" }[state];
+    const icon  = { ok: "✅", ok2: "✅", exp: "❌", no: "❌", todo: "⏭" }[state];
     const cell = document.createElement("button");
     cell.className = "result-tile " + state;
     cell.title = t({ ok: q.fixed ? "tile_fixed" : "tile_done", ok2: "tile_second",
                      exp: "tile_explained", no: "tile_wrong", todo: "tile_todo" }[state]) +
                  (q.hinted ? " · 💡" : "");
-    cell.innerHTML = `<span class="num">${i + 1}</span><span class="mark">${icon}</span>`;
+    cell.innerHTML = `<span class="num">${i + 1}</span><span class="mark">${icon}</span>` +
+                     (q.hinted ? `<span class="tile-hint">💡</span>` : "");
     cell.addEventListener("click", () => openQuestion(i));
     grid.appendChild(cell);
   });
@@ -1168,6 +1352,62 @@ function todaysQuestions() {
   return [];
 }
 
+/* One som as the parent sees it: how it went, what it was, and the two words
+   that tune it. `q` may be a whole question (today, with its real numbers) or
+   just a template id with a tile letter (an earlier day, where only the soort
+   was kept). */
+function somRowHTML(i, opts) {
+  const { state, hinted, cat, text, tplId } = opts;
+  const icon = { o: "✅", f: "✅", e: "❌", n: "❌", t: "⏭" }[state] || "❌";
+  const adj = Tuning.of(data, tplId);
+  return `<div class="som-row">
+            <div class="som-head">
+              <span class="som-n">${icon} ${i + 1}</span>
+              <span class="som-cat">${esc(cat)}</span>
+              ${hinted ? `<span class="som-hint">💡</span>` : ""}
+            </div>
+            <p class="som-text">${esc(text)}</p>
+            <div class="som-rate">
+              <button class="rate-btn hard${adj < 0 ? " on" : ""}" data-tpl="${esc(tplId)}" data-v="hard">😓 ${esc(t("too_hard"))}</button>
+              <button class="rate-btn easy${adj > 0 ? " on" : ""}" data-tpl="${esc(tplId)}" data-v="easy">😀 ${esc(t("too_easy"))}</button>
+              ${adj ? `<span class="rate-now">${esc(adjLabel(adj))}</span>` : ""}
+            </div>
+          </div>`;
+}
+
+/* The sommen of one particular day, for the parent to rate. Today comes from
+   the report card, with the numbers the child actually saw; an earlier day
+   comes from the template ids kept with that day, so the phrasing is shown
+   with … where the numbers were. Either way the verdict lands on the soort
+   som, which is what tuning acts on. */
+function dayQuestionsHTML(ds, rec) {
+  const runs = (rec && rec.tiles) ? rec.tiles.length : 0;
+  if (ds === todayStr() && runs <= 1) {
+    const qs = todaysQuestions();
+    if (qs.length) {
+      return qs.map((q, i) => somRowHTML(i, {
+        state: q.correctFirst ? "o" : q.fixed ? "f" : q.explained ? "e" : q.failed ? "n" : "t",
+        hinted: !!q.hinted, cat: t("cats")[q.cat] || q.cat,
+        text: Engine.text(q, LANG), tplId: q.tplId
+      })).join("");
+    }
+  }
+  if (!rec || !rec.tpls || !rec.tpls.length) return "";
+  return rec.tpls.map((run, ri) => {
+    const head = rec.tpls.length > 1
+      ? `<p class="day-run">${t("day_run").replace("{n}", ri + 1)}</p>` : "";
+    return head + run.map((id, i) => {
+      const tpl = TEMPLATES.find(x => x.id === id);
+      const { key, hinted } = tileState(((rec.tiles || [])[ri] || "")[i] || "n");
+      return somRowHTML(i, {
+        state: key, hinted,
+        cat: tpl ? (t("cats")[tpl.cat] || tpl.cat) : id,
+        text: tpl ? sampleText(tpl) : id, tplId: id
+      });
+    }).join("");
+  }).join("");
+}
+
 function renderSommen() {
   const qs = todaysQuestions();
   const list = $("sommen-list");
@@ -1176,29 +1416,8 @@ function renderSommen() {
     : t("sommen_none");
   list.innerHTML = "";
 
-  qs.forEach((q, i) => {
-    const state = q.correctFirst ? "ok" : (q.failed ? "no" : "todo");
-    const icon = { ok: "✅", no: "❌", todo: "⏭" }[state];
-    const adj = Tuning.of(data, q.tplId);
-    const row = document.createElement("div");
-    row.className = "som-row";
-    row.innerHTML =
-      `<div class="som-head">
-         <span class="som-n">${icon} ${i + 1}</span>
-         <span class="som-cat">${esc(t("cats")[q.cat] || q.cat)}</span>
-         ${q.hinted ? `<span class="som-hint">💡</span>` : ""}
-       </div>
-       <p class="som-text">${esc(Engine.text(q, LANG))}</p>
-       <div class="som-rate">
-         <button class="rate-btn hard${adj < 0 ? " on" : ""}" data-tpl="${esc(q.tplId)}" data-v="hard">😓 ${esc(t("too_hard"))}</button>
-         <button class="rate-btn easy${adj > 0 ? " on" : ""}" data-tpl="${esc(q.tplId)}" data-v="easy">😀 ${esc(t("too_easy"))}</button>
-         ${adj ? `<span class="rate-now">${esc(adjLabel(adj))}</span>` : ""}
-       </div>`;
-    list.appendChild(row);
-  });
-
-  list.querySelectorAll(".rate-btn").forEach(b =>
-    b.addEventListener("click", () => rateSom(b.dataset.tpl, b.dataset.v)));
+  list.innerHTML = dayQuestionsHTML(todayStr(), data.days[todayStr()]);
+  wireRateButtons(list);
 
   renderLessons();
 }
@@ -1234,8 +1453,13 @@ function renderLessons() {
 function sampleText(tpl) {
   const s = (tpl.variants[0][LANG] || tpl.variants[0].nl)
     .replace(/\{[a-zA-Z_0-9]+\}/g, "…")
-    .replace(/^…\s*/, "");                    // never open on an ellipsis
+    .replace(/…(\s*…)+/g, "…");               // one ellipsis, not a row of them
   return s.length > 74 ? s.slice(0, 72) + "…" : s;
+}
+
+function wireRateButtons(root) {
+  root.querySelectorAll(".rate-btn").forEach(b =>
+    b.addEventListener("click", () => rateSom(b.dataset.tpl, b.dataset.v)));
 }
 
 async function rateSom(tplId, verdict) {
@@ -1244,7 +1468,8 @@ async function rateSom(tplId, verdict) {
   try {
     const fresh = await Cloud.setTuning(u, p, tplId, verdict);
     if (fresh) { data = fresh; Store.saveLocal(data); }
-    renderSommen();
+    if (isOn("screen-calendar")) renderCalendar();     // keeps the open day open
+    else renderSommen();
   } catch (e) { /* offline: leave the screen as it was */ }
 }
 
@@ -1342,12 +1567,17 @@ function showDay(ds) {
     // right straight away from one that was put right afterwards
     const wrong = rec.solved - rec.firstCorrect;
     const time = rec.timeSec ? `<span class="day-pill">⏱ ${fmtTime(rec.timeSec)}</span>` : "";
-    const icon = { o: "✅", f: "✔️", e: "💡", n: "❌", t: "⏭" };
+    const icon = { o: "✅", f: "✅", e: "❌", n: "❌", t: "⏭" };
     const cls  = { o: "ok", f: "fix", e: "exp", n: "no", t: "todo" };
+    const tip  = { o: "tile_done", f: "tile_fixed", e: "tile_explained",
+                   n: "tile_wrong", t: "tile_todo" };
     const grids = rec.tiles.map((run, ri) => {
-      const tiles = run.split("").map((c, i) =>
-        `<div class="result-tile ${cls[c] || "no"}"><span class="num">${i + 1}</span>` +
-        `<span class="mark">${icon[c] || "❌"}</span></div>`).join("");
+      const tiles = run.split("").map((ch, i) => {
+        const { key, hinted } = tileState(ch);
+        return `<div class="result-tile ${cls[key] || "no"}" title="${esc(t(tip[key] || "tile_wrong"))}">` +
+               `<span class="num">${i + 1}</span><span class="mark">${icon[key] || "❌"}</span>` +
+               (hinted ? `<span class="tile-hint">💡</span>` : "") + `</div>`;
+      }).join("");
       const head = rec.tiles.length > 1
         ? `<p class="day-run">${t("day_run").replace("{n}", ri + 1)}</p>` : "";
       return head + `<div class="result-grid">${tiles}</div>`;
@@ -1362,6 +1592,9 @@ function showDay(ds) {
          <span class="day-pill no">❌ ${wrong - fixed} ${t("day_wrong")}</span>
        </div>
        <p class="day-aschild">${t("day_as_child").replace("{c}", rec.firstCorrect + fixed).replace("{t}", rec.solved)}</p>`;
+    const qs = Store.isParent() ? dayQuestionsHTML(ds, rec) : "";
+    if (qs) body += `<div class="day-sommen"><h3>${esc(t("sommen"))}</h3>
+                     <p class="lessons-sub">${esc(t("rate_sub"))}</p>${qs}</div>`;
   } else if (!rec || !rec.solved) {
     body = `<div class="day-head"><b>${head}</b></div>
             <p class="day-none">${t("day_nothing")}</p>`;
@@ -1381,6 +1614,9 @@ function showDay(ds) {
        ${cats ? `<div class="day-cats">${cats}</div>` : ""}`;
   }
 
+  const sp = rec && rec.sprint;
+  if (sp) body += `<div class="sprint-strip">${sprintStripHTML(sp)}</div>`;
+
   // a note the parent left stands above whatever the app worked out — but not
   // twice, so when the editor is open the note is only in the box you type in
   if (mark && mark.note && !Store.isParent()) {
@@ -1391,7 +1627,7 @@ function showDay(ds) {
   box.innerHTML = body;
   box.dataset.day = ds;
   box.classList.remove("hidden");
-  if (Store.isParent()) wireDayEditor(ds);
+  if (Store.isParent()) { wireDayEditor(ds); wireRateButtons(box); }
 }
 
 function esc(s) {

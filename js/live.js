@@ -38,6 +38,13 @@ const Live = {
       if (screen === "play" && playing) s.game = playing.key;   // which spelletje
       return s;
     }
+    if (screen === "sprint" && sprint) {
+      const q = sprint.qs[sprint.i];
+      s.n = sprint.i + 1; s.total = sprint.qs.length;
+      s.tiles = sprint.tiles;
+      if (q) s.fact = q.a + "×" + q.b;
+      return s;
+    }
     if (session && (screen === "task" || screen === "pause")) {
       const cur = currentIdx();
       const q = session.questions[cur];
@@ -207,6 +214,18 @@ const Live = {
       el("mirror-body").innerHTML =
         `<div class="mirror-idle"><div class="big-emoji">🎮</div>${
           name ? `<p>${name}</p>` : ""}</div>`;
+      return;
+    }
+
+    if (state.screen === "sprint") {
+      el("mirror-status").textContent = t("live_sprint");
+      el("mirror-time").textContent = `${state.n || 1}/${state.total || 5}`;
+      const icon = { o: "✅", n: "❌", t: "⏱" };
+      const done = (state.tiles || "").split("").map(c => icon[c] || "❌").join(" ");
+      el("mirror-body").innerHTML =
+        `<div class="mirror-idle"><div class="big-emoji">⚡</div>
+           <p class="sprint-q">${esc(state.fact || "")}</p>
+           <p class="status">${done}</p></div>`;
       return;
     }
 

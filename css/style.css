@@ -368,7 +368,6 @@ input:focus { border-color: var(--accent); }
   gap: 2px;
 }
 .result-tile.ok { background: var(--green-soft); }
-.result-tile.ok2 { background: #eaf7f0; }
 .mark-cell.ok2 { background: #eaf7f0; }
 .result-tile.no { background: var(--red-soft); }
 /* an unreviewed fout asks to be tapped */
@@ -377,8 +376,11 @@ input:focus { border-color: var(--accent); }
   0%, 100% { box-shadow: 0 0 0 0 rgba(229, 72, 77, 0); }
   50%      { box-shadow: 0 0 0 4px rgba(229, 72, 77, .18); }
 }
-/* wrong, but gone over: corrected by the child, or the uitleg was read */
-.result-tile.fix { background: var(--red-soft); border: 1px solid #f0b9bb; }
+/* put right on the second go: a tick like the rest, on a green of its own so
+   the parent can still tell it apart at a glance */
+.result-tile.fix { background: #eaf7f0; border: 1px solid #b9e3cd; }
+.result-tile.ok2 { background: #eaf7f0; border: 1px solid #b9e3cd; }
+/* wrong, and the uitleg was read */
 .result-tile.exp { background: var(--red-soft); border: 1px solid #f0b9bb; }
 .mark-cell.fix, .mark-cell.exp { background: var(--red-soft); }
 .result-tile.todo { background: #fff4e0; border: 1px dashed #e8b45c; }
@@ -390,8 +392,14 @@ input:focus { border-color: var(--accent); }
 }
 .result-tile:hover { box-shadow: 0 2px 8px rgba(29, 36, 51, .12); }
 .result-tile:active { transform: scale(0.95); }
+.result-tile { position: relative; }
 .result-tile .num { font-size: 0.8rem; font-weight: 700; color: var(--muted); }
 .result-tile .mark { font-size: 1.25rem; line-height: 1; }
+/* the lamp sits in the corner of the som it was used on */
+.tile-hint {
+  position: absolute; top: 2px; right: 3px;
+  font-size: .62rem; line-height: 1; opacity: .85;
+}
 @media (max-width: 420px) {
   .result-grid { grid-template-columns: repeat(5, 1fr); gap: 7px; }
 }
@@ -817,6 +825,11 @@ input:focus { border-color: var(--accent); }
 .level-line { margin-top: 18px; color: var(--muted); }
 .btn-back { margin-top: 20px; }
 
+/* the day's sommen, under that day's report card in the kalender */
+.day-sommen { margin-top: 18px; border-top: 1px solid var(--line); padding-top: 6px; }
+.day-sommen h3 { margin-bottom: 2px; }
+.cal-detail .som-text { margin-bottom: 8px; }
+
 /* ---------- sommen: the parent rates today's questions ---------- */
 .som-row {
   padding: 14px 0;
@@ -894,3 +907,76 @@ input:focus { border-color: var(--accent); }
 }
 .cal-detail .result-grid { margin: 10px 0 14px; gap: 7px; }
 .cal-detail .result-tile { animation: none; cursor: default; }
+
+/* ---------- tafelsprint: five tafels against the clock ---------- */
+.sprint-card { max-width: 640px; }
+.sprint-head {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 10px;
+}
+.sprint-badge {
+  font-weight: 800; font-size: .85rem; letter-spacing: .02em;
+  background: var(--accent-soft); color: var(--accent);
+  border-radius: 999px; padding: 5px 12px;
+}
+.sprint-body { display: flex; align-items: center; gap: 18px; }
+.sprint-main { flex: 1; min-width: 0; }
+.sprint-q {
+  font-size: 2.6rem; font-weight: 800; text-align: center;
+  letter-spacing: .03em; margin: 6px 0 18px;
+}
+.sprint-answers { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.sprint-opt {
+  font-family: inherit; font-size: 1.6rem; font-weight: 800;
+  padding: 18px 6px; border-radius: 14px; cursor: pointer;
+  border: 2px solid var(--line); background: var(--card); color: var(--text);
+  transition: transform .08s, background .12s, border-color .12s;
+}
+.sprint-opt:active { transform: scale(.96); }
+.sprint-opt.right { background: var(--green-soft); border-color: var(--green); }
+.sprint-opt.wrong { background: var(--red-soft); border-color: var(--red); }
+
+/* the clock beside the som: a ring that empties in five seconds */
+.sprint-clock { position: relative; width: 92px; height: 92px; flex: none; }
+.sprint-ring { width: 92px; height: 92px; transform: rotate(-90deg); }
+.sprint-track { fill: none; stroke: var(--bg); stroke-width: 7; }
+.sprint-arc {
+  fill: none; stroke: var(--accent); stroke-width: 7; stroke-linecap: round;
+  stroke-dasharray: 214; stroke-dashoffset: 0;
+}
+.sprint-arc.low { stroke: var(--red); }
+.sprint-count {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 2rem; font-weight: 800;
+}
+.sprint-count.low { color: var(--red); }
+.sprint-flash {
+  min-height: 1.5em; margin-top: 14px; text-align: center;
+  font-weight: 700; color: var(--muted);
+}
+.sprint-flash.good { color: var(--green); }
+.sprint-flash.bad  { color: var(--red); }
+
+/* how the sprint reads back, on the report card and in the kalender */
+.sprint-strip {
+  background: var(--bg); border-radius: 12px;
+  padding: 10px 12px; margin: 14px 0 4px;
+}
+.sprint-line { display: flex; justify-content: space-between; font-size: .85rem; }
+.sprint-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.sprint-chip {
+  font-size: .78rem; font-weight: 700; border-radius: 999px;
+  padding: 4px 9px; background: var(--card); border: 1px solid var(--line);
+}
+.sprint-chip.o { background: var(--green-soft); border-color: #b9e3cd; }
+.sprint-chip.n { background: var(--red-soft); border-color: #f0b9bb; }
+.sprint-chip.t { background: #fff4e0; border-color: #e8b45c; }
+
+@media (max-width: 520px) {
+  .sprint-body { align-items: flex-start; gap: 10px; }
+  .sprint-clock, .sprint-ring { width: 64px; height: 64px; }
+  .sprint-count { font-size: 1.4rem; }
+  .sprint-q { font-size: 2.1rem; margin: 0 0 14px; }
+  .sprint-opt { font-size: 1.35rem; padding: 14px 4px; }
+}

@@ -4,8 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <title>Oefensommen</title>
-  <link rel="stylesheet" href="css/style.css?v=202608122149">
-  <link rel="stylesheet" href="css/games.css?v=202608122149">
+  <link rel="stylesheet" href="css/style.css?v=202608142018">
+  <link rel="stylesheet" href="css/games.css?v=202608142018">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧮</text></svg>">
 </head>
 <body>
@@ -108,6 +108,30 @@
       </div>
     </section>
 
+    <!-- TAFELSPRINT: five tafels, five seconds each, three answers -->
+    <section id="screen-sprint" class="screen hidden">
+      <div class="card sprint-card">
+        <div class="sprint-head">
+          <span class="sprint-badge">⚡ <span data-i18n="sprint_title">Tafelsprint</span></span>
+          <span id="sprint-progress" class="progress-text">1/5</span>
+        </div>
+        <div class="sprint-body">
+          <div class="sprint-main">
+            <p id="sprint-question" class="sprint-q">6 × 8</p>
+            <div id="sprint-answers" class="sprint-answers"></div>
+          </div>
+          <div class="sprint-clock">
+            <svg class="sprint-ring" viewBox="0 0 80 80">
+              <circle class="sprint-track" cx="40" cy="40" r="34"></circle>
+              <circle id="sprint-arc" class="sprint-arc" cx="40" cy="40" r="34"></circle>
+            </svg>
+            <div id="sprint-count" class="sprint-count">5</div>
+          </div>
+        </div>
+        <p id="sprint-flash" class="sprint-flash"></p>
+      </div>
+    </section>
+
     <!-- RESULT -->
     <section id="screen-result" class="screen hidden">
       <div class="card center">
@@ -117,6 +141,7 @@
         <p id="result-time" class="result-time hidden"></p>
         <p id="result-reward" class="reward-line hidden"></p>
         <div id="result-levelups"></div>
+        <div id="result-sprint" class="sprint-strip hidden"></div>
         <div id="result-grid" class="result-grid"></div>
         <p id="result-hint" class="review-hint hidden" data-i18n="result_hint"></p>
         <div class="btn-row">
@@ -242,17 +267,18 @@
 
   <div id="confetti"></div>
 
-  <script src="js/i18n.js?v=202608122149"></script>
-  <script src="js/celebrate.js?v=202608122149"></script>
-  <script src="js/config.js?v=202608122149"></script>
-  <script src="js/cloud.js?v=202608122149"></script>
-  <script src="js/storage.js?v=202608122149"></script>
-  <script src="js/templates.js?v=202608122149"></script>
-  <script src="js/explain.js?v=202608122149"></script>
-  <script src="js/levels.js?v=202608122149"></script>
-  <script src="js/engine.js?v=202608122149"></script>
-  <script src="js/live.js?v=202608122149"></script>
-  <script src="js/reward.js?v=202608122149"></script>
-  <script src="js/app.js?v=202608122149"></script>
+  <script src="js/i18n.js?v=202608142018"></script>
+  <script src="js/celebrate.js?v=202608142018"></script>
+  <script src="js/config.js?v=202608142018"></script>
+  <script src="js/cloud.js?v=202608142018"></script>
+  <script src="js/storage.js?v=202608142018"></script>
+  <script src="js/templates.js?v=202608142018"></script>
+  <script src="js/explain.js?v=202608142018"></script>
+  <script src="js/levels.js?v=202608142018"></script>
+  <script src="js/sprint.js?v=202608142018"></script>
+  <script src="js/engine.js?v=202608142018"></script>
+  <script src="js/live.js?v=202608142018"></script>
+  <script src="js/reward.js?v=202608142018"></script>
+  <script src="js/app.js?v=202608142018"></script>
 </body>
 </html>
