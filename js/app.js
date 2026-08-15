@@ -1985,6 +1985,56 @@ function renderStats() {
        <div class="cat-bar-track"><div class="cat-bar-fill ${cls}" style="width:${pct}%"></div></div>`;
     box.appendChild(row);
   });
+
+  renderTafels();
+}
+
+/* ---------- the tafels, as the child actually has them ----------
+
+   Every sprint answer leaves a mark on the fact it was about, so after a week
+   of five-a-day there is a picture of which tafels are really in there and
+   which are still being worked out on the way. Green is answered inside the
+   five seconds and stayed answered; amber slipped once; red keeps slipping;
+   pale has simply not come round yet.
+
+   It is the parent's screen, and it is deliberately not the child's: a wall
+   of red is a to-do list to a grown-up and a verdict to an eight-year-old. */
+function tafelState(m) {
+  if (!m || !m.n) return "none";
+  return m.w === 0 ? "ok" : (m.w === 1 ? "mid" : "low");
+}
+
+function renderTafels() {
+  const box = $("tafel-grid");
+  if (!box) return;
+  const tally = data.tafel || {};
+  const lo = Sprint.MIN, hi = Sprint.MAX;
+
+  let html = `<div class="tafel-row head"><span class="tafel-cell corner">×</span>`;
+  for (let b = lo; b <= hi; b++) html += `<span class="tafel-cell head">${b}</span>`;
+  html += `</div>`;
+  for (let a = lo; a <= hi; a++) {
+    html += `<div class="tafel-row"><span class="tafel-cell head">${a}</span>`;
+    for (let b = lo; b <= hi; b++) {
+      const m = tally[Sprint.key(a, b)];
+      const st = tafelState(m);
+      const tip = `${a} × ${b} = ${a * b}` +
+                  (m && m.n ? ` · ${t("tafel_asked").replace("{n}", m.n)}` : ` · ${t("tafel_new")}`);
+      html += `<span class="tafel-cell ${st}" title="${esc(tip)}">${a * b}</span>`;
+    }
+    html += `</div>`;
+  }
+  box.innerHTML = html;
+
+  // the handful worth practising at the kitchen table tonight
+  const weak = Object.keys(tally)
+    .filter(k => (tally[k].w || 0) > 0)
+    .sort((x, y) => tally[y].w - tally[x].w)
+    .slice(0, 8)
+    .map(k => k.replace("x", "×"));
+  const line = $("tafel-weak");
+  line.textContent = weak.length ? t("tafel_weak") + " " + weak.join(" · ") : t("tafel_all_ok");
+  line.classList.toggle("good", !weak.length);
 }
 
 /* ---------- magic door (login) ---------- */
