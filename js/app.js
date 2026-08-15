@@ -309,21 +309,37 @@ const TASK_START = 10, TASK_MID = 15, TASK_FULL = 20;
 let sprint = null;
 let sprintOff = false;             // no facts to ask: don't stall the opdracht
 
-function sprintOfDay(ds) { const d = data.days[ds || todayStr()]; return d && d.sprint; }
-function sprintDone() { return sprintOff || !!sprintOfDay(); }
+/* Two of them a day, and they are not the same thing.
 
-function startSprint(then) {
-  const qs = Sprint.build(data);
+   The one at the start wakes the tafels up before the sommen. The one at the
+   end is the lap of honour: the opdracht is already scored and closed, and
+   this is played for nothing but the sport of it. Neither has ever touched
+   the niveau or the speeltijd, and the one at the end is not even allowed to
+   look like it might — it comes after everything has been settled. */
+const SPRINT_SLOTS = { start: "sprint", end: "sprintEnd" };
+
+function sprintOfDay(ds, slot) {
+  const d = data.days[ds || todayStr()];
+  return d && d[SPRINT_SLOTS[slot || "start"]];
+}
+function sprintDone(slot) { return sprintOff || !!sprintOfDay(null, slot); }
+
+function startSprint(then, slot) {
+  slot = slot || "start";
+  // the tafels of the morning are not asked again in the afternoon
+  const done = slot === "end" ? (sprintOfDay(null, "start") || {}).facts || [] : [];
+  const qs = Sprint.build(data, done);
   if (!qs.length) { sprintOff = true; return then(); }
-  sprint = { qs, i: 0, tiles: "", facts: [], then, tick: null, locked: true };
+  sprint = { qs, i: 0, tiles: "", facts: [], then, slot, tick: null, locked: true };
   Live.startHeartbeat();
   // a beat to look up before the first clock starts — five seconds is short
   // enough without spending two of them working out what is happening
   $("sprint-progress").textContent = `1/${qs.length}`;
-  $("sprint-question").textContent = "⚡";
+  $("sprint-question").textContent = slot === "end" ? "🏁" : "⚡";
+  $("sprint-badge-label").textContent = t(slot === "end" ? "sprint_title_end" : "sprint_title");
   $("sprint-answers").innerHTML = "";
   $("sprint-count").textContent = Sprint.SECS;
-  $("sprint-flash").textContent = t("sprint_ready");
+  $("sprint-flash").textContent = t(slot === "end" ? "sprint_ready_end" : "sprint_ready");
   $("sprint-flash").className = "sprint-flash";
   show("screen-sprint");
   Live.push("sprint");
@@ -433,31 +449,41 @@ function finishSprint() {
   const ds = todayStr();
   const right = sprint.tiles.split("").filter(c => c === "o").length;
   const day = data.days[ds] || { solved: 0, firstCorrect: 0, done100: false, cats: {} };
-  day.sprint = { n: sprint.qs.length, right, tiles: sprint.tiles, facts: sprint.facts };
+  day[SPRINT_SLOTS[sprint.slot]] = { n: sprint.qs.length, right, tiles: sprint.tiles, facts: sprint.facts };
   data.days[ds] = day;
   Store.save(data);
 
+  const all = right === sprint.qs.length;
   $("sprint-question").textContent = `${right}/${sprint.qs.length}`;
   $("sprint-answers").innerHTML = "";
   const flash = $("sprint-flash");
-  flash.textContent = right === sprint.qs.length ? t("sprint_all") : t("sprint_next");
-  flash.className = "sprint-flash " + (right === sprint.qs.length ? "good" : "");
+  flash.textContent = all ? t("sprint_all") : t(sprint.slot === "end" ? "sprint_done" : "sprint_next");
+  flash.className = "sprint-flash " + (all ? "good" : "");
   clearInterval(sprint.tick);
   const then = sprint.then;
   setTimeout(() => { sprint = null; then(); }, 1200);
 }
 
 /* one line of tafels, for the report card and for the parent's kalender */
-function sprintStripHTML(sp) {
+function sprintStripHTML(sp, slot) {
   const icon = { o: "✅", n: "❌", t: "⏱" };
   const tiles = (sp.facts || []).map((f, i) => {
     const ch = (sp.tiles || "")[i] || "n";
     const [a, b] = f.split("x");
     return `<span class="sprint-chip ${ch}">${icon[ch] || "❌"} ${a}×${b}</span>`;
   }).join("");
-  return `<div class="sprint-line"><b>⚡ ${esc(t("sprint_title"))}</b>
+  const end = slot === "end";
+  return `<div class="sprint-line"><b>${end ? "🏁" : "⚡"} ${esc(t(end ? "sprint_title_end" : "sprint_title"))}</b>
             <span>${sp.right}/${sp.n}</span></div>
           <div class="sprint-chips">${tiles}</div>`;
+}
+
+/* both sprints of a day, in the order they were played */
+function sprintStripsHTML(ds) {
+  return ["start", "end"].map(slot => {
+    const sp = sprintOfDay(ds, slot);
+    return sp ? sprintStripHTML(sp, slot) : "";
+  }).join("");
 }
 
 function startTask() {
@@ -1031,6 +1057,11 @@ function finishPass() {
   }
 
   stopTimer();
+  // the opdracht is closed and counted by now, so the lap of honour cannot
+  // change a thing about it — which is exactly the point of playing it here
+  if (open.length === 0 && !sprintDone("end")) {
+    return startSprint(() => { renderResult(); show("screen-result"); }, "end");
+  }
   renderResult();
   show("screen-result");
 }
@@ -1218,10 +1249,9 @@ function renderResult() {
   // numbered grid: right, wrong, corrected, explained, or still to be done.
   // No answers are given away here — a wrong som has to be opened, and there
   // the child gets a second go at it before the answer is shown.
-  const sp = sprintOfDay();
   const strip = $("result-sprint");
-  strip.innerHTML = sp ? sprintStripHTML(sp) : "";
-  strip.classList.toggle("hidden", !sp);
+  strip.innerHTML = sprintStripsHTML(todayStr());
+  strip.classList.toggle("hidden", !strip.innerHTML);
 
   const grid = $("result-grid");
   grid.innerHTML = "";
@@ -1835,8 +1865,8 @@ function showDay(ds) {
        ${cats ? `<div class="day-cats">${cats}</div>` : ""}`;
   }
 
-  const sp = rec && rec.sprint;
-  if (sp) body += `<div class="sprint-strip">${sprintStripHTML(sp)}</div>`;
+  const strips = rec ? sprintStripsHTML(ds) : "";
+  if (strips) body += `<div class="sprint-strip">${strips}</div>`;
 
   // a note the parent left stands above whatever the app worked out — but not
   // twice, so when the editor is open the note is only in the box you type in

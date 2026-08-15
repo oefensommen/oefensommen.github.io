@@ -1033,3 +1033,4 @@ input:focus { border-color: var(--accent); }
 .cal-detail .result-tile:not(.flat):hover { box-shadow: 0 2px 8px rgba(29, 36, 51, .16); }
 .som-row.open { background: var(--bg); border-radius: 12px; padding: 12px; }
 .day-nosom { font-size: .85rem; color: var(--muted); margin-top: 14px; line-height: 1.5; }
+.sprint-strip .sprint-line + .sprint-chips + .sprint-line { margin-top: 12px; }

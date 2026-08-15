@@ -18,8 +18,11 @@ const Sprint = {
   key(a, b) { return Math.min(a, b) + "x" + Math.max(a, b); },
 
   /* the whole round, built up front so the clock never waits on anything */
-  build(data) {
-    const seen = new Set();
+  build(data, avoid) {
+    const seen = new Set((avoid || []).map(f => {
+      const [a, b] = String(f).split("x").map(Number);
+      return this.key(a, b);
+    }));
     const out = [];
     while (out.length < this.N) {
       const f = this.pick(data, seen);
