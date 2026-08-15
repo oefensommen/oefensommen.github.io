@@ -1025,3 +1025,11 @@ input:focus { border-color: var(--accent); }
 .btn.small { padding: 6px 13px; font-size: .8rem; }
 .lesson-adj.off { background: #fdf0d5; color: #8a6a11; }
 .lesson.note .lesson-what span { font-style: italic; }
+
+/* a vakje in the kalender opens the som it stands for; when there is no som
+   left to open it is simply a picture */
+.cal-detail .result-tile { cursor: pointer; }
+.cal-detail .result-tile.flat { cursor: default; }
+.cal-detail .result-tile:not(.flat):hover { box-shadow: 0 2px 8px rgba(29, 36, 51, .16); }
+.som-row.open { background: var(--bg); border-radius: 12px; padding: 12px; }
+.day-nosom { font-size: .85rem; color: var(--muted); margin-top: 14px; line-height: 1.5; }

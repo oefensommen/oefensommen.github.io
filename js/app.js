@@ -1098,9 +1098,10 @@ function tileState(ch) {
 }
 
 /* How many days of question lists to keep. The parent looks back at yesterday,
-   not at March, and only the soort som is needed to judge it — so a fortnight
-   of template ids costs a few kilobytes rather than the whole opdracht. */
-const TPLS_KEEP_DAYS = 14;
+   not at March, and only the soort som is needed to judge it — but two months
+   of template ids still costs only a few kilobytes, where the whole opdracht
+   would cost a great deal more. */
+const TPLS_KEEP_DAYS = 60;
 
 function writeTiles() {
   const day = data.days[todayStr()];
@@ -1462,9 +1463,21 @@ function somDetailHTML(tplId, q) {
    comes from the template ids kept with that day, so the phrasing is shown
    with … where the numbers were. Either way the verdict lands on the soort
    som, which is what tuning acts on. */
-function dayQuestionsHTML(ds, rec) {
+function dayRowsSource(ds, rec) {
   const runs = (rec && rec.tiles) ? rec.tiles.length : 0;
-  if (ds === todayStr() && runs <= 1) {
+  if (ds === todayStr() && runs <= 1 && todaysQuestions().length) return "today";
+  if (rec && rec.tpls && rec.tpls.length) return "tpls";
+  return null;                       // a day from before the sommen were kept
+}
+
+/* Which row on this day's list belongs to tile number i of run ri — so that
+   tapping a vakje on the report card lands on the som it stands for. */
+function somKeyFor(ds, rec, ri, i) {
+  return dayRowsSource(ds, rec) === "today" ? `${ds}|${i}` : `${ds}|${ri}|${i}`;
+}
+
+function dayQuestionsHTML(ds, rec) {
+  if (dayRowsSource(ds, rec) === "today") {
     const qs = todaysQuestions();
     if (qs.length) {
       return qs.map((q, i) => somRowHTML(i, {
@@ -1599,6 +1612,15 @@ function fillSomRow(row, on) {
   const q = row.dataset.q != null ? todaysQuestions()[+row.dataset.q] : null;
   box.innerHTML = somDetailHTML(row.dataset.tpl, q);
   wireSomDetail(box);
+}
+
+/* Open the som with this key and bring it into view — what a vakje on the
+   report card does when the parent taps it. */
+function openSomByKey(root, key) {
+  const row = root.querySelector(`.som-row[data-key="${key}"]`);
+  if (!row) return;
+  if (openSom !== key) toggleSomRow(row);
+  row.scrollIntoView({ behavior: "smooth", block: "center" });
 }
 
 function toggleSomRow(row) {
@@ -1765,12 +1787,16 @@ function showDay(ds) {
     const cls  = { o: "ok", f: "fix", e: "exp", n: "no", t: "todo" };
     const tip  = { o: "tile_done", f: "tile_fixed", e: "tile_explained",
                    n: "tile_wrong", t: "tile_todo" };
+    const canOpen = Store.isParent() && !!dayRowsSource(ds, rec);
     const grids = rec.tiles.map((run, ri) => {
       const tiles = run.split("").map((ch, i) => {
         const { key, hinted } = tileState(ch);
-        return `<div class="result-tile ${cls[key] || "no"}" title="${esc(t(tip[key] || "tile_wrong"))}">` +
+        const tag = canOpen ? "button" : "div";
+        const at = canOpen ? ` data-open="${esc(somKeyFor(ds, rec, ri, i))}"` : "";
+        return `<${tag} class="result-tile ${cls[key] || "no"}${canOpen ? "" : " flat"}"${at}` +
+               ` title="${esc(t(tip[key] || "tile_wrong"))}">` +
                `<span class="num">${i + 1}</span><span class="mark">${icon[key] || "❌"}</span>` +
-               (hinted ? `<span class="tile-hint">💡</span>` : "") + `</div>`;
+               (hinted ? `<span class="tile-hint">💡</span>` : "") + `</${tag}>`;
       }).join("");
       const head = rec.tiles.length > 1
         ? `<p class="day-run">${t("day_run").replace("{n}", ri + 1)}</p>` : "";
@@ -1789,6 +1815,7 @@ function showDay(ds) {
     const qs = Store.isParent() ? dayQuestionsHTML(ds, rec) : "";
     if (qs) body += `<div class="day-sommen"><h3>${esc(t("sommen"))}</h3>
                      <p class="lessons-sub">${esc(t("rate_sub"))}</p>${qs}</div>`;
+    else if (Store.isParent()) body += `<p class="day-nosom">${esc(t("day_no_sommen"))}</p>`;
   } else if (!rec || !rec.solved) {
     body = `<div class="day-head"><b>${head}</b></div>
             <p class="day-none">${t("day_nothing")}</p>`;
@@ -1821,7 +1848,12 @@ function showDay(ds) {
   box.innerHTML = body;
   box.dataset.day = ds;
   box.classList.remove("hidden");
-  if (Store.isParent()) { wireDayEditor(ds); wireRateButtons(box); }
+  if (Store.isParent()) {
+    wireDayEditor(ds);
+    wireRateButtons(box);
+    box.querySelectorAll(".result-tile[data-open]").forEach(tile =>
+      tile.addEventListener("click", () => openSomByKey(box, tile.dataset.open)));
+  }
 }
 
 function esc(s) {
