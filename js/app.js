@@ -1253,6 +1253,22 @@ function renderResult() {
   strip.innerHTML = sprintStripsHTML(todayStr());
   strip.classList.toggle("hidden", !strip.innerHTML);
 
+  // the tafels as they stand today: the two sprints above are what happened,
+  // this is what they add up to
+  const tbox = $("result-tafels");
+  const tsc = tafelScore();
+  if (tsc.asked) {
+    const weak = tafelWeakHTML();
+    tbox.innerHTML =
+      `<div class="sprint-line"><b>✖️ ${esc(t("tafel_title"))}</b>
+         <span>${tsc.known}/${tsc.total}</span></div>
+       <div class="tafel-grid small">${tafelGridHTML()}</div>
+       <p class="tafel-weak${weak.good ? " good" : ""}">${esc(weak.text)}</p>`;
+  } else {
+    tbox.innerHTML = "";
+  }
+  tbox.classList.toggle("hidden", !tsc.asked);
+
   const grid = $("result-grid");
   grid.innerHTML = "";
   qs.forEach((q, i) => {
@@ -2004,12 +2020,9 @@ function tafelState(m) {
   return m.w === 0 ? "ok" : (m.w === 1 ? "mid" : "low");
 }
 
-function renderTafels() {
-  const box = $("tafel-grid");
-  if (!box) return;
+function tafelGridHTML() {
   const tally = data.tafel || {};
   const lo = Sprint.MIN, hi = Sprint.MAX;
-
   let html = `<div class="tafel-row head"><span class="tafel-cell corner">×</span>`;
   for (let b = lo; b <= hi; b++) html += `<span class="tafel-cell head">${b}</span>`;
   html += `</div>`;
@@ -2017,24 +2030,55 @@ function renderTafels() {
     html += `<div class="tafel-row"><span class="tafel-cell head">${a}</span>`;
     for (let b = lo; b <= hi; b++) {
       const m = tally[Sprint.key(a, b)];
-      const st = tafelState(m);
       const tip = `${a} × ${b} = ${a * b}` +
                   (m && m.n ? ` · ${t("tafel_asked").replace("{n}", m.n)}` : ` · ${t("tafel_new")}`);
-      html += `<span class="tafel-cell ${st}" title="${esc(tip)}">${a * b}</span>`;
+      html += `<span class="tafel-cell ${tafelState(m)}" title="${esc(tip)}">${a * b}</span>`;
     }
     html += `</div>`;
   }
-  box.innerHTML = html;
+  return html;
+}
 
-  // the handful worth practising at the kitchen table tonight
+/* How the tafels stand overall: how many of the 45 are answered on the clock
+   and stay answered. Counted over every pair from 2 to 10 once — 6 × 8 and
+   8 × 6 are one tafel, not two. */
+function tafelScore() {
+  const tally = data.tafel || {};
+  let known = 0, asked = 0;
+  const total = ((Sprint.MAX - Sprint.MIN + 1) * (Sprint.MAX - Sprint.MIN + 2)) / 2;
+  for (let a = Sprint.MIN; a <= Sprint.MAX; a++) {
+    for (let b = a; b <= Sprint.MAX; b++) {
+      const m = tally[Sprint.key(a, b)];
+      if (m && m.n) { asked++; if (m.w === 0) known++; }
+    }
+  }
+  return { known, asked, total };
+}
+
+/* The handful worth ten minutes at the kitchen table tonight */
+function tafelWeakHTML() {
+  const tally = data.tafel || {};
   const weak = Object.keys(tally)
     .filter(k => (tally[k].w || 0) > 0)
     .sort((x, y) => tally[y].w - tally[x].w)
     .slice(0, 8)
     .map(k => k.replace("x", "×"));
+  return weak.length
+    ? { text: t("tafel_weak") + " " + weak.join(" · "), good: false }
+    : { text: t("tafel_all_ok"), good: true };
+}
+
+function renderTafels() {
+  const box = $("tafel-grid");
+  if (!box) return;
+  box.innerHTML = tafelGridHTML();
+  const sc = tafelScore();
+  $("tafel-score").textContent = t("tafel_score")
+    .replace("{k}", sc.known).replace("{t}", sc.total);
+  const weak = tafelWeakHTML();
   const line = $("tafel-weak");
-  line.textContent = weak.length ? t("tafel_weak") + " " + weak.join(" · ") : t("tafel_all_ok");
-  line.classList.toggle("good", !weak.length);
+  line.textContent = weak.text;
+  line.classList.toggle("good", weak.good);
 }
 
 /* ---------- magic door (login) ---------- */

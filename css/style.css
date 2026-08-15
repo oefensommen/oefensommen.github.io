@@ -1063,3 +1063,8 @@ input:focus { border-color: var(--accent); }
 @media (max-width: 420px) {
   .tafel-cell { min-width: 22px; font-size: .62rem; padding: 6px 1px; }
 }
+.tafel-score { font-size: .9rem; font-weight: 700; margin-bottom: 6px; }
+/* on the report card the grid sits inside a strip, so it is a size smaller */
+.tafel-grid.small { margin: 8px 0 6px; }
+.tafel-grid.small .tafel-cell { min-width: 20px; font-size: .6rem; padding: 5px 1px; }
+#result-tafels .tafel-weak { font-size: .78rem; text-align: left; }
