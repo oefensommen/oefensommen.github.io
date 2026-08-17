@@ -339,7 +339,8 @@ function startSprint(then, slot) {
   $("sprint-badge-label").textContent = t(slot === "end" ? "sprint_title_end" : "sprint_title");
   $("sprint-answers").innerHTML = "";
   $("sprint-count").textContent = Sprint.SECS;
-  $("sprint-flash").textContent = t(slot === "end" ? "sprint_ready_end" : "sprint_ready");
+  $("sprint-flash").textContent = t(slot === "end" ? "sprint_ready_end" : "sprint_ready")
+    .replace("{n}", Sprint.N).replace("{s}", Sprint.SECS);
   $("sprint-flash").className = "sprint-flash";
   show("screen-sprint");
   Live.push("sprint");
@@ -386,7 +387,7 @@ function startSprintClock() {
   const paint = () => {
     const left = Math.max(0, sprint.endAt - Date.now());
     num.textContent = Math.ceil(left / 1000);
-    const low = left <= 2000;
+    const low = left <= 3000;
     num.classList.toggle("low", low);
     arc.classList.toggle("low", low);
     if (left <= 0) { clearInterval(sprint.tick); timeoutSprint(); }

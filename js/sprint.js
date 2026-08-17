@@ -11,8 +11,10 @@
    the tafels this particular child does not have yet. */
 
 const Sprint = {
-  N: 5,             // five facts a day
-  SECS: 5,          // five seconds each
+  N: 10,            // ten facts a round, twice a day
+  SECS: 10,         // ten seconds each — long enough to count back, short
+                    // enough that counting back does not pay
+  OPTS: 4,          // four answers: three near-misses to pick your way through
   MIN: 2, MAX: 10,  // the tafels of groep 5 — 1 and beyond 10 are not sport
 
   key(a, b) { return Math.min(a, b) + "x" + Math.max(a, b); },
@@ -52,7 +54,7 @@ const Sprint = {
     return hat[Math.floor(Math.random() * hat.length)];
   },
 
-  /* Three answers, and the two wrong ones are the mistakes that are actually
+  /* Four answers, and the three wrong ones are the mistakes that are actually
      made: the neighbours in the table. 6 × 8 sits between 6 × 7 and 6 × 9, and
      next to 5 × 8 and 7 × 8 — so 42, 54, 40 and 56 are all a slip of one row,
      never a random number that can be dismissed at a glance. */
@@ -65,9 +67,9 @@ const Sprint = {
       const j = Math.floor(Math.random() * (i + 1));
       [uniq[i], uniq[j]] = [uniq[j], uniq[i]];
     }
-    const opts = [answer].concat(uniq.slice(0, 2));
+    const opts = [answer].concat(uniq.slice(0, this.OPTS - 1));
     let guard = 0;
-    while (opts.length < 3 && guard++ < 20) {            // 2 × 2 has few neighbours
+    while (opts.length < this.OPTS && guard++ < 40) {    // 2 × 2 has few neighbours
       const v = answer + (Math.floor(Math.random() * 5) + 1) * (Math.random() < 0.5 ? -1 : 1);
       if (v > 0 && !opts.includes(v)) opts.push(v);
     }

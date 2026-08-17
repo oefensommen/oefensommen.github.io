@@ -925,7 +925,9 @@ input:focus { border-color: var(--accent); }
   font-size: 2.6rem; font-weight: 800; text-align: center;
   letter-spacing: .03em; margin: 6px 0 18px;
 }
-.sprint-answers { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+/* four answers, two by two: a bigger target than a row of four, and it keeps
+   the som and the clock above the fold on a phone */
+.sprint-answers { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
 .sprint-opt {
   font-family: inherit; font-size: 1.6rem; font-weight: 800;
   padding: 18px 6px; border-radius: 14px; cursor: pointer;
