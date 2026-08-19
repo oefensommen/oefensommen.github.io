@@ -11,10 +11,11 @@
    the tafels this particular child does not have yet. */
 
 const Sprint = {
-  N: 10,            // ten facts a round, twice a day
-  SECS: 10,         // ten seconds each — long enough to count back, short
-                    // enough that counting back does not pay
-  OPTS: 4,          // four answers: three near-misses to pick your way through
+  N: 20,            // twenty facts a round, twice a day — most of the table daily
+  SECS: 15,         // fifteen seconds each: room to count back from a tafel you
+                    // do know, which is the working that stops being needed
+  OPTS: 2,          // two answers, and the wrong one is a neighbour in the
+                    // table — near enough that only knowing it settles it
   MIN: 2, MAX: 10,  // the tafels of groep 5 — 1 and beyond 10 are not sport
 
   key(a, b) { return Math.min(a, b) + "x" + Math.max(a, b); },
@@ -54,10 +55,10 @@ const Sprint = {
     return hat[Math.floor(Math.random() * hat.length)];
   },
 
-  /* Four answers, and the three wrong ones are the mistakes that are actually
-     made: the neighbours in the table. 6 × 8 sits between 6 × 7 and 6 × 9, and
-     next to 5 × 8 and 7 × 8 — so 42, 54, 40 and 56 are all a slip of one row,
-     never a random number that can be dismissed at a glance. */
+  /* The wrong answers are the mistakes that are actually made: the neighbours
+     in the table. 6 × 8 sits between 6 × 7 and 6 × 9, and next to 5 × 8 and
+     7 × 8 — a slip of one row, never a number that can be dismissed at a
+     glance. */
   question(a, b) {
     const answer = a * b;
     const near = [a * (b - 1), a * (b + 1), (a - 1) * b, (a + 1) * b]

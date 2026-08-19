@@ -1070,3 +1070,7 @@ input:focus { border-color: var(--accent); }
 .tafel-grid.small { margin: 8px 0 6px; }
 .tafel-grid.small .tafel-cell { min-width: 20px; font-size: .6rem; padding: 5px 1px; }
 #result-tafels .tafel-weak { font-size: .78rem; text-align: left; }
+
+/* a fout in the task list can be reopened for one more go — it asks quietly */
+.mark-cell.can-fix { cursor: pointer; animation: tile-nudge 1.6s ease-in-out infinite; }
+.mark-cell.can-fix:hover { box-shadow: 0 2px 8px rgba(29, 36, 51, .16); }

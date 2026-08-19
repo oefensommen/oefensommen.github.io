@@ -292,12 +292,14 @@ function runCountdown(then) {
 
 /* The opdracht starts at ten sommen and only grows if it has to.
 
-   Ten out of ten and the day is done — sharp work buys a short day. One or two
-   wrong and five more sommen appear; still at most two wrong after fifteen and
-   it ends there. Three or more wrong and it runs to the full twenty. Twenty are
-   built up front; the ones that are never reached go back to the bank unused,
-   because a som only counts as asked once it has been on the screen. */
-const TASK_START = 10, TASK_MID = 15, TASK_FULL = 20;
+   Ten out of ten and the day is done — sharp work buys a short day, and a fout
+   the child went back to and put right during the opdracht counts as good
+   here, exactly as it does everywhere the child can see. Anything less than
+   ten out of ten and five more sommen appear; at fifteen it ends, whatever
+   happened, and it never runs to twenty. Fifteen are built up front; the ones
+   never reached go back to the bank unused, because a som only counts as
+   asked once it has been on the screen. */
+const TASK_START = 10, TASK_FULL = 15;
 
 /* ---------- Tafelsprint: the five tafels the day opens with ----------
 
@@ -387,7 +389,7 @@ function startSprintClock() {
   const paint = () => {
     const left = Math.max(0, sprint.endAt - Date.now());
     num.textContent = Math.ceil(left / 1000);
-    const low = left <= 3000;
+    const low = left <= Sprint.SECS * 1000 / 3;
     num.classList.toggle("low", low);
     arc.classList.toggle("low", low);
     if (left <= 0) { clearInterval(sprint.tick); timeoutSprint(); }
@@ -539,6 +541,7 @@ function snapQ(q) {
     booked: !!q.booked,            // already counted in today's record
     hinted: !!q.hinted,            // the 💡 was used on this som
     fixed: !!q.fixed,              // put right on the second chance
+    retried: !!q.retried,          // the second chance was spent during the opdracht
     explained: !!q.explained,      // second chance also went wrong; uitleg shown
     chosen2: q.chosen2 === undefined ? null : q.chosen2
   };
@@ -610,14 +613,17 @@ function saveActive(pushNow) {
 
 /* How many sommen the mistakes have earned, on top of what is in play.
    Works on the live session and on the saved copy alike — both carry
-   `questions` and `pool`. Zero means the opdracht may end here. */
+   `questions` and `pool`. Zero means the opdracht may end here.
+
+   One decision, taken once, at ten: everything right — a fout put right by
+   the child's own hand included — and the day ends there; anything still
+   standing as a fout and five more appear. Fifteen is the end of every
+   opdracht (an old saved task may be longer; it just ends where it is). */
 function storedExtension(a) {
   if (!a.pool || !a.pool.length) return 0;
-  const len = a.questions.length;
-  const wrong = a.questions.filter(q => q.failed).length;
-  if (len === TASK_START) return wrong === 0 ? 0 : (wrong <= 2 ? TASK_MID - TASK_START : TASK_FULL - TASK_START);
-  if (len === TASK_MID) return wrong <= 2 ? 0 : TASK_FULL - TASK_MID;
-  return 0;
+  if (a.questions.length !== TASK_START) return 0;
+  const wrong = a.questions.filter(q => q.failed && !q.fixed).length;
+  return wrong === 0 ? 0 : TASK_FULL - TASK_START;
 }
 
 /* The task to carry on with, or nothing */
@@ -720,7 +726,7 @@ function renderQuestion() {
   // unasked, waiting, instead of being spent
   if (Engine.remember(data, q)) Store.save(data);
   $("btn-skip").disabled = false;
-  $("btn-skip").classList.toggle("hidden", !!session.review);   // nothing to skip when looking back
+  $("btn-skip").classList.toggle("hidden", !!session.review || !!session.midRetry);   // nothing to skip when looking back
   // one som opened from the report card is "som 5 of 20", not "1 of 1"
   const at = session.viewOne != null ? session.viewOne : session.idx;
   const of = session.viewOne != null ? session.questions.length : session.queue.length;
@@ -730,9 +736,11 @@ function renderQuestion() {
   const box = $("answers");
   box.innerHTML = "";
   box.classList.add("fresh");     // no answer may look chosen before it is touched
-  // a fout opened from the report card gets a second go before anything is
-  // given away; only after that does it become a page to read
-  const correcting = session.review && q.failed && !q.fixed && !q.explained;
+  // a fout gets one second go before anything is given away — reached from
+  // the report card, or during the opdracht from the list beside the sommen.
+  // Once that go is spent the som is a page to read, nothing more.
+  const correcting = (session.review || session.midRetry) &&
+                     q.failed && !q.fixed && !q.explained && !q.retried;
   q.options.forEach((opt, i) => {
     const b = document.createElement("button");
     b.className = "answer";
@@ -772,11 +780,49 @@ function renderQuestion() {
 }
 
 /* The whole opdracht beside the som being worked on, so the child can see how
-   it is going without waiting for the report card. */
+   it is going without waiting for the report card. A red vakje in this list is
+   also a door: tap it and the som opens for one more go — get it right and it
+   counts exactly as if it had gone right the first time. */
 function renderTaskMarks() {
   if (!session) return;
-  $("task-marks").innerHTML =
-    Live.marksPanelHTML(Live.marksOf(session.questions), currentIdx());
+  const box = $("task-marks");
+  box.innerHTML = Live.marksPanelHTML(Live.marksOf(session.questions), currentIdx());
+  if (session.review || session.viewOne != null) return;   // looking, not working
+  const cells = box.querySelectorAll(".mark-cell");
+  session.questions.forEach((q, i) => {
+    if (!canMidRetry(i) || !cells[i]) return;
+    cells[i].classList.add("can-fix");
+    cells[i].title = t("fix_tap");
+    cells[i].addEventListener("click", () => openMidRetry(i));
+  });
+}
+
+/* May this som be reopened right now? Failed, its second chance unspent, and
+   not the som already on the screen. */
+function canMidRetry(i) {
+  const q = session.questions[i];
+  return q && q.failed && !q.fixed && !q.explained && !q.retried &&
+         session.queue[session.idx] !== i;
+}
+
+/* One more go at a fout, in the middle of the opdracht. The queue stands
+   still — viewOne points the screen at the old som, and when it is settled
+   the screen goes back to exactly where the child was. */
+function openMidRetry(i) {
+  if (!session || session.hopping || session.review || session.viewOne != null) return;
+  if (!canMidRetry(i)) return;
+  session.midRetry = true;
+  session.viewOne = i;
+  renderQuestion();
+  Live.push("task");
+}
+
+function closeMidRetry() {
+  session.midRetry = false;
+  session.viewOne = null;
+  hideExplainBox();
+  if (session.idx >= session.queue.length) return finishPass();
+  renderQuestion();
 }
 
 /* One go at a som during the opdracht. The moment an answer is touched the som
@@ -808,7 +854,9 @@ function answer(i, btn) {
 
   renderTaskMarks();
   Live.push("task");
-  setTimeout(advance, correct ? 600 : 1100);
+  // while the screen is mid-hop to the next som, the list is not a door
+  session.hopping = true;
+  setTimeout(() => { session.hopping = false; advance(); }, correct ? 600 : 1100);
 }
 
 /* Right after a fout, the next one or two UNSHOWN sommen are quietly swapped
@@ -855,9 +903,10 @@ function comfortSwap(cat) {
    som is actually solved — read it, press begrepen, and on to the next. */
 function secondChance(i, btn) {
   const q = currentQ();
-  if (!q.failed || q.fixed || q.explained) return;
+  if (!q.failed || q.fixed || q.explained || q.retried) return;
   q.chosen2 = i;
   document.querySelectorAll(".answer").forEach(b => b.disabled = true);
+  const mid = !!session.midRetry;
 
   if (i === q.answerIdx) {
     q.fixed = true;
@@ -865,7 +914,20 @@ function secondChance(i, btn) {
     showExplainBox(`<p class="fix-praise">🎯 ${esc(t("fixed_msg"))}</p>`, false);
     persistCorrection();
     Live.push("task");
-    setTimeout(backToResult, 1200);
+    setTimeout(mid ? closeMidRetry : backToResult, 1200);
+    return;
+  }
+
+  if (mid) {
+    // wrong again, in the middle of the opdracht: the som is spent, but the
+    // answer is NOT shown here — it waits on the report card, where the
+    // uitleg can do the explaining while the opdracht is no longer waiting
+    q.retried = true;
+    btn.classList.add("wrong");
+    showExplainBox(`<p class="fix-hint">${esc(t("fix_later"))}</p>`, false);
+    persistCorrection();
+    Live.push("task");
+    setTimeout(closeMidRetry, 1400);
     return;
   }
 
@@ -1354,6 +1416,12 @@ function renderResult() {
    answer it now; already finished → look at it without changing anything. */
 function openQuestion(i) {
   const q = session.questions[i];
+  // a fout whose second chance was already spent during the opdracht goes
+  // straight to the uitleg — the third look is for reading, not for guessing
+  if (q.failed && q.retried && !q.fixed && !q.explained) {
+    q.explained = true;
+    persistCorrection();
+  }
   session.fromResult = true;
   session.review = finished(q);       // settled soms are read-only, right or wrong
   session.viewOne = i;                // beside the queue, not instead of it
