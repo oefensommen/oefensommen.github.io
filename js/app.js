@@ -764,6 +764,11 @@ function renderQuestion() {
   $("progress-text").textContent = `${at + 1}/${of}`;
   $("progress-bar").style.width = `${(at / of) * 100}%`;
   $("question-text").textContent = Engine.text(q, LANG);
+  // a som shaped like the ones on the school's werkblad wears the school's
+  // little logo, so the child knows: this one you will meet in class too
+  const tplNow = TEMPLATES.find(tp => tp.id === q.tplId);
+  $("school-badge").classList.toggle("hidden", !(tplNow && tplNow.school));
+  $("school-badge").title = t("school_badge");
   const box = $("answers");
   box.innerHTML = "";
   box.classList.add("fresh");     // no answer may look chosen before it is touched
@@ -1515,6 +1520,7 @@ function somRowHTML(i, opts) {
               <span class="som-n">${icon} ${i + 1}</span>
               <span class="som-cat">${esc(cat)}</span>
               ${hinted ? `<span class="som-hint">💡</span>` : ""}
+              ${tpl && tpl.school ? `<img class="school-badge row" src="img/school.png" onerror="this.onerror=null;this.src='img/school.svg'" alt="school" title="${esc(t("school_badge"))}">` : ""}
               ${off ? `<span class="som-off">${esc(t("rule_is_off"))}</span>` : ""}
               <span class="som-more">▾</span>
             </div>

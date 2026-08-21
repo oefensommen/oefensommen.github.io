@@ -1084,3 +1084,9 @@ input:focus { border-color: var(--accent); }
 .btn.choice.done { background: var(--green); }
 .done-badge { font-size: .8rem; opacity: .95; }
 .done-badge:empty { display: none; }
+
+/* the school's little logo on a som shaped like the werkblad's */
+.school-badge {
+  display: block; width: 34px; height: auto; margin: -4px 0 10px auto; opacity: .9;
+}
+.school-badge.row { display: inline-block; width: 22px; margin: 0; vertical-align: middle; }

@@ -332,12 +332,43 @@ const EXPLAIN = {
   },
 
   /* ===================== VERRASSING ===================== */
-  "verr-briefjes": {
-    v: v => ({ h: v.a * 100, tt: v.b * 10 }),
-    nl: "Reken per soort: {a} × 100 = {h}, {b} × 10 = {tt}, en nog {c} losse euro's. Samen: {h} + {tt} + {c} = {ans}.",
-    en: "Count per kind: {a} × 100 = {h}, {b} × 10 = {tt}, and {c} loose euros. Together: {h} + {tt} + {c} = {ans}.",
-    tr: "Tür tür hesapla: {a} × 100 = {h}, {b} × 10 = {tt}, ve {c} tane 1 euro. Toplam: {h} + {tt} + {c} = {ans}."
+  "opt-eldeli-klein": {
+    v: v => ({ tens: (v.a - v.a % 10) + (v.b - v.b % 10), units: (v.a % 10) + (v.b % 10) }),
+    nl: "Eerst de tientallen: {tens}. Dan de eenheden: {units} — dat is meer dan 10, dus er gaat een tiental over. {tens} + {units} = {ans}.",
+    en: "The tens first: {tens}. Then the units: {units} — that is more than 10, so one ten carries over. {tens} + {units} = {ans}.",
+    tr: "Önce onluklar: {tens}. Sonra birlikler: {units} — bu 10'dan fazla, yani bir onluk elde var. {tens} + {units} = {ans}."
   },
+  "aft-eldeli": {
+    v: v => ({ step1: v.a - (v.b - v.b % 10), rest: v.b % 10 }),
+    nl: "In twee stappen: eerst de tientallen eraf, dan kom je op {step1}. Dan nog {rest} eraf: {step1} − {rest} = {ans}. Over het tiental heen, dus even goed kijken.",
+    en: "In two steps: take the tens off first, that brings you to {step1}. Then {rest} more off: {step1} − {rest} = {ans}. It crosses a ten, so look carefully.",
+    tr: "İki adımda: önce onlukları çıkar, {step1} olur. Sonra {rest} daha çıkar: {step1} − {rest} = {ans}. Onluğu geçiyor, dikkatli bak."
+  },
+  "verm-keer-tien": {
+    nl: "Keer 10 is makkelijk: er komt een 0 achter het getal. {a} × 10 = {ans}.",
+    en: "Times 10 is easy: a 0 goes on the end of the number. {a} × 10 = {ans}.",
+    tr: "10 ile çarpmak kolay: sayının sonuna bir 0 gelir. {a} × 10 = {ans}."
+  },
+  "verm-klein-groot": {
+    v: v => ({ h: v.a * (v.b - v.b % 100), r: v.a * (v.b % 100) }),
+    nl: "Splits het grote getal: {a} × {b} = {a} × de honderdtallen + {a} × de rest. Dat is {h} + {r} = {ans}. Of: {b} zo vaak optellen als {a} zegt.",
+    en: "Split the big number: {a} × {b} = {a} × the hundreds + {a} × the rest. That is {h} + {r} = {ans}. Or: add {b} as many times as {a} says.",
+    tr: "Büyük sayıyı parçala: {a} × {b} = {a} × yüzlükler + {a} × kalan. Bu {h} + {r} = {ans}. Ya da: {b} sayısını {a} kez topla."
+  },
+  "verr-getallenrij": {
+    v: v => ({ step: v.b - v.a }),
+    nl: "Kijk wat er steeds bij komt: van {a} naar {b} is {step} erbij. Dat gaat zo door. Op de puntjes hoort dus {ans}.",
+    en: "See what is added each time: from {a} to {b} is {step} more. That keeps going. So the dots are {ans}.",
+    tr: "Her seferinde ne ekleniyor bak: {a}'dan {b}'ye {step} ekleniyor. Bu böyle devam ediyor. Noktalı yer: {ans}."
+  },
+  "verr-briefjes": [
+    { nl: "Eerst de grote briefjes: {a} × 100. Dan de tientjes: {b} × 10. Dan de munten: {c} × 1. Alles bij elkaar: {ans} euro.",
+      en: "The big notes first: {a} × 100. Then the tens: {b} × 10. Then the coins: {c} × 1. All together: {ans} euros.",
+      tr: "Önce büyük banknotlar: {a} × 100. Sonra onluklar: {b} × 10. Sonra madeni paralar: {c} × 1. Hepsi birlikte: {ans} euro." },
+    { v: v => ({ t: v.a * 20, h: v.b * 10, m: v.c * 2 }),
+      nl: "Tel per soort: {a} × 20 = {t}, {b} × 10 = {h}, {c} × 2 = {m}. Samen: {t} + {h} + {m} = {ans} euro. Gepast betalen betekent: precies dit bedrag.",
+      en: "Count each kind: {a} × 20 = {t}, {b} × 10 = {h}, {c} × 2 = {m}. Together: {t} + {h} + {m} = {ans} euros. Paying exactly means: precisely this amount.",
+      tr: "Her türü ayrı say: {a} × 20 = {t}, {b} × 10 = {h}, {c} × 2 = {m}. Toplam: {t} + {h} + {m} = {ans} euro. Tam para ödemek demek: tam bu tutar." } ],
   "verr-rekening": {
     nl: "Tel de drie bedragen op: € {a} + € {b} + € {c}. Tel eerst de hele euro's, dan de centen. Samen is dat {ans}.",
     en: "Add the three amounts: € {a} + € {b} + € {c}. First the whole euros, then the cents. Together that is {ans}.",
@@ -369,7 +400,15 @@ const EXPLAIN = {
       tr: "Her biri {b} gram olan {a} paket var. Eşit paketler çarpmadır: {a} × {b} = {ans} gram." },
     { nl: "1 kilo = 1000 gram. Dus {a} kilo = {a} × 1000 = {ans} gram.",
       en: "1 kilo = 1000 grams. So {a} kilos = {a} × 1000 = {ans} grams.",
-      tr: "1 kilo = 1000 gram. Yani {a} kilo = {a} × 1000 = {ans} gram." }
+      tr: "1 kilo = 1000 gram. Yani {a} kilo = {a} × 1000 = {ans} gram." },
+    { v: v => ({ big: v.a * 1000 }),
+      nl: "Eerst alles in grammen: {a} kilo = {big} gram. Dan wat er nog mist: {big} − {b} = {ans} gram.",
+      en: "First put everything in grams: {a} kilos = {big} grams. Then what is missing: {big} − {b} = {ans} grams.",
+      tr: "Önce her şeyi grama çevir: {a} kilo = {big} gram. Sonra eksik olan: {big} − {b} = {ans} gram." },
+    { v: v => ({ big: v.a * 1000 }),
+      nl: "Eerst alles in meters: {a} kilometer = {big} meter. Dan wat er nog over was: {big} − {b} = {ans} meter.",
+      en: "First put everything in metres: {a} kilometres = {big} metres. Then what was left: {big} − {b} = {ans} metres.",
+      tr: "Önce her şeyi metreye çevir: {a} kilometre = {big} metre. Sonra kalan: {big} − {b} = {ans} metre." }
   ],
   "verr-prijslijst": {
     v: v => ({ p1: v.a * v.c, p2: v.b * v.d }),
@@ -588,10 +627,33 @@ const HINTS = {
     tr: "Peş peşe iki süre var; {name} ancak ikisinden sonra evde. Önce iki süreyi topla — o zaman saatte sadece bir kez ilerlemen yeter." },
 
   /* ---- verrassing ---- */
-  "verr-briefjes": {
-    nl: "Niet elk briefje is evenveel waard — daar zit hem de vraag. Reken elke soort apart uit en leg die bedragen pas op het eind bij elkaar.",
-    en: "Not every note is worth the same — that is the whole question. Work out each kind on its own and only add those amounts at the end.",
-    tr: "Her banknot aynı değerde değil — soru tam da bu. Her türü ayrı hesapla, tutarları ancak sonunda topla." },
+  "opt-eldeli-klein": {
+    nl: "Twee groepen komen bij elkaar, dus optellen. Kijk goed naar de losse eenheden: als die samen over de 10 gaan, komt er een tiental bij — dat is waar het misgaat.",
+    en: "Two groups come together, so adding. Look at the units: when they go past 10 together, a ten is added — that is where it goes wrong.",
+    tr: "İki grup birleşiyor, yani toplama. Birliklere iyi bak: birlikte 10'u geçerlerse bir onluk eklenir — hata tam orada olur." },
+  "aft-eldeli": {
+    nl: "Er gaat iets af, dus aftrekken. De eenheden van wat eraf gaat zijn groter dan de eenheden die er staan — je moet dus over een tiental heen. Doe het in twee stappen.",
+    en: "Something goes away, so subtracting. The units you take off are bigger than the units there — so you cross a ten. Do it in two steps.",
+    tr: "Bir şey gidiyor, yani çıkarma. Çıkardığının birlikleri eldeki birliklerden büyük — yani bir onluğu geçeceksin. İki adımda yap." },
+  "verm-keer-tien": {
+    nl: "Steeds dezelfde groep van 10, een heleboel keer. Denk aan wat een getal doet als je er keer 10 van maakt — het schuift een plek op.",
+    en: "The same group of 10, many times over. Think about what a number does when you make it times 10 — it shifts one place.",
+    tr: "Hep aynı 10'luk grup, bir sürü kez. Bir sayı 10 ile çarpılınca ne olur düşün — bir basamak kayar." },
+  "verm-klein-groot": {
+    nl: "Een paar keer hetzelfde grote getal. Je hoeft het niet in één keer te doen: splits het grote getal in honderden en de rest, en doe ieder stuk apart.",
+    en: "The same big number a few times. You need not do it in one go: split the big number into hundreds and the rest, and do each piece on its own.",
+    tr: "Aynı büyük sayı birkaç kez. Tek seferde yapmak zorunda değilsin: büyük sayıyı yüzlükler ve kalan diye ayır, her parçayı ayrı yap." },
+  "verr-getallenrij": {
+    nl: "De rij springt steeds met dezelfde stap. Zoek eerst de stap tussen twee getallen die er wél staan — dan weet je wat er op de puntjes moet.",
+    en: "The row jumps by the same step every time. First find the step between two numbers that are there — then you know what goes on the dots.",
+    tr: "Dizi her seferinde aynı adımla atlıyor. Önce yazılı iki sayı arasındaki adımı bul — noktalı yere ne geleceğini o söyler." },
+  "verr-briefjes": [
+    { nl: "Niet elk briefje is evenveel waard — daar zit hem de vraag. Reken elke soort apart uit en leg die bedragen pas op het eind bij elkaar.",
+      en: "Not every note is worth the same — that is the whole question. Work out each kind on its own and only add those amounts at the end.",
+      tr: "Her banknot aynı değerde değil — soru tam da bu. Her türü ayrı hesapla, tutarları ancak sonunda topla." },
+    { nl: "Gepast betalen betekent: het geld op de toonbank is precies de prijs. Tel de briefjes van 20, van 10 en de munten elk apart — en let op: een munt van 2 is geen 1.",
+      en: "Paying exactly means: the money on the counter is precisely the price. Count the 20s, the 10s and the coins each on their own — and mind: a 2-euro coin is not 1.",
+      tr: "Tam para ödemek demek: tezgâhtaki para tam fiyat. 20'likleri, 10'lukları ve madeni paraları ayrı ayrı say — ve dikkat: 2 euroluk madeni para 1 değildir." } ],
   "verr-rekening": {
     nl: "Drie bedragen met komma's. Tel eerst alleen de hele euro's bij elkaar, dan alleen de centen — zo raak je de komma niet kwijt.",
     en: "Three amounts with decimals. Add the whole euros first, then the cents on their own — that way you never lose the comma.",
@@ -617,7 +679,13 @@ const HINTS = {
       tr: "Bütün paketler eşit ağırlıkta. Hepsinin toplam ağırlığını arıyorsun — yani bir paketin ağırlığı, paket sayısı kadar tekrarlanır." },
     { nl: "Kilo's en grammen zijn twee namen voor gewicht, maar niet even groot: in één kilo zitten er duizend gram. Je zet het dus om naar een kleinere maat.",
       en: "Kilos and grams both measure weight, but they are not the same size: one kilo holds a thousand grams. So you are converting to a smaller unit.",
-      tr: "Kilo ve gram ikisi de ağırlık ölçer ama aynı büyüklükte değil: bir kiloda bin gram var. Yani daha küçük bir birime çeviriyorsun." } ],
+      tr: "Kilo ve gram ikisi de ağırlık ölçer ama aynı büyüklükte değil: bir kiloda bin gram var. Yani daha küçük bir birime çeviriyorsun." },
+    { nl: "Het ene staat in kilo's, het andere in grammen — die kun je niet zomaar van elkaar afhalen. Maak er eerst dezelfde maat van, dan pas kijk je wat er mist.",
+      en: "One is in kilos, the other in grams — you cannot just take one from the other. Make them the same unit first, only then see what is missing.",
+      tr: "Biri kilo, öbürü gram — bunları doğrudan birbirinden çıkaramazsın. Önce aynı birime çevir, sonra eksiğe bak." },
+    { nl: "Kilometers en meters zijn niet dezelfde maat. Zet de hele afstand eerst om in meters; dan is het gewoon: hoeveel was er nog over?",
+      en: "Kilometres and metres are not the same unit. Put the whole distance in metres first; then it is simply: how much was left?",
+      tr: "Kilometre ile metre aynı birim değil. Önce bütün mesafeyi metreye çevir; sonra sadece: ne kadar kalmıştı?" } ],
   "verr-prijslijst": {
     nl: "Twee verschillende dingen met elk hun eigen prijs. Haal ze niet door elkaar: reken eerst één soort helemaal uit, dan de andere, en pas daarna samen.",
     en: "Two different things, each with its own price. Do not mix them up: work one kind out completely, then the other, and only then together.",

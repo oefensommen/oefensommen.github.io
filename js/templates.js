@@ -160,9 +160,35 @@ const TEMPLATES = [
         tr: "{name} {a}'dan saymaya başlıyor. Dört kez {b} ekliyor. {name} sayması bitince hangi sayıda olur?" }
     ],
     gen(level) { const b = pickArr([10, 100]);
-      const start = b === 100 ? lvRange(level, 700, 1900, 1.5) : lvRange(level, 700, 4900, 1.2);
+      // under a thousand at the middle of groep 5; the big numbers wait for the top levels
+      const start = b === 100 ? lvRange(level, 150, 450, 3.5) : lvRange(level, 300, 800, 4.5);
       const ans = start + 4 * b;
       return { vars: { a: start, b }, answer: ans, wrongs: [start + 3 * b, start + 5 * b, start + 6 * b, start + 2 * b] }; }
+  },
+  {
+    id: "opt-eldeli-klein", cat: "optellen",
+    school: true,
+    variants: [
+      { nl: "De visboer verkoopt vandaag {a} haringen en {b} palingen. Hoeveel vissen heeft de visboer verkocht?",
+        en: "The fishmonger sells {a} herrings and {b} eels today. How many fish did the fishmonger sell?",
+        tr: "Balıkçı bugün {a} ringa ve {b} yılan balığı satıyor. Balıkçı kaç balık sattı?" },
+      { nl: "Op een boerderij lopen {a} kippen en {b} ganzen. Hoeveel dieren zijn dit in totaal?",
+        en: "On a farm there are {a} chickens and {b} geese. How many animals is that in total?",
+        tr: "Bir çiftlikte {a} tavuk ve {b} kaz var. Toplam kaç hayvan?" },
+      { nl: "{name} telt de {obj} in de klas: {a} bij de ramen en {b} bij de deur. Hoeveel {obj} zijn er?",
+        en: "{name} counts the {obj} in class: {a} by the windows and {b} by the door. How many {obj} are there?",
+        tr: "{name} sınıftaki {obj} sayıyor: pencere tarafında {a}, kapı tarafında {b}. Toplam kaç {obj} var?" }
+    ],
+    objects: [OBJ.boeken, OBJ.balpennen, OBJ.gummen],
+    gen(level) {
+      // two-digit plus two-digit, and the units always carry: that is the som
+      // that went wrong on the werkblad, so it is never let off the carry
+      let a = lvRange(level, 23, 58, 1.4);
+      if (a % 10 === 0) a += ri(3, 9);
+      const ua = a % 10;
+      const b = ri(1, 3) * 10 + ri(10 - ua, 9);        // units that must carry
+      const ans = a + b;
+      return { vars: { a, b }, answer: ans, wrongs: [ans - 10, ans + 10, ans - 1, (a - a % 10) + (b - b % 10) + ((a % 10) + (b % 10)) % 10] }; }
   },
   {
     id: "opt-club-erbij", cat: "optellen",
@@ -176,6 +202,30 @@ const TEMPLATES = [
   },
 
   /* ===================== AFTREKKEN ===================== */
+  {
+    id: "aft-eldeli", cat: "aftrekken",
+    school: true,
+    variants: [
+      { nl: "Het vliegtuig waar {name} in zit vliegt op {a} meter hoogte. Het vliegtuig daalt {b} meter. Op hoeveel meter hoogte vliegt {name} nu?",
+        en: "The plane {name} is on flies at {a} metres. It descends {b} metres. At what height is {name} flying now?",
+        tr: "{name_in} bindiği uçak {a} metre yükseklikte uçuyor. Uçak {b} metre alçalıyor. {name} şimdi kaç metrede?" },
+      { nl: "{name} heeft voor de verjaardag {a} euro gekregen. In de speelgoedwinkel geeft {hij} {b} euro uit. Hoeveel euro houdt {name} over?",
+        en: "{name} got {a} euros for a birthday. In the toy shop {he} spends {b} euros. How many euros does {name} have left?",
+        tr: "{name} doğum gününde {a} euro aldı. Oyuncakçıda {b} euro harcıyor. {name_in} kaç eurosu kalır?" },
+      { nl: "In een kerk zijn {a} zitplaatsen. Er zijn {b} zitplaatsen bezet. Hoeveel plaatsen zijn nog vrij?",
+        en: "A church has {a} seats. {b} seats are taken. How many seats are still free?",
+        tr: "Bir kilisede {a} koltuk var. {b} koltuk dolu. Kaç koltuk boş?" }
+    ],
+    gen(level, v) {
+      // three-digit minus two-digit, across a ten — the units have to borrow
+      let a = v === 1 ? lvRange(level, 60, 99, 1) : lvRange(level, 150, 480, 1.8);
+      if (a < 52) a = 52 + ri(0, 30);                    // the comfort band must still clear b
+      if (a % 10 >= 8) a -= ri(2, 5);                    // leave room for a bigger unit below
+      const ua = a % 10;
+      const b = ri(1, 3) * 10 + ri(ua + 1, 9);          // units that must borrow
+      const ans = a - b;
+      return { vars: { a, b }, answer: ans, wrongs: [ans + 10, ans - 10, ans + 1, a - (b - b % 10) + (b % 10) - 2 * (b % 10) + (b % 10)] }; }
+  },
   {
     id: "aft-vrijlaten", cat: "aftrekken",
     variants: [
@@ -271,6 +321,42 @@ const TEMPLATES = [
   },
 
   /* ===================== VERMENIGVULDIGEN ===================== */
+  {
+    id: "verm-keer-tien", cat: "vermenigvuldigen",
+    school: true,
+    variants: [
+      { nl: "De bakkers pakken {a} dozen met 10 moorkoppen in. Hoeveel moorkoppen zijn dat in totaal?",
+        en: "The bakers pack {a} boxes of 10 cream puffs. How many cream puffs is that in total?",
+        tr: "Fırıncılar her birinde 10 profiterol olan {a} kutu paketliyor. Toplam kaç profiterol?" },
+      { nl: "{name} plakt {a} velletjes met 10 postzegels. Hoeveel postzegels zijn dat in totaal?",
+        en: "{name} sticks {a} sheets of 10 stamps. How many stamps is that in total?",
+        tr: "{name} her biri 10 pullu {a} yaprak yapıştırıyor. Toplam kaç pul?" }
+    ],
+    gen(level) { const a = lvRange(level, 14, 48, 1.6); const ans = a * 10;
+      return { vars: { a }, answer: ans, wrongs: [ans + 10, ans - 10, a * 100, a + 10] }; }
+  },
+  {
+    id: "verm-klein-groot", cat: "vermenigvuldigen",
+    school: true,
+    variants: [
+      { nl: "De koerier moet {a} pakketten van {b} kilo wegbrengen. Hoeveel kilo vervoert {hij}?",
+        en: "The courier has to deliver {a} parcels of {b} kilos. How many kilos does {he} carry?",
+        tr: "Kurye {b} kiloluk {a} paket götürecek. Toplam kaç kilo taşıyor?" },
+      { nl: "De notenverkoper bestelt {a} dozen met {b} kilo pinda's. Hoeveel kilo pinda's is dat in totaal?",
+        en: "The nut seller orders {a} boxes of {b} kilos of peanuts. How many kilos of peanuts is that in total?",
+        tr: "Kuruyemişçi her biri {b} kilo fıstık olan {a} kutu sipariş ediyor. Toplam kaç kilo fıstık?" },
+      { nl: "In een zak zit {b} kilo bloem. De bakker bestelt {a} zakken. Hoeveel kilo bloem bestelt de bakker?",
+        en: "A sack holds {b} kilos of flour. The baker orders {a} sacks. How many kilos of flour does the baker order?",
+        tr: "Bir çuvalda {b} kilo un var. Fırıncı {a} çuval sipariş ediyor. Fırıncı kaç kilo un sipariş etmiş?" }
+    ],
+    gen(level) {
+      // a small number times a big one, without a carry at the comfort end and
+      // with one further up: 2 × 126, 3 × 231 — the shape the werkblad asks
+      const a = level >= 4 ? ri(2, 4) : ri(2, 3);
+      const b = level <= 1 ? ri(11, 24) : (level <= 3 ? ri(101, 144) : ri(112, 332));
+      const ans = a * b;
+      return { vars: { a, b }, answer: ans, wrongs: [ans + b, ans - b, a + b, ans + 100] }; }
+  },
   {
     id: "verm-kisten", cat: "vermenigvuldigen",
     objects: [OBJ.appels, OBJ.snoepjes, OBJ.boeken],
@@ -744,13 +830,39 @@ const TEMPLATES = [
 
   /* ===================== VERRASSING (mixed CITO/DIA) ===================== */
   {
+    id: "verr-getallenrij", cat: "verrassing",
+    school: true,
+    variants: [
+      { nl: "Welk getal hoort op de puntjes? {a} - {b} - {c} - … - {e}",
+        en: "Which number goes on the dots? {a} - {b} - {c} - … - {e}",
+        tr: "Noktalı yere hangi sayı gelir? {a} - {b} - {c} - … - {e}" },
+      { nl: "Welk getal hoort op de puntjes? {a} - … - {c} - {d} - {e}",
+        en: "Which number goes on the dots? {a} - … - {c} - {d} - {e}",
+        tr: "Noktalı yere hangi sayı gelir? {a} - … - {c} - {d} - {e}" }
+    ],
+    gen(level, v) {
+      const step = pickArr(level <= 1 ? [10, 25, 50] : [25, 50, 100, 200]);
+      const a = lvRange(level, 3, 20, 1.5) * (step === 100 || step === 200 ? 50 : 5);
+      const seq = [a, a + step, a + 2 * step, a + 3 * step, a + 4 * step];
+      const ans = v === 1 ? seq[1] : seq[3];
+      return { vars: { a: seq[0], b: seq[1], c: seq[2], d: seq[3], e: seq[4] }, answer: ans,
+               wrongs: [ans + step, ans - step, ans + step / 2, ans + 10] }; }
+  },
+  {
     id: "verr-briefjes", cat: "verrassing",
     variants: [
       { nl: "{name} heeft {a} briefje(s) van 100 euro, {b} briefjes van 10 euro en {c} munten van 1 euro. Hoeveel euro heeft {name}?",
         en: "{name} has {a} note(s) of 100 euros, {b} notes of 10 euros and {c} coins of 1 euro. How many euros?",
-        tr: "{name_de} {a} tane 100 euroluk, {b} tane 10 euroluk banknot ve {c} tane 1 euroluk madeni para var. Kaç euro?" }
+        tr: "{name_de} {a} tane 100 euroluk, {b} tane 10 euroluk banknot ve {c} tane 1 euroluk madeni para var. Kaç euro?" },
+      { nl: "De moeder van {name} betaalt gepast bij de kassa met {a} briefjes van 20 euro, {b} briefjes van 10 euro en {c} munten van 2 euro. Hoeveel kosten de nieuwe kleren van {name}?",
+        en: "{name}'s mother pays at the till with exactly {a} notes of 20 euros, {b} notes of 10 euros and {c} coins of 2 euros. How much do {name}'s new clothes cost?",
+        tr: "{name_in} annesi kasada tam para ödüyor: {a} tane 20 euroluk, {b} tane 10 euroluk ve {c} tane 2 euroluk. {name_in} yeni kıyafetleri kaç euro?" }
     ],
-    gen() { const a = ri(1, 6), b = ri(3, 8), c = ri(2, 6); const ans = a * 100 + b * 10 + c;
+    school: true,
+    gen(level, v) {
+      if (v === 1) { const a = ri(1, 3), b = ri(1, 3), c = ri(1, 4); const ans = a * 20 + b * 10 + c * 2;
+        return { vars: { a, b, c }, answer: ans, wrongs: [ans - 2, ans + 2, a * 20 + b * 10 + c, ans + 10] }; }
+      const a = ri(1, 6), b = ri(3, 8), c = ri(2, 6); const ans = a * 100 + b * 10 + c;
       return { vars: { a, b, c }, answer: ans, wrongs: [a * 100 + c * 10 + b, ans + 10, ans - 10, ans + 100] }; }
   },
   {
@@ -816,11 +928,24 @@ const TEMPLATES = [
         tr: "{name} her biri {b} gram olan {a} paket un alıyor. Bu toplam kaç gramdır?" },
       { nl: "Een doos weegt {a} kilo. Hoeveel gram is dat?",
         en: "A box weighs {a} kilos. How many grams is that?",
-        tr: "Bir kutu {a} kilo geliyor. Bu kaç gramdır?" }
+        tr: "Bir kutu {a} kilo geliyor. Bu kaç gramdır?" },
+      { nl: "{name} heeft voor het recept {a} kilo appels nodig. {Hij} weegt de appels en ziet dat {hij} {b} gram heeft. Hoeveel gram appels heeft {hij} nog nodig?",
+        en: "{name} needs {a} kilos of apples for the recipe. {He} weighs the apples and sees {he} has {b} grams. How many grams of apples does {he} still need?",
+        tr: "{name_in} tarif için {a} kilo elmaya ihtiyacı var. Elmaları tartınca {b} gram olduğunu görüyor. Daha kaç gram elma lazım?" },
+      { nl: "{name} doet mee aan een hardloopwedstrijd van {a} kilometer. Na {b} meter verzwikt {hij} een enkel. Hoeveel meter moest {name} eigenlijk nog?",
+        en: "{name} runs a race of {a} kilometres. After {b} metres {he} twists an ankle. How many metres did {name} still have to go?",
+        tr: "{name} {a} kilometrelik bir koşuya katılıyor. {b} metre sonra ayağını burkuyor. {name_in} aslında daha kaç metresi vardı?" }
     ],
+    school: true,
     gen(level, v) {
       if (v === 1) { const a = ri(2, 7); const ans = a * 1000;
         return { vars: { a }, answer: ans, wrongs: [a * 100, ans + 1000, ans - 1000, a * 10] }; }
+      if (v === 2 || v === 3) {
+        // needed in the big unit, had in the small one: convert first, then subtract
+        const a = ri(2, 4), b = a * 1000 - pickArr([100, 200, 250, 300, 400, 500, 600, 750]);
+        const ans = a * 1000 - b;
+        return { vars: { a, b }, answer: ans, wrongs: [ans + 100, ans - 100, a * 100 - (b % 100 || 50), ans + 1000] };
+      }
       const a = ri(3, 6), b = pickArr([250, 500, 750, 400]); const ans = a * b;
       return { vars: { a, b }, answer: ans, wrongs: [ans + b, ans - b, ans + 100, a + b] };
     }
