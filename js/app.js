@@ -148,20 +148,64 @@ function setLang(lang) {
 }
 
 /* ---------- streak ---------- */
-function currentStreak() {
-  let streak = 0;
-  const d = new Date();
-  // today counts if done100, otherwise start from yesterday
-  if (!(data.days[todayStr(d)] || {}).done100) d.setDate(d.getDate() - 1);
-  while ((data.days[todayStr(d)] || {}).done100) {
-    streak++;
-    d.setDate(d.getDate() - 1);
+/* ---------- what a day is ----------
+
+   A day is one pakket: ten sommen and one round of tafels. Both done and the
+   day is green. Each on its own is geoefend — amber — and nothing at all is
+   red once the day has passed.
+
+   A second pakket on the same day is extra, and extra is not wasted: it buys
+   the NEXT day in advance. That day goes green too, in a green of its own, so
+   it can be seen that it was earned ahead of time rather than on the day. A
+   day the child then works anyway is green on its own merits, and the credit
+   simply rolls on to the day after. */
+function tasksOf(rec)   { return rec && rec.tiles ? rec.tiles.length : 0; }
+function sprintsOf(ds)  { return sprintRounds(ds).length; }
+function pakketsOf(ds)  { return Math.min(tasksOf(data.days[ds]), sprintsOf(ds)); }
+
+function shiftDay(ds, n) {
+  const [y, m, d] = ds.split("-").map(Number);
+  return todayStr(new Date(y, m - 1, d + n));
+}
+
+/* The status of every day from the first one recorded to wherever the credit
+   runs out: "done", "bonus", "partial", "miss" — or nothing for a day still
+   to come. Worked out fresh each time it is asked for; it is a few dozen
+   dates, not a database. */
+function dayPlan() {
+  const plan = {};
+  const days = Object.keys(data.days || {}).sort();
+  if (!days.length) return plan;
+  const today = todayStr();
+  let ds = days[0], carry = 0, guard = 0;
+  const last = days[days.length - 1] > today ? days[days.length - 1] : today;
+  while ((ds <= last || carry > 0) && guard++ < 2000) {
+    const rec = data.days[ds];
+    const own = pakketsOf(ds);
+    if (own >= 1)          { plan[ds] = "done"; carry += own - 1; }
+    else if (carry > 0)    { plan[ds] = "bonus"; carry--; }
+    else if (rec && (rec.solved > 0 || sprintsOf(ds)))  plan[ds] = "partial";
+    else if (ds < today)   plan[ds] = "miss";
+    else                   plan[ds] = "";
+    ds = shiftDay(ds, 1);
   }
+  return plan;
+}
+
+function dayDone(plan, ds) { return plan[ds] === "done" || plan[ds] === "bonus"; }
+
+function currentStreak() {
+  const plan = dayPlan();
+  let streak = 0;
+  let ds = todayStr();
+  if (!dayDone(plan, ds)) ds = shiftDay(ds, -1);     // today counts once it is done
+  while (dayDone(plan, ds)) { streak++; ds = shiftDay(ds, -1); }
   return streak;
 }
 
 function bestStreak() {
-  const dates = Object.keys(data.days).filter(k => data.days[k].done100).sort();
+  const plan = dayPlan();
+  const dates = Object.keys(plan).filter(k => dayDone(plan, k)).sort();
   let best = 0, run = 0, prev = null;
   for (const ds of dates) {
     if (prev) {
@@ -197,12 +241,22 @@ function renderHome() {
     $("continue-at").textContent = pastEnd ? "" : (open.idx + 1) + "/" + open.queue.length;
   }
 
+  // the two halves of the day, and how many times each has been done
+  const nTasks = tasksOf(day), nSprints = sprintsOf(todayStr());
+  const pakkets = Math.min(nTasks, nSprints);
+  const badge = n => n === 0 ? "" : (n === 1 ? "✓" : `✓ ×${n}`);
+  $("start-done").textContent = badge(nTasks);
+  $("sprint-done").textContent = badge(nSprints);
+  $("btn-start").classList.toggle("done", nTasks > 0);
+  $("btn-sprint").classList.toggle("done", nSprints > 0);
+
   let status = t("today_todo");
   if (open) status = pastEnd
     ? t("finish_rest").replace("{n}", left)
     : t("today_resume").replace("{n}", open.idx + 1).replace("{t}", open.queue.length);
-  else if (day && day.done100) status = t("today_done");
-  else if (day && day.solved > 0) status = t("today_partial");
+  else if (pakkets >= 2) status = t("today_extra").replace("{n}", pakkets - 1);
+  else if (pakkets === 1) status = t("today_done");
+  else if (nTasks || nSprints) status = t(nTasks ? "today_half_sommen" : "today_half_tafels");
   if (parent) {
     status = liveBusy ? Store.watches().toUpperCase() + " " + t("live_busy")
                       : Store.watches().toUpperCase() + " " + t("live_idle");
@@ -211,6 +265,7 @@ function renderHome() {
 
   // the child practises; the parent watches and reviews
   $("btn-start").classList.toggle("hidden", parent || !!open);
+  $("btn-sprint").classList.toggle("hidden", parent || sprintOff);
   $("btn-watch").classList.toggle("hidden", !parent);
   $("nav-row").classList.toggle("hidden", !parent);
   // the day's report card stays reachable — the fouten to verbeter and the
@@ -290,59 +345,44 @@ function runCountdown(then) {
   beat();
 }
 
-/* The opdracht starts at ten sommen and only grows if it has to.
+/* Ten sommen a day. Not nine, not fifteen: ten, whatever happens in them.
+   A day used to grow with its mistakes, and that made every fout cost twice —
+   once as a fout and once as more work. Now the length is simply known. */
+const TASK_N = 10;
 
-   Ten out of ten and the day is done — sharp work buys a short day, and a fout
-   the child went back to and put right during the opdracht counts as good
-   here, exactly as it does everywhere the child can see. Anything less than
-   ten out of ten and five more sommen appear; at fifteen it ends, whatever
-   happened, and it never runs to twenty. Fifteen are built up front; the ones
-   never reached go back to the bank unused, because a som only counts as
-   asked once it has been on the screen. */
-const TASK_START = 10, TASK_FULL = 15;
-
-/* ---------- Tafelsprint: the five tafels the day opens with ----------
-
-   Once a day, before the sommen: 6 × 8, three answers, five seconds. Wrong or
-   too slow and the next one is already there — the clock is the point, so
-   there is nothing to go back to and nothing to put right. It is scored on its
-   own and kept on its own, out of the twenty: the sommen are judged on
-   thinking, this is judged on knowing it by heart. */
+/* The tafels are their own opdracht now, chosen from the home screen like
+   the sommen are, and done as often as the child likes. The first round of
+   the day is the one that counts towards the day; every further round is
+   extra, and extra is what buys the next day in advance. It has never touched
+   the niveau or the speeltijd and still does not. */
 let sprint = null;
-let sprintOff = false;             // no facts to ask: don't stall the opdracht
+let sprintOff = false;             // no facts to ask: don't offer an empty round
 
-/* Two of them a day, and they are not the same thing.
-
-   The one at the start wakes the tafels up before the sommen. The one at the
-   end is the lap of honour: the opdracht is already scored and closed, and
-   this is played for nothing but the sport of it. Neither has ever touched
-   the niveau or the speeltijd, and the one at the end is not even allowed to
-   look like it might — it comes after everything has been settled. */
-const SPRINT_SLOTS = { start: "sprint", end: "sprintEnd" };
-
-function sprintOfDay(ds, slot) {
+/* every round of tafels played on a day, oldest first — reading the two
+   fixed slots an older build wrote as rounds one and two */
+function sprintRounds(ds) {
   const d = data.days[ds || todayStr()];
-  return d && d[SPRINT_SLOTS[slot || "start"]];
+  if (!d) return [];
+  if (d.sprints) return d.sprints;
+  return [d.sprint, d.sprintEnd].filter(Boolean);
 }
-function sprintDone(slot) { return sprintOff || !!sprintOfDay(null, slot); }
 
-function startSprint(then, slot) {
-  slot = slot || "start";
-  // the tafels of the morning are not asked again in the afternoon
-  const done = slot === "end" ? (sprintOfDay(null, "start") || {}).facts || [] : [];
-  const qs = Sprint.build(data, done);
+function startSprint(then) {
+  // a round never repeats a tafel already asked today, as long as there are
+  // enough left — after that the table simply comes round again
+  const today = [].concat(...sprintRounds().map(r => r.facts || []));
+  let qs = Sprint.build(data, today);
+  if (qs.length < Sprint.N) qs = Sprint.build(data, []);
   if (!qs.length) { sprintOff = true; return then(); }
-  sprint = { qs, i: 0, tiles: "", facts: [], then, slot, tick: null, locked: true };
+  sprint = { qs, i: 0, tiles: "", facts: [], then, tick: null, locked: true };
   Live.startHeartbeat();
-  // a beat to look up before the first clock starts — five seconds is short
-  // enough without spending two of them working out what is happening
+  // a beat to look up before the first clock starts
   $("sprint-progress").textContent = `1/${qs.length}`;
-  $("sprint-question").textContent = slot === "end" ? "🏁" : "⚡";
-  $("sprint-badge-label").textContent = t(slot === "end" ? "sprint_title_end" : "sprint_title");
+  $("sprint-question").textContent = "⚡";
+  $("sprint-badge-label").textContent = t("sprint_title");
   $("sprint-answers").innerHTML = "";
   $("sprint-count").textContent = Sprint.SECS;
-  $("sprint-flash").textContent = t(slot === "end" ? "sprint_ready_end" : "sprint_ready")
-    .replace("{n}", Sprint.N).replace("{s}", Sprint.SECS);
+  $("sprint-flash").textContent = t("sprint_ready").replace("{n}", Sprint.N).replace("{s}", Sprint.SECS);
   $("sprint-flash").className = "sprint-flash";
   show("screen-sprint");
   Live.push("sprint");
@@ -443,16 +483,21 @@ function settleSprintQ(tile, msg, ok) {
 }
 
 function nextSprint() {
+  if (!sprint || sprint.finished) return;       // a late timer after the end
   sprint.i++;
   if (sprint.i < sprint.qs.length) return renderSprint();
   finishSprint();
 }
 
 function finishSprint() {
+  if (sprint.finished) return;                   // written down exactly once
+  sprint.finished = true;
   const ds = todayStr();
   const right = sprint.tiles.split("").filter(c => c === "o").length;
   const day = data.days[ds] || { solved: 0, firstCorrect: 0, done100: false, cats: {} };
-  day[SPRINT_SLOTS[sprint.slot]] = { n: sprint.qs.length, right, tiles: sprint.tiles, facts: sprint.facts };
+  day.sprints = sprintRounds(ds).slice();
+  day.sprints.push({ n: sprint.qs.length, right, tiles: sprint.tiles, facts: sprint.facts });
+  delete day.sprint; delete day.sprintEnd;        // the two old slots, folded in
   data.days[ds] = day;
   Store.save(data);
 
@@ -460,41 +505,38 @@ function finishSprint() {
   $("sprint-question").textContent = `${right}/${sprint.qs.length}`;
   $("sprint-answers").innerHTML = "";
   const flash = $("sprint-flash");
-  flash.textContent = all ? t("sprint_all") : t(sprint.slot === "end" ? "sprint_done" : "sprint_next");
+  flash.textContent = all ? t("sprint_all") : t("sprint_done");
   flash.className = "sprint-flash " + (all ? "good" : "");
   clearInterval(sprint.tick);
   const then = sprint.then;
-  setTimeout(() => { sprint = null; then(); }, 1200);
+  setTimeout(() => { sprint = null; then(); }, 1400);
 }
 
 /* one line of tafels, for the report card and for the parent's kalender */
-function sprintStripHTML(sp, slot) {
+function sprintStripHTML(sp, label) {
   const icon = { o: "✅", n: "❌", t: "⏱" };
   const tiles = (sp.facts || []).map((f, i) => {
     const ch = (sp.tiles || "")[i] || "n";
     const [a, b] = f.split("x");
     return `<span class="sprint-chip ${ch}">${icon[ch] || "❌"} ${a}×${b}</span>`;
   }).join("");
-  const end = slot === "end";
-  return `<div class="sprint-line"><b>${end ? "🏁" : "⚡"} ${esc(t(end ? "sprint_title_end" : "sprint_title"))}</b>
+  return `<div class="sprint-line"><b>⚡ ${esc(label)}</b>
             <span>${sp.right}/${sp.n}</span></div>
           <div class="sprint-chips">${tiles}</div>`;
 }
 
-/* both sprints of a day, in the order they were played */
+/* every round of a day, in the order they were played */
 function sprintStripsHTML(ds) {
-  return ["start", "end"].map(slot => {
-    const sp = sprintOfDay(ds, slot);
-    return sp ? sprintStripHTML(sp, slot) : "";
-  }).join("");
+  const rounds = sprintRounds(ds);
+  return rounds.map((sp, i) =>
+    sprintStripHTML(sp, rounds.length > 1 ? `${t("sprint_title")} ${i + 1}` : t("sprint_title"))).join("");
 }
 
 function startTask() {
-  if (!sprintDone()) return startSprint(startTask);      // the tafels come first
-  const built = Engine.buildTask(TASK_FULL, data);
+  const built = Engine.buildTask(TASK_N, data);
   session = {
-    questions: built.slice(0, TASK_START),
-    pool: built.slice(TASK_START),   // dealt but not in play; spent only if needed
+    questions: built,
+    pool: [],
     idx: 0,
     firstPass: true,
     round: 1,                   // 1 = eerste poging, 2+ = verbeterrondes
@@ -611,20 +653,9 @@ function saveActive(pushNow) {
   if (pushNow) Store.pushNow(data);      // a pause should reach the other device at once
 }
 
-/* How many sommen the mistakes have earned, on top of what is in play.
-   Works on the live session and on the saved copy alike — both carry
-   `questions` and `pool`. Zero means the opdracht may end here.
-
-   One decision, taken once, at ten: everything right — a fout put right by
-   the child's own hand included — and the day ends there; anything still
-   standing as a fout and five more appear. Fifteen is the end of every
-   opdracht (an old saved task may be longer; it just ends where it is). */
-function storedExtension(a) {
-  if (!a.pool || !a.pool.length) return 0;
-  if (a.questions.length !== TASK_START) return 0;
-  const wrong = a.questions.filter(q => q.failed && !q.fixed).length;
-  return wrong === 0 ? 0 : TASK_FULL - TASK_START;
-}
+/* An opdracht no longer grows. Kept so an opdracht saved by an older build,
+   reserve sommen and all, still ends cleanly where it stands. */
+function storedExtension(a) { return 0; }
 
 /* The task to carry on with, or nothing */
 function activeTask() {
@@ -856,7 +887,12 @@ function answer(i, btn) {
   Live.push("task");
   // while the screen is mid-hop to the next som, the list is not a door
   session.hopping = true;
-  setTimeout(() => { session.hopping = false; advance(); }, correct ? 600 : 1100);
+  const mine = session;
+  setTimeout(() => {
+    if (session !== mine) return;      // the opdracht was left during the hop
+    session.hopping = false;
+    advance();
+  }, correct ? 600 : 1100);
 }
 
 /* Right after a fout, the next one or two UNSHOWN sommen are quietly swapped
@@ -1120,11 +1156,6 @@ function finishPass() {
   }
 
   stopTimer();
-  // the opdracht is closed and counted by now, so the lap of honour cannot
-  // change a thing about it — which is exactly the point of playing it here
-  if (open.length === 0 && !sprintDone("end")) {
-    return startSprint(() => { renderResult(); show("screen-result"); }, "end");
-  }
   renderResult();
   show("screen-result");
 }
@@ -1817,17 +1848,10 @@ async function saveNote(tplId, text) {
    The parent has the last word. Not every day of oefenen happens in this app:
    a day out of the book counts too, and the app has no way of knowing. A
    colour set by hand beats anything worked out here. */
-function dayColour(ds, rec) {
+function dayColour(ds, rec, plan) {
   const mark = (data.marks || {})[ds];
   if (mark && mark.c) return mark.c;
-  // green is a FINISHED opdracht, whatever its length: ten faultless sommen
-  // end the day just as green as twenty hard-fought ones
-  if (rec && rec.done100) return "done";
-  if (rec && rec.solved > 0) return "partial";
-  const days = Object.keys(data.days || {});
-  if (!days.length) return "";
-  const first = days.sort()[0];
-  return (ds >= first && ds < todayStr()) ? "miss" : "";
+  return (plan || dayPlan())[ds] || "";
 }
 
 function renderCalendar() {
@@ -1842,6 +1866,7 @@ function renderCalendar() {
   const daysInMonth = new Date(y, m + 1, 0).getDate();
   const today = todayStr();
   const wd = t("weekdays");
+  const plan = dayPlan();
   for (let d = 1; d <= daysInMonth; d++) {
     const date = new Date(y, m, d);
     const ds = todayStr(date);
@@ -1849,7 +1874,7 @@ function renderCalendar() {
     const c = document.createElement("button");
     c.className = "cal-cell";
     const mark = (data.marks || {})[ds];
-    const colour = dayColour(ds, rec);
+    const colour = dayColour(ds, rec, plan);
     if (colour) c.classList.add(colour);
     if (ds === today) c.classList.add("today");
     c.innerHTML = `<span class="wd">${wd[(date.getDay() + 6) % 7]}</span>` +
@@ -1932,8 +1957,9 @@ function showDay(ds) {
                      <p class="lessons-sub">${esc(t("rate_sub"))}</p>${qs}</div>`;
     else if (Store.isParent()) body += `<p class="day-nosom">${esc(t("day_no_sommen"))}</p>`;
   } else if (!rec || !rec.solved) {
+    const bonus = dayPlan()[ds] === "bonus";
     body = `<div class="day-head"><b>${head}</b></div>
-            <p class="day-none">${t("day_nothing")}</p>`;
+            <p class="day-none">${t(bonus ? "day_bonus" : "day_nothing")}</p>`;
   } else {                        // a day from before the report cards were kept
     const wrong = rec.solved - rec.firstCorrect;
     const time = rec.timeSec ? `<span class="day-pill">⏱ ${fmtTime(rec.timeSec)}</span>` : "";
@@ -2388,6 +2414,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // home
   $("btn-start").addEventListener("click", startTask);
+  $("btn-sprint").addEventListener("click", () => startSprint(goHome));
   $("btn-continue").addEventListener("click", resumeActive);
   $("btn-watch").addEventListener("click", () => openMirror());
   $("btn-calendar").addEventListener("click", () => { calMonth = new Date(); renderCalendar(); show("screen-calendar"); });

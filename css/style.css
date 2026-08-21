@@ -1074,3 +1074,13 @@ input:focus { border-color: var(--accent); }
 /* a fout in the task list can be reopened for one more go — it asks quietly */
 .mark-cell.can-fix { cursor: pointer; animation: tile-nudge 1.6s ease-in-out infinite; }
 .mark-cell.can-fix:hover { box-shadow: 0 2px 8px rgba(29, 36, 51, .16); }
+
+/* a day earned in advance: green, but its own green, so it can be told apart */
+.cal-cell.bonus { background: #2ab8a0; color: #fff; }
+.dot.bonus { background: #2ab8a0; }
+
+/* the two doors of the day, and the tick that says one is already open */
+.btn.choice { display: flex; align-items: center; justify-content: center; gap: 8px; }
+.btn.choice.done { background: var(--green); }
+.done-badge { font-size: .8rem; opacity: .95; }
+.done-badge:empty { display: none; }

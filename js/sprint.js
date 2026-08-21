@@ -11,7 +11,7 @@
    the tafels this particular child does not have yet. */
 
 const Sprint = {
-  N: 20,            // twenty facts a round, twice a day — most of the table daily
+  N: 10,            // ten facts a round — the tafel half of a day's pakket
   SECS: 15,         // fifteen seconds each: room to count back from a tafel you
                     // do know, which is the working that stops being needed
   OPTS: 2,          // two answers, and the wrong one is a neighbour in the
