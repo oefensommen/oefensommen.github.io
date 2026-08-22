@@ -144,19 +144,13 @@ const Live = {
      corrected themselves is simply good. */
   marksPanelHTML(marks, at, forParent) {
     if (!marks || !marks.length) return "";
+    // to the child a som put right is simply good; the parent's copy keeps the
+    // difference, and does it in colour rather than in a second symbol
     if (!forParent) marks = marks.map(m => m === "fix" ? "ok" : m);
-    const icon = { ok: "✅", ok2: "✔️", fix: "✔️", exp: "💡", no: "❌", skip: "⏭" };
-    const tiles = marks.map((m, i) =>
-      `<div class="mark-cell ${m || "open"}${i === at ? " here" : ""}">` +
-      `<span class="n">${i + 1}</span><span class="i">${icon[m] || ""}</span></div>`).join("");
-    const count = k => marks.filter(m => m === k).length;
-    return `<div class="mark-grid">${tiles}</div>
-            <div class="mark-tally">
-              <span>✅ ${count("ok")}</span>
-              ${forParent ? `<span>✔️ ${count("fix")}</span>` : ""}
-              <span>❌ ${count("no") + count("exp")}</span>
-              <span>⏭ ${count("skip")}</span>
-            </div>`;
+    const cls = { ok: "ok", ok2: "fix", fix: "fix", exp: "no", no: "no", skip: "skip" };
+    return `<ol class="mark-list">` + marks.map((m, i) =>
+      `<li class="mark-cell ${cls[m] || "open"}${i === at ? " here" : ""}">${i + 1}</li>`
+    ).join("") + `</ol>`;
   },
 
   marksPanel(state) {

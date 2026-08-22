@@ -306,15 +306,18 @@ input:focus { border-color: var(--accent); }
 .nav-row { display: flex; gap: 10px; justify-content: center; margin-top: 18px; flex-wrap: wrap; }
 
 /* Task */
-.task-head { display: flex; align-items: center; gap: 12px; margin-bottom: 22px; }
+.task-head { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; }
 .progress-wrap {
-  flex: 1; height: 10px; background: var(--line); border-radius: 999px; overflow: hidden;
+  flex: 1; height: 3px; background: var(--line); border-radius: 999px; overflow: hidden;
 }
 .progress-bar {
   height: 100%; width: 0%; background: var(--accent); border-radius: 999px;
   transition: width .3s ease;
 }
-.progress-text { font-weight: 700; color: var(--muted); font-size: 0.95rem; min-width: 44px; text-align: right; }
+.progress-text {
+  font-weight: 700; color: var(--muted); font-size: .78rem;
+  font-variant-numeric: tabular-nums; min-width: 46px; text-align: right;
+}
 .question {
   font-size: 1.3rem;
   line-height: 1.55;
@@ -324,13 +327,14 @@ input:focus { border-color: var(--accent); }
 
 .answers { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .answer {
-  border: 2px solid var(--line);
+  border: 1.5px solid var(--line);
   background: var(--card);
-  border-radius: 14px;
-  font-size: 1.25rem;
+  border-radius: 16px;
+  font-size: 1.2rem;
   font-weight: 800;
   font-family: inherit;
-  padding: 20px 10px;
+  font-variant-numeric: tabular-nums;
+  min-height: 64px; padding: 14px 10px;
   cursor: pointer;
   transition: border-color .15s, background .15s, transform .08s;
 }
@@ -368,7 +372,6 @@ input:focus { border-color: var(--accent); }
   gap: 2px;
 }
 .result-tile.ok { background: var(--green-soft); }
-.mark-cell.ok2 { background: #eaf7f0; }
 .result-tile.no { background: var(--red-soft); }
 /* an unreviewed fout asks to be tapped */
 .result-tile.no { animation: tile-nudge 1.6s ease-in-out infinite; }
@@ -669,13 +672,13 @@ input:focus { border-color: var(--accent); }
 }
 /* the 💡: help with UNDERSTANDING the som, tucked under the question */
 .hint-btn {
-  display: inline-flex; align-items: center; gap: 5px;
-  margin: -8px 0 14px;
-  padding: 6px 13px; border-radius: 999px;
-  border: 1.5px dashed #e3c76e; background: #fffbea;
-  font-size: .85rem; font-weight: 700; font-family: inherit;
+  display: inline-flex; align-items: center; gap: 6px;
+  margin: -6px 0 16px;
+  padding: 7px 14px; border-radius: 999px;
+  border: none; background: #fdf6e0;
+  font-size: .82rem; font-weight: 700; font-family: inherit;
   color: #8a6a11; cursor: pointer;
-  transition: background .12s, transform .08s;
+  transition: background .12s, transform .08s, opacity .15s;
 }
 .hint-btn:hover { background: #fdf3d0; }
 .hint-btn:active { transform: scale(0.96); }
@@ -702,52 +705,233 @@ input:focus { border-color: var(--accent); }
 /* the som being worked on, with the whole opdracht down the right-hand side —
    the same panel for the child and for the parent watching */
 .mirror-split, .task-split {
-  display: grid; grid-template-columns: minmax(0, 1fr) 128px;
+  display: grid; grid-template-columns: minmax(0, 1fr) 76px;
   gap: 18px; align-items: start;
 }
 .mirror-main, .task-main { min-width: 0; }
-.marks-panel {
-  border-left: 1px solid var(--line);
-  padding-left: 16px;
-  position: sticky; top: 8px;      /* stays in sight while the som is read */
+.marks-panel { position: sticky; top: 8px; }
+.mark-list {
+  /* two columns: ten sommen make a clean 2 × 5 block instead of a ragged row */
+  list-style: none; display: grid; grid-template-columns: repeat(2, 1fr);
+  gap: 6px; margin: 0; padding: 0;
 }
-.mark-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; }
 .mark-cell {
-  aspect-ratio: 1;
-  border-radius: 7px;
-  background: var(--bg);
-  border: 1px solid transparent;
+  aspect-ratio: 1; border-radius: 9px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: .72rem; font-weight: 800; font-variant-numeric: tabular-nums;
+  background: var(--bg); color: #aeb4c0;
+  border: 1.5px solid transparent;
+  transition: background .2s, color .2s;
+}
+.mark-cell.ok   { background: var(--green-soft); color: var(--green); }
+.mark-cell.fix  { background: #eaf7f0; color: #1f9e78; }
+.mark-cell.no   { background: var(--red-soft); color: var(--red); }
+.mark-cell.skip { background: #fff4e0; color: #a8760a; }
+.mark-cell.here { border-color: var(--accent); color: var(--accent); background: var(--card); }
+
+@media (max-width: 520px) {
+  .mark-list { grid-template-columns: 1fr; gap: 4px; }
+  .mark-cell { aspect-ratio: auto; height: 22px; border-radius: 6px; font-size: .65rem; }
+}
+
+.mark-row { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
+.mark-btn {
+  border: 1.5px solid var(--line); background: var(--card);
+  border-radius: 999px; padding: 6px 12px;
+  font-size: .8rem; font-weight: 700; font-family: inherit;
+  color: var(--muted); cursor: pointer;
+  transition: border-color .12s, color .12s, background .12s;
+}
+.mark-btn.done.on    { background: var(--green); border-color: var(--green); color: #fff; }
+.mark-btn.partial.on { background: var(--amber); border-color: var(--amber); color: #fff; }
+.mark-btn.miss.on    { background: var(--red);   border-color: var(--red);   color: #fff; }
+.mark-btn.auto.on    { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+.day-note-input {
+  display: block; width: 100%; max-width: none; margin: 10px 0 0;
+  padding: 10px 12px; font-size: .9rem; text-align: left;
+  border: 1.5px solid var(--line); border-radius: 10px; font-family: inherit;
+}
+.day-save { margin-top: 9px; padding: 8px 18px; font-size: .88rem; }
+.day-saved { margin-left: 8px; color: var(--green); font-weight: 800; }
+
+/* ---------- Level badge ----------
+   A small gold pill in the top bar; the full story is in its tooltip. */
+
+/* the level a category just reached, announced on the result screen */
+.levelup-line {
+  margin: 4px 0 2px;
+  font-weight: 700;
+  color: #a4780c;
+  font-size: .98rem;
+}
+.levelup-line span { display: inline-block; }
+
+/* Where the child stands: the ladder to the next niveau, then the niveau and
+   the reeks, then what the vakjes are for. One block, three lines. */
+.streak-ticks {
+  margin-top: 24px; padding-top: 22px;
+  border-top: 1px solid var(--line);
+}
+.ticks { display: flex; justify-content: center; gap: 10px; }
+.tick {
+  width: 36px; height: 36px; border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.05rem; font-weight: 800;
+  background: var(--bg); color: transparent;
+  border: 2px dashed var(--line);
+  transition: transform .18s ease;
+}
+.tick.on {
+  color: #fff; border: none;
+  background: linear-gradient(160deg, #34c172, #1c9a53);
+  box-shadow: 0 3px 10px rgba(28, 154, 83, .32), inset 0 1px 0 rgba(255,255,255,.35);
+}
+.tick.on.fresh { animation: tick-pop .5s cubic-bezier(.2,1.5,.4,1); }  /* just earned */
+@keyframes tick-pop {
+  0%   { transform: scale(0.4); }
+  70%  { transform: scale(1.16); }
+  100% { transform: scale(1); }
+}
+
+.standing { display: flex; justify-content: center; gap: 9px; margin-top: 20px; }
+.chip {
+  display: inline-flex; align-items: baseline; gap: 6px;
+  padding: 7px 15px; border-radius: 999px;
+  font-size: .92rem; letter-spacing: -0.01em;
+  border: 1px solid var(--line); background: var(--card);
+  box-shadow: 0 1px 2px rgba(29, 36, 51, .05);
+}
+.chip i { font-style: normal; font-size: .9rem; }
+.chip b { font-weight: 800; color: var(--ink); }
+.chip em { font-style: normal; color: var(--muted); font-size: .82rem; }
+/* the niveau is the thing worth working towards, so it wears the gold */
+.chip.lv {
+  border-color: #ecd699;
+  background: linear-gradient(180deg, #fffdf6 0%, #fdf3d8 100%);
+  box-shadow: 0 1px 2px rgba(154, 121, 24, .10), inset 0 1px 0 #fff;
+}
+.chip.lv b { color: #8a6a11; }
+.chip.lv.maxed {
+  border-color: #9ad9b6;
+  background: linear-gradient(180deg, #f7fdfa 0%, #ddf4e8 100%);
+}
+.chip.lv.maxed b { color: #14663a; }
+
+.ladder-goal { margin-top: 12px; font-size: .84rem; color: var(--muted); }
+
+/* the nudge to go and look at what went wrong */
+.review-hint {
+  margin: -12px 0 18px;
+  color: var(--muted);
+  font-size: .88rem;
+}
+
+/* per-category level pips in the parent's overview */
+.cat-level { display: inline-flex; gap: 3px; margin-left: 8px; vertical-align: middle; }
+.cat-level i {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--line);
+}
+.cat-level i.on { background: #e0a413; }
+
+/* ---------- Countdown ---------- */
+#screen-count {
   display: flex; flex-direction: column; align-items: center; justify-content: center;
-  line-height: 1;
+  min-height: 60vh; gap: 22px;
 }
-.mark-cell .n { font-size: .6rem; font-weight: 700; color: var(--muted); }
-.mark-cell .i { font-size: .72rem; height: .8em; }
-.mark-cell.ok   { background: var(--green-soft); }
-.mark-cell.no   { background: var(--red-soft); }
-.mark-cell.skip { background: #fff4e0; border-color: #e8b45c; border-style: dashed; }
-.mark-cell.here { outline: 2px solid var(--accent); outline-offset: 1px; }
-.mark-tally {
-  display: flex; justify-content: space-between; gap: 4px;
-  margin-top: 10px; font-size: .74rem; font-weight: 700; color: var(--muted);
+#screen-count.hidden { display: none; }
+.count-stage { position: relative; width: 210px; height: 210px; }
+.count-ring { width: 100%; height: 100%; transform: rotate(-90deg); }
+.count-track { fill: none; stroke: var(--line); stroke-width: 7; }
+.count-arc {
+  fill: none; stroke: var(--accent); stroke-width: 7; stroke-linecap: round;
+  stroke-dasharray: 327; stroke-dashoffset: 0;
+  transition: stroke-dashoffset 1s linear, stroke .4s ease;
 }
+.count-number {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 5.5rem; font-weight: 800; color: var(--accent);
+  letter-spacing: -0.04em;
+}
+.count-number.tick { animation: count-pop .95s cubic-bezier(.2,.8,.3,1); }
+@keyframes count-pop {
+  0%   { transform: scale(0.35); opacity: 0; }
+  22%  { transform: scale(1.14); opacity: 1; }
+  40%  { transform: scale(1); }
+  100% { transform: scale(0.96); opacity: 0.75; }
+}
+.count-number.go {
+  font-size: 3.1rem; color: var(--green);
+  animation: count-go .8s cubic-bezier(.2,.8,.3,1);
+}
+@keyframes count-go {
+  0%   { transform: scale(0.4) rotate(-8deg); opacity: 0; }
+  45%  { transform: scale(1.2) rotate(3deg); opacity: 1; }
+  100% { transform: scale(1) rotate(0); opacity: 1; }
+}
+.count-label { color: var(--muted); font-size: 1.05rem; font-weight: 600; }
+
+/* ---------- Parent live mirror ---------- */
+.mirror-head {
+  display: flex; align-items: center; gap: 9px;
+  padding-bottom: 14px; margin-bottom: 16px;
+  border-bottom: 1px solid var(--line);
+}
+.mirror-head b { font-size: 1.05rem; }
+.mirror-status { color: var(--muted); font-size: .95rem; flex: 1; }
+.live-dot {
+  width: 10px; height: 10px; border-radius: 50%; background: var(--red);
+  animation: live-pulse 1.6s ease-in-out infinite; flex-shrink: 0;
+}
+.live-dot.idle { background: var(--line); animation: none; }
+@keyframes live-pulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(229,72,77,.5); }
+  50%      { opacity: .55; box-shadow: 0 0 0 7px rgba(229,72,77,0); }
+}
+/* the 💡: help with UNDERSTANDING the som, tucked under the question */
+.hint-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  margin: -6px 0 16px;
+  padding: 7px 14px; border-radius: 999px;
+  border: none; background: #fdf6e0;
+  font-size: .82rem; font-weight: 700; font-family: inherit;
+  color: #8a6a11; cursor: pointer;
+  transition: background .12s, transform .08s, opacity .15s;
+}
+.hint-btn:hover { background: #fdf3d0; }
+.hint-btn:active { transform: scale(0.96); }
+.hint-bubble {
+  margin: -4px 0 16px;
+  padding: 11px 14px;
+  background: #fffbea; border: 1px solid #f0e2ae; border-radius: 12px;
+  font-size: .95rem; line-height: 1.55; color: var(--ink);
+  text-align: left;
+}
+
+/* the second chance and the uitleg, under the answers */
+.explain-box {
+  margin-top: 18px; padding: 15px 17px;
+  background: var(--bg); border-radius: 14px;
+  text-align: left;
+}
+.fix-hint { font-weight: 700; color: var(--ink); font-size: .98rem; }
+.fix-praise { font-weight: 800; color: var(--green); font-size: 1.05rem; }
+.explain-title { display: block; margin-bottom: 6px; color: var(--muted); font-size: .88rem; }
+.explain-text { font-size: 1.02rem; line-height: 1.6; }
+.explain-box .btn { margin-top: 14px; padding: 10px 22px; }
+
+/* the som being worked on, with the whole opdracht down the right-hand side —
+   the same panel for the child and for the parent watching */
+.mirror-split, .task-split {
+  display: grid; grid-template-columns: minmax(0, 1fr) 76px;
+  gap: 18px; align-items: start;
+}
+.mirror-main, .task-main { min-width: 0; }
+/* the task and mirror rails share the sprint's rail; only the split needs
+   saying here */
 @media (max-width: 600px) {
-  /* on a phone it stays on the right too, as one narrow list running down the
-     side — 1, 2, 3 under each other — never underneath the som, where it
-     would scroll out of sight */
-  .mirror-split, .task-split { grid-template-columns: minmax(0, 1fr) 46px; gap: 10px; }
-  .marks-panel { padding-left: 9px; }
-  .mark-grid { grid-template-columns: 1fr; gap: 2px; }
-  .mark-cell {
-    aspect-ratio: auto; min-height: 20px;
-    flex-direction: row; justify-content: space-between;
-    gap: 3px; padding: 2px 4px; border-radius: 5px;
-  }
-  .mark-cell .n { font-size: .58rem; }
-  .mark-cell .i { font-size: .6rem; height: auto; }
-  .mark-tally {
-    flex-direction: column; align-items: center;
-    gap: 3px; margin-top: 8px; font-size: .63rem;
-  }
+  .mirror-split, .task-split { grid-template-columns: minmax(0, 1fr) 40px; gap: 10px; }
 }
 
 .mirror-q { font-size: 1.2rem; line-height: 1.55; margin-bottom: 20px; }
@@ -887,6 +1071,7 @@ input:focus { border-color: var(--accent); }
 
 /* how many 💡 are left, and what it looks like when there are none */
 .hint-count {
+  font-variant-numeric: tabular-nums;
   background: #f0e2ae; color: #7a5c0d;
   border-radius: 999px; min-width: 17px; padding: 0 5px;
   font-size: .72rem; line-height: 17px; text-align: center;
@@ -908,68 +1093,90 @@ input:focus { border-color: var(--accent); }
 .cal-detail .result-grid { margin: 10px 0 14px; gap: 7px; }
 .cal-detail .result-tile { animation: none; cursor: default; }
 
-/* ---------- tafelsprint: ten tafels against the clock ---------- */
-.sprint-card { max-width: 700px; }
-.sprint-head { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
-.sprint-pause { flex: none; }
-.sprint-badge {
-  font-weight: 800; font-size: .85rem; letter-spacing: .02em;
-  background: var(--accent-soft); color: var(--accent);
-  border-radius: 999px; padding: 5px 12px; white-space: nowrap;
-}
-.sprint-head .progress-text { margin-left: auto; }
+/* ---------- tafelsprint ----------
+   One column of content, one rail of progress beside it, and a header that is
+   a single line of text-height things: nothing on this screen is a shape for
+   its own sake. */
+.sprint-card { max-width: 620px; margin: 0 auto; padding: 20px 22px 24px; }
 
-/* the clock rides beside the badge: small, and out of the way of the som */
-.sprint-clock { position: relative; width: 34px; height: 34px; flex: none; display: block; }
-.sprint-ring { width: 34px; height: 34px; transform: rotate(-90deg); display: block; }
-.sprint-track { fill: none; stroke: var(--bg); stroke-width: 5; }
-.sprint-arc {
-  fill: none; stroke: var(--accent); stroke-width: 5; stroke-linecap: round;
-  stroke-dasharray: 107; stroke-dashoffset: 0;
-}
-.sprint-arc.low { stroke: var(--red); }
-.sprint-count {
-  position: absolute; inset: 0;
+.sprint-head { display: flex; align-items: center; gap: 10px; }
+.icon-ghost {
+  flex: none; width: 30px; height: 30px; border-radius: 9px;
+  border: none; background: var(--bg); color: var(--muted);
   display: flex; align-items: center; justify-content: center;
-  font-size: .78rem; font-weight: 800;
+  cursor: pointer; font-family: inherit;
+  transition: background .15s, color .15s, transform .08s;
 }
-.sprint-count.low { color: var(--red); }
+.icon-ghost:hover { background: var(--accent-soft); color: var(--accent); }
+.icon-ghost:active { transform: scale(.94); }
+.sprint-title {
+  font-size: .78rem; font-weight: 800; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--muted);
+}
+.sprint-secs {
+  font-size: .78rem; font-weight: 700; color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.sprint-secs::before { content: "· "; opacity: .5; }
+.sprint-secs::after { content: "s"; opacity: .6; margin-left: 1px; }
+.sprint-secs.low { color: var(--red); }
+.sprint-step {
+  margin-left: auto;
+  font-size: .78rem; font-weight: 700; color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
 
-.sprint-body { display: flex; align-items: flex-start; gap: 18px; }
-.sprint-main { flex: 1; min-width: 0; }
+/* the clock: a hairline that drains, right where the eye already is */
+.sprint-track {
+  height: 3px; background: var(--line); border-radius: 999px;
+  overflow: hidden; margin: 12px 0 0;
+}
+.sprint-fill { height: 100%; width: 100%; background: var(--accent); border-radius: 999px; }
+.sprint-fill.low { background: var(--red); }
+
+.sprint-body {
+  display: grid; grid-template-columns: minmax(0, 1fr) 76px;
+  gap: 22px; align-items: start; margin-top: 26px;
+}
+.sprint-main { min-width: 0; }
 .sprint-q {
-  font-size: 2.6rem; font-weight: 800; text-align: center;
-  letter-spacing: .03em; margin: 10px 0 22px;
+  font-size: 3rem; font-weight: 800; text-align: center;
+  letter-spacing: .01em; font-variant-numeric: tabular-nums;
+  margin: 4px 0 26px;
 }
-.sprint-answers { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+.sprint-answers {
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px; max-width: 380px; margin: 0 auto;
+}
 .sprint-opt {
-  font-family: inherit; font-size: 1.6rem; font-weight: 800;
-  padding: 18px 6px; border-radius: 14px; cursor: pointer;
-  border: 2px solid var(--line); background: var(--card); color: var(--text);
-  transition: transform .08s, background .12s, border-color .12s, opacity .2s;
+  font-family: inherit; font-size: 1.5rem; font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  height: 68px; border-radius: 16px; cursor: pointer;
+  border: 1.5px solid var(--line); background: var(--card); color: var(--ink);
+  transition: transform .08s, background .15s, border-color .15s, opacity .25s;
 }
-.sprint-opt:active { transform: scale(.96); }
-.sprint-opt.right { background: var(--green-soft); border-color: var(--green); }
-.sprint-opt.wrong { background: var(--red-soft); border-color: var(--red); }
+.sprint-opt:active { transform: scale(.97); }
+.sprint-opt.right { background: var(--green-soft); border-color: var(--green); color: var(--green); }
+.sprint-opt.wrong { background: var(--red-soft); border-color: var(--red); color: var(--red); }
 /* shut for the first seconds: there to be read, not yet to be tapped */
 .sprint-answers.shut .sprint-opt {
-  opacity: .45; cursor: default; color: var(--muted);
-  border-style: dashed; transform: none;
+  opacity: .38; color: var(--muted); cursor: default; transform: none;
 }
 .sprint-flash {
-  min-height: 1.5em; margin-top: 14px; text-align: center;
-  font-weight: 700; color: var(--muted);
+  min-height: 1.4em; margin-top: 16px; text-align: center;
+  font-size: .9rem; font-weight: 700; color: var(--muted);
 }
-.sprint-flash.think { font-weight: 600; opacity: .75; }
+.sprint-flash.think { font-weight: 500; }
 .sprint-flash.good { color: var(--green); }
 .sprint-flash.bad  { color: var(--red); }
 
-.sprint-paused { text-align: center; padding: 18px 0 8px; }
+.sprint-paused { text-align: center; padding: 26px 0 10px; }
 
 @media (max-width: 520px) {
-  .sprint-body { gap: 10px; }
-  .sprint-q { font-size: 2.1rem; margin: 4px 0 14px; }
-  .sprint-opt { font-size: 1.35rem; padding: 14px 4px; }
+  .sprint-card { padding: 18px 16px 20px; }
+  .sprint-body { grid-template-columns: minmax(0, 1fr) 40px; gap: 14px; margin-top: 20px; }
+  .sprint-q { font-size: 2.4rem; margin: 0 0 20px; }
+  .sprint-opt { height: 60px; font-size: 1.35rem; }
 }
 
 /* how the sprint reads back, on the report card and in the kalender */

@@ -377,7 +377,7 @@ function startSprint(then) {
   sprint = { qs, i: 0, tiles: "", facts: [], then, tick: null, locked: true };
   Live.startHeartbeat();
   // a beat to look up before the first clock starts
-  $("sprint-progress").textContent = `1/${qs.length}`;
+  $("sprint-progress").textContent = `1 / ${qs.length}`;
   $("sprint-question").textContent = "⚡";
   $("sprint-badge-label").textContent = t("sprint_title");
   $("sprint-answers").innerHTML = "";
@@ -402,7 +402,7 @@ const SPRINT_THINK = 5;
 function renderSprint() {
   const q = sprint.qs[sprint.i];
   sprint.locked = true;                       // shut until the thinking beat ends
-  $("sprint-progress").textContent = `${sprint.i + 1}/${sprint.qs.length}`;
+  $("sprint-progress").textContent = `${sprint.i + 1} / ${sprint.qs.length}`;
   $("sprint-question").textContent = `${q.a} × ${q.b}`;
   $("sprint-flash").textContent = t("sprint_think");
   $("sprint-flash").className = "sprint-flash think";
@@ -444,47 +444,51 @@ function openSprintAnswers() {
   $("sprint-flash").className = "sprint-flash";
 }
 
-/* The ring sits next to the badge and empties while the tafel is on screen.
-   Kept as one deadline in wall-clock time, so a pause is simply a deadline
-   pushed forward by however long the break lasted. */
-const SPRINT_CIRC = 107;                       // 2πr, r = 17
-
+/* The clock is a hairline under the header that drains away, plus the seconds
+   themselves in small type next to the title. A bar says "time passing" at a
+   glance without competing with the som for attention, which is what the ring
+   it replaces was doing. Kept as one deadline in wall-clock time, so a pause
+   is simply a deadline pushed forward by however long the break lasted. */
 function startSprintClock(msLeft) {
-  const arc = $("sprint-arc"), num = $("sprint-count");
+  const bar = $("sprint-bar"), num = $("sprint-count");
   const total = Sprint.SECS * 1000;
   const left0 = msLeft == null ? total : msLeft;
   sprint.endAt = Date.now() + left0;
   sprint.opened = sprint.opened && msLeft != null;      // a fresh som shuts again
-  arc.style.transition = "none";
-  arc.style.strokeDashoffset = String(SPRINT_CIRC * (1 - left0 / total));
-  arc.classList.remove("low");
-  void arc.offsetWidth;
-  arc.style.transition = `stroke-dashoffset ${left0}ms linear`;
-  arc.style.strokeDashoffset = String(SPRINT_CIRC);
+  bar.style.transition = "none";
+  bar.style.width = (left0 / total * 100) + "%";
+  bar.classList.remove("low");
+  void bar.offsetWidth;
+  bar.style.transition = `width ${left0}ms linear`;
+  bar.style.width = "0%";
 
   clearInterval(sprint.tick);
+  let handle;
   const paint = () => {
+    // the round can end under a tick that is already in flight; a clock with
+    // nothing left to time simply stops itself
+    if (!sprint) return clearInterval(handle);
     const left = Math.max(0, sprint.endAt - Date.now());
     num.textContent = Math.ceil(left / 1000);
     const low = left <= total / 3;
     num.classList.toggle("low", low);
-    arc.classList.toggle("low", low);
+    bar.classList.toggle("low", low);
     if (!sprint.opened && left <= total - SPRINT_THINK * 1000) openSprintAnswers();
     if (left <= 0) { clearInterval(sprint.tick); timeoutSprint(); }
   };
   paint();
-  sprint.tick = setInterval(paint, 100);
+  handle = setInterval(paint, 100);
+  sprint.tick = handle;
 }
 
-/* Freeze the ring where the CLOCK says it is, not where the browser happens
-   to have drawn it — a tab in the background never runs the animation, and
-   reading the computed style there gives the end of it. */
+/* Freeze the bar where the CLOCK says it is, not where the browser happens to
+   have drawn it — a tab in the background never runs the animation. */
 function stopSprintClock() {
   clearInterval(sprint.tick);
-  const arc = $("sprint-arc");
   const left = Math.max(0, sprint.endAt - Date.now());
-  arc.style.transition = "none";
-  arc.style.strokeDashoffset = String(SPRINT_CIRC * (1 - left / (Sprint.SECS * 1000)));
+  const bar = $("sprint-bar");
+  bar.style.transition = "none";
+  bar.style.width = (left / (Sprint.SECS * 1000) * 100) + "%";
 }
 
 /* A break in the middle of a round. The clock stops and the tafel goes off
@@ -576,8 +580,9 @@ function finishSprint() {
   flash.textContent = all ? t("sprint_all") : t("sprint_done");
   flash.className = "sprint-flash " + (all ? "good" : "");
   clearInterval(sprint.tick);
+  sprint.tick = null;
   const then = sprint.then;
-  setTimeout(() => { sprint = null; then(); }, 1400);
+  setTimeout(() => { if (sprint) clearInterval(sprint.tick); sprint = null; then(); }, 1400);
 }
 
 /* one line of tafels, for the report card and for the parent's kalender */
@@ -829,7 +834,7 @@ function renderQuestion() {
   // one som opened from the report card is "som 5 of 20", not "1 of 1"
   const at = session.viewOne != null ? session.viewOne : session.idx;
   const of = session.viewOne != null ? session.questions.length : session.queue.length;
-  $("progress-text").textContent = `${at + 1}/${of}`;
+  $("progress-text").textContent = `${at + 1} / ${of}`;
   $("progress-bar").style.width = `${(at / of) * 100}%`;
   $("question-text").textContent = Engine.text(q, LANG);
   // a som shaped like the ones on the school's werkblad wears the school's
