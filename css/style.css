@@ -908,57 +908,69 @@ input:focus { border-color: var(--accent); }
 .cal-detail .result-grid { margin: 10px 0 14px; gap: 7px; }
 .cal-detail .result-tile { animation: none; cursor: default; }
 
-/* ---------- tafelsprint: five tafels against the clock ---------- */
-.sprint-card { max-width: 640px; }
-.sprint-head {
-  display: flex; align-items: center; justify-content: space-between;
-  margin-bottom: 10px;
-}
+/* ---------- tafelsprint: ten tafels against the clock ---------- */
+.sprint-card { max-width: 700px; }
+.sprint-head { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+.sprint-pause { flex: none; }
 .sprint-badge {
   font-weight: 800; font-size: .85rem; letter-spacing: .02em;
   background: var(--accent-soft); color: var(--accent);
-  border-radius: 999px; padding: 5px 12px;
+  border-radius: 999px; padding: 5px 12px; white-space: nowrap;
 }
-.sprint-body { display: flex; align-items: center; gap: 18px; }
-.sprint-main { flex: 1; min-width: 0; }
-.sprint-q {
-  font-size: 2.6rem; font-weight: 800; text-align: center;
-  letter-spacing: .03em; margin: 6px 0 18px;
-}
-/* four answers, two by two: a bigger target than a row of four, and it keeps
-   the som and the clock above the fold on a phone */
-.sprint-answers { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
-.sprint-opt {
-  font-family: inherit; font-size: 1.6rem; font-weight: 800;
-  padding: 18px 6px; border-radius: 14px; cursor: pointer;
-  border: 2px solid var(--line); background: var(--card); color: var(--text);
-  transition: transform .08s, background .12s, border-color .12s;
-}
-.sprint-opt:active { transform: scale(.96); }
-.sprint-opt.right { background: var(--green-soft); border-color: var(--green); }
-.sprint-opt.wrong { background: var(--red-soft); border-color: var(--red); }
+.sprint-head .progress-text { margin-left: auto; }
 
-/* the clock beside the som: a ring that empties in five seconds */
-.sprint-clock { position: relative; width: 92px; height: 92px; flex: none; }
-.sprint-ring { width: 92px; height: 92px; transform: rotate(-90deg); }
-.sprint-track { fill: none; stroke: var(--bg); stroke-width: 7; }
+/* the clock rides beside the badge: small, and out of the way of the som */
+.sprint-clock { position: relative; width: 34px; height: 34px; flex: none; display: block; }
+.sprint-ring { width: 34px; height: 34px; transform: rotate(-90deg); display: block; }
+.sprint-track { fill: none; stroke: var(--bg); stroke-width: 5; }
 .sprint-arc {
-  fill: none; stroke: var(--accent); stroke-width: 7; stroke-linecap: round;
-  stroke-dasharray: 214; stroke-dashoffset: 0;
+  fill: none; stroke: var(--accent); stroke-width: 5; stroke-linecap: round;
+  stroke-dasharray: 107; stroke-dashoffset: 0;
 }
 .sprint-arc.low { stroke: var(--red); }
 .sprint-count {
   position: absolute; inset: 0;
   display: flex; align-items: center; justify-content: center;
-  font-size: 2rem; font-weight: 800;
+  font-size: .78rem; font-weight: 800;
 }
 .sprint-count.low { color: var(--red); }
+
+.sprint-body { display: flex; align-items: flex-start; gap: 18px; }
+.sprint-main { flex: 1; min-width: 0; }
+.sprint-q {
+  font-size: 2.6rem; font-weight: 800; text-align: center;
+  letter-spacing: .03em; margin: 10px 0 22px;
+}
+.sprint-answers { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+.sprint-opt {
+  font-family: inherit; font-size: 1.6rem; font-weight: 800;
+  padding: 18px 6px; border-radius: 14px; cursor: pointer;
+  border: 2px solid var(--line); background: var(--card); color: var(--text);
+  transition: transform .08s, background .12s, border-color .12s, opacity .2s;
+}
+.sprint-opt:active { transform: scale(.96); }
+.sprint-opt.right { background: var(--green-soft); border-color: var(--green); }
+.sprint-opt.wrong { background: var(--red-soft); border-color: var(--red); }
+/* shut for the first seconds: there to be read, not yet to be tapped */
+.sprint-answers.shut .sprint-opt {
+  opacity: .45; cursor: default; color: var(--muted);
+  border-style: dashed; transform: none;
+}
 .sprint-flash {
   min-height: 1.5em; margin-top: 14px; text-align: center;
   font-weight: 700; color: var(--muted);
 }
+.sprint-flash.think { font-weight: 600; opacity: .75; }
 .sprint-flash.good { color: var(--green); }
 .sprint-flash.bad  { color: var(--red); }
+
+.sprint-paused { text-align: center; padding: 18px 0 8px; }
+
+@media (max-width: 520px) {
+  .sprint-body { gap: 10px; }
+  .sprint-q { font-size: 2.1rem; margin: 4px 0 14px; }
+  .sprint-opt { font-size: 1.35rem; padding: 14px 4px; }
+}
 
 /* how the sprint reads back, on the report card and in the kalender */
 .sprint-strip {

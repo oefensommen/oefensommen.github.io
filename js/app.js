@@ -382,6 +382,9 @@ function startSprint(then) {
   $("sprint-badge-label").textContent = t("sprint_title");
   $("sprint-answers").innerHTML = "";
   $("sprint-count").textContent = Sprint.SECS;
+  $("sprint-paused").classList.add("hidden");
+  document.querySelector("#screen-sprint .sprint-body").classList.remove("hidden");
+  $("sprint-marks").innerHTML = "";
   $("sprint-flash").textContent = t("sprint_ready").replace("{n}", Sprint.N).replace("{s}", Sprint.SECS);
   $("sprint-flash").className = "sprint-flash";
   show("screen-sprint");
@@ -389,65 +392,124 @@ function startSprint(then) {
   setTimeout(() => { if (sprint) renderSprint(); }, 1600);
 }
 
+/* The first seconds of a tafel belong to the tafel, not to the buttons. With
+   two answers on screen a child can be right half the time by tapping the
+   moment the som appears — so the answers stay shut until the som has been
+   looked at, and only then open. The clock runs through it: thinking time is
+   part of the time. */
+const SPRINT_THINK = 5;
+
 function renderSprint() {
   const q = sprint.qs[sprint.i];
-  sprint.locked = false;
+  sprint.locked = true;                       // shut until the thinking beat ends
   $("sprint-progress").textContent = `${sprint.i + 1}/${sprint.qs.length}`;
   $("sprint-question").textContent = `${q.a} × ${q.b}`;
-  $("sprint-flash").textContent = "";
-  $("sprint-flash").className = "sprint-flash";
+  $("sprint-flash").textContent = t("sprint_think");
+  $("sprint-flash").className = "sprint-flash think";
 
   const box = $("sprint-answers");
   box.innerHTML = "";
+  box.classList.add("shut");
   q.options.forEach((v, i) => {
     const b = document.createElement("button");
     b.className = "sprint-opt";
     b.textContent = v;
+    b.disabled = true;
     b.addEventListener("click", () => answerSprint(i, b));
     box.appendChild(b);
   });
 
+  renderSprintMarks();
   startSprintClock();
   Live.push("sprint");
 }
 
-/* The ring beside the som empties in five seconds and the number counts down
-   with it — the child can see the time going without having to read a clock. */
-const SPRINT_CIRC = 214;                       // 2πr, r = 34
+/* the whole round beside the tafel, exactly as the sommen have it */
+function renderSprintMarks() {
+  const marks = sprint.qs.map((_, i) => {
+    const ch = sprint.tiles[i];
+    return ch === "o" ? "ok" : ch === "n" ? "no" : ch === "t" ? "skip" : "";
+  });
+  $("sprint-marks").innerHTML = Live.marksPanelHTML(marks, sprint.i);
+}
 
-function startSprintClock() {
+/* the answers open, mid-question */
+function openSprintAnswers() {
+  if (!sprint || sprint.settled) return;
+  sprint.locked = false;
+  sprint.opened = true;
+  $("sprint-answers").classList.remove("shut");
+  $("sprint-answers").querySelectorAll(".sprint-opt").forEach(b => b.disabled = false);
+  $("sprint-flash").textContent = "";
+  $("sprint-flash").className = "sprint-flash";
+}
+
+/* The ring sits next to the badge and empties while the tafel is on screen.
+   Kept as one deadline in wall-clock time, so a pause is simply a deadline
+   pushed forward by however long the break lasted. */
+const SPRINT_CIRC = 107;                       // 2πr, r = 17
+
+function startSprintClock(msLeft) {
   const arc = $("sprint-arc"), num = $("sprint-count");
-  sprint.endAt = Date.now() + Sprint.SECS * 1000;
+  const total = Sprint.SECS * 1000;
+  const left0 = msLeft == null ? total : msLeft;
+  sprint.endAt = Date.now() + left0;
+  sprint.opened = sprint.opened && msLeft != null;      // a fresh som shuts again
   arc.style.transition = "none";
-  arc.style.strokeDashoffset = "0";
+  arc.style.strokeDashoffset = String(SPRINT_CIRC * (1 - left0 / total));
   arc.classList.remove("low");
   void arc.offsetWidth;
-  arc.style.transition = `stroke-dashoffset ${Sprint.SECS}s linear`;
+  arc.style.transition = `stroke-dashoffset ${left0}ms linear`;
   arc.style.strokeDashoffset = String(SPRINT_CIRC);
 
   clearInterval(sprint.tick);
   const paint = () => {
     const left = Math.max(0, sprint.endAt - Date.now());
     num.textContent = Math.ceil(left / 1000);
-    const low = left <= Sprint.SECS * 1000 / 3;
+    const low = left <= total / 3;
     num.classList.toggle("low", low);
     arc.classList.toggle("low", low);
+    if (!sprint.opened && left <= total - SPRINT_THINK * 1000) openSprintAnswers();
     if (left <= 0) { clearInterval(sprint.tick); timeoutSprint(); }
   };
   paint();
   sprint.tick = setInterval(paint, 100);
 }
 
+/* Freeze the ring where the CLOCK says it is, not where the browser happens
+   to have drawn it — a tab in the background never runs the animation, and
+   reading the computed style there gives the end of it. */
 function stopSprintClock() {
   clearInterval(sprint.tick);
   const arc = $("sprint-arc");
-  const at = getComputedStyle(arc).strokeDashoffset;      // freeze where it is
+  const left = Math.max(0, sprint.endAt - Date.now());
   arc.style.transition = "none";
-  arc.style.strokeDashoffset = at;
+  arc.style.strokeDashoffset = String(SPRINT_CIRC * (1 - left / (Sprint.SECS * 1000)));
+}
+
+/* A break in the middle of a round. The clock stops and the tafel goes off
+   screen — a break is a break, not a chance to keep working the som out. */
+function pauseSprint() {
+  if (!sprint || sprint.paused || sprint.settled) return;
+  sprint.paused = Math.max(0, sprint.endAt - Date.now());
+  stopSprintClock();
+  document.querySelector("#screen-sprint .sprint-body").classList.add("hidden");
+  $("sprint-paused").classList.remove("hidden");
+  Live.push("pause");
+}
+
+function resumeSprint() {
+  if (!sprint || sprint.paused == null) return;
+  const left = sprint.paused;
+  sprint.paused = null;
+  $("sprint-paused").classList.add("hidden");
+  document.querySelector("#screen-sprint .sprint-body").classList.remove("hidden");
+  startSprintClock(left);
+  Live.push("sprint");
 }
 
 function answerSprint(i, btn) {
-  if (sprint.locked) return;
+  if (sprint.locked || sprint.paused != null) return;
   sprint.locked = true;
   stopSprintClock();
   const q = sprint.qs[sprint.i];
@@ -458,8 +520,9 @@ function answerSprint(i, btn) {
 }
 
 function timeoutSprint() {
-  if (sprint.locked) return;
+  if (sprint.settled || sprint.paused != null) return;
   sprint.locked = true;
+  $("sprint-answers").querySelectorAll(".sprint-opt").forEach(b => b.disabled = true);
   markRightOption();
   settleSprintQ("t", t("sprint_late"), false);
 }
@@ -471,8 +534,11 @@ function markRightOption() {
 }
 
 function settleSprintQ(tile, msg, ok) {
+  if (sprint.settled) return;
+  sprint.settled = true;
   const q = sprint.qs[sprint.i];
   sprint.tiles += tile;
+  renderSprintMarks();
   sprint.facts.push(`${q.a}x${q.b}`);
   Sprint.remember(data, q, ok);
   const flash = $("sprint-flash");
@@ -484,6 +550,7 @@ function settleSprintQ(tile, msg, ok) {
 
 function nextSprint() {
   if (!sprint || sprint.finished) return;       // a late timer after the end
+  sprint.settled = false;
   sprint.i++;
   if (sprint.i < sprint.qs.length) return renderSprint();
   finishSprint();
@@ -504,6 +571,7 @@ function finishSprint() {
   const all = right === sprint.qs.length;
   $("sprint-question").textContent = `${right}/${sprint.qs.length}`;
   $("sprint-answers").innerHTML = "";
+  renderSprintMarks();
   const flash = $("sprint-flash");
   flash.textContent = all ? t("sprint_all") : t("sprint_done");
   flash.className = "sprint-flash " + (all ? "good" : "");
@@ -1520,7 +1588,7 @@ function somRowHTML(i, opts) {
               <span class="som-n">${icon} ${i + 1}</span>
               <span class="som-cat">${esc(cat)}</span>
               ${hinted ? `<span class="som-hint">💡</span>` : ""}
-              ${tpl && tpl.school ? `<img class="school-badge row" src="img/school.png" onerror="this.onerror=null;this.src='img/school.svg'" alt="school" title="${esc(t("school_badge"))}">` : ""}
+              ${tpl && tpl.school ? `<img class="school-badge row" src="img/school.svg" alt="school" title="${esc(t("school_badge"))}">` : ""}
               ${off ? `<span class="som-off">${esc(t("rule_is_off"))}</span>` : ""}
               <span class="som-more">▾</span>
             </div>
@@ -2421,6 +2489,8 @@ document.addEventListener("DOMContentLoaded", () => {
   // home
   $("btn-start").addEventListener("click", startTask);
   $("btn-sprint").addEventListener("click", () => startSprint(goHome));
+  $("sprint-pause").addEventListener("click", pauseSprint);
+  $("sprint-resume").addEventListener("click", resumeSprint);
   $("btn-continue").addEventListener("click", resumeActive);
   $("btn-watch").addEventListener("click", () => openMirror());
   $("btn-calendar").addEventListener("click", () => { calMonth = new Date(); renderCalendar(); show("screen-calendar"); });
