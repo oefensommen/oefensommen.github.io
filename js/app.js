@@ -392,24 +392,48 @@ function startSprint(then) {
   setTimeout(() => { if (sprint) renderSprint(); }, 1600);
 }
 
-/* The first seconds of a tafel belong to the tafel, not to the buttons. With
-   two answers on screen a child can be right half the time by tapping the
-   moment the som appears — so the answers stay shut until the som has been
-   looked at, and only then open. The clock runs through it: thinking time is
-   part of the time. */
-const SPRINT_THINK = 5;
+/* A tafel is answered in three beats, and the clock runs through all of them.
+
+   The first five seconds there is nothing on screen but the som: no answers
+   to weigh up, so the only way forward is to work it out. The next five the
+   answers appear but may not be touched — time to find your own answer among
+   them, and to notice when it is not there. The last ten are for answering.
+
+   Without the first two beats a child with two answers in front of them is
+   right half the time by guessing, and the tafel never has to be known. */
+const SPRINT_BLIND = 5;     // seconds with the som alone
+const SPRINT_READ = 10;     // seconds before the answers open (blind included)
+
+function sprintPhase(left) {
+  const total = Sprint.SECS * 1000;
+  if (left > total - SPRINT_BLIND * 1000) return 0;      // the som alone
+  if (left > total - SPRINT_READ * 1000) return 1;       // answers, looking only
+  return 2;                                              // answer away
+}
+
+/* Move the som into a beat. Idempotent: the clock calls it on every tick and
+   only a real change is drawn. */
+function applySprintPhase(ph) {
+  if (!sprint || sprint.phase === ph) return;
+  sprint.phase = ph;
+  sprint.locked = ph < 2;
+  const box = $("sprint-answers"), flash = $("sprint-flash");
+  box.classList.toggle("blind", ph === 0);
+  box.classList.toggle("shut", ph < 2);
+  box.querySelectorAll(".sprint-opt").forEach(b => b.disabled = ph < 2);
+  flash.textContent = ph === 0 ? t("sprint_blind") : ph === 1 ? t("sprint_think") : "";
+  flash.className = "sprint-flash" + (ph < 2 ? " think" : "");
+}
 
 function renderSprint() {
   const q = sprint.qs[sprint.i];
-  sprint.locked = true;                       // shut until the thinking beat ends
+  sprint.locked = true;
+  sprint.phase = null;                        // so the first beat is always drawn
   $("sprint-progress").textContent = `${sprint.i + 1} / ${sprint.qs.length}`;
   $("sprint-question").textContent = `${q.a} × ${q.b}`;
-  $("sprint-flash").textContent = t("sprint_think");
-  $("sprint-flash").className = "sprint-flash think";
 
   const box = $("sprint-answers");
   box.innerHTML = "";
-  box.classList.add("shut");
   q.options.forEach((v, i) => {
     const b = document.createElement("button");
     b.className = "sprint-opt";
@@ -418,6 +442,7 @@ function renderSprint() {
     b.addEventListener("click", () => answerSprint(i, b));
     box.appendChild(b);
   });
+  applySprintPhase(0);
 
   renderSprintMarks();
   startSprintClock();
@@ -436,12 +461,7 @@ function renderSprintMarks() {
 /* the answers open, mid-question */
 function openSprintAnswers() {
   if (!sprint || sprint.settled) return;
-  sprint.locked = false;
-  sprint.opened = true;
-  $("sprint-answers").classList.remove("shut");
-  $("sprint-answers").querySelectorAll(".sprint-opt").forEach(b => b.disabled = false);
-  $("sprint-flash").textContent = "";
-  $("sprint-flash").className = "sprint-flash";
+  applySprintPhase(2);
 }
 
 /* The clock is a hairline under the header that drains away, plus the seconds
@@ -454,7 +474,6 @@ function startSprintClock(msLeft) {
   const total = Sprint.SECS * 1000;
   const left0 = msLeft == null ? total : msLeft;
   sprint.endAt = Date.now() + left0;
-  sprint.opened = sprint.opened && msLeft != null;      // a fresh som shuts again
   bar.style.transition = "none";
   bar.style.width = (left0 / total * 100) + "%";
   bar.classList.remove("low");
@@ -473,7 +492,7 @@ function startSprintClock(msLeft) {
     const low = left <= total / 3;
     num.classList.toggle("low", low);
     bar.classList.toggle("low", low);
-    if (!sprint.opened && left <= total - SPRINT_THINK * 1000) openSprintAnswers();
+    if (!sprint.settled) applySprintPhase(sprintPhase(left));
     if (left <= 0) { clearInterval(sprint.tick); timeoutSprint(); }
   };
   paint();
@@ -540,6 +559,7 @@ function markRightOption() {
 function settleSprintQ(tile, msg, ok) {
   if (sprint.settled) return;
   sprint.settled = true;
+  clearInterval(sprint.tick);                 // no tick may reopen a settled som
   const q = sprint.qs[sprint.i];
   sprint.tiles += tile;
   renderSprintMarks();

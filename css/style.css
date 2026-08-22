@@ -1158,10 +1158,13 @@ input:focus { border-color: var(--accent); }
 .sprint-opt:active { transform: scale(.97); }
 .sprint-opt.right { background: var(--green-soft); border-color: var(--green); color: var(--green); }
 .sprint-opt.wrong { background: var(--red-soft); border-color: var(--red); color: var(--red); }
-/* shut for the first seconds: there to be read, not yet to be tapped */
+/* beat two: there to be read, not yet to be tapped */
 .sprint-answers.shut .sprint-opt {
-  opacity: .38; color: var(--muted); cursor: default; transform: none;
+  opacity: .45; color: var(--muted); cursor: default; transform: none;
 }
+/* beat one: not even there — the som has to be worked out, not weighed up.
+   The space is kept, so nothing jumps when the answers arrive. */
+.sprint-answers.blind .sprint-opt { opacity: 0; visibility: hidden; }
 .sprint-flash {
   min-height: 1.4em; margin-top: 16px; text-align: center;
   font-size: .9rem; font-weight: 700; color: var(--muted);

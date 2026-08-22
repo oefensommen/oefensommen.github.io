@@ -12,8 +12,9 @@
 
 const Sprint = {
   N: 10,            // ten facts a round — the tafel half of a day's pakket
-  SECS: 15,         // fifteen seconds each: room to count back from a tafel you
-                    // do know, which is the working that stops being needed
+  SECS: 20,         // twenty seconds a tafel, spent in three: five to work it
+                    // out with nothing to look at, five to read the answers
+                    // without touching them, ten to answer
   OPTS: 2,          // two answers, and the wrong one is a neighbour in the
                     // table — near enough that only knowing it settles it
   MIN: 2, MAX: 10,  // the tafels of groep 5 — 1 and beyond 10 are not sport
