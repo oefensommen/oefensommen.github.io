@@ -504,10 +504,13 @@ function startSprintClock(msLeft) {
 
   clearInterval(sprint.tick);
   let handle;
+  const mine = sprint;                  // this clock times THIS round, no other
   const paint = () => {
-    // the round can end under a tick that is already in flight; a clock with
-    // nothing left to time simply stops itself
-    if (!sprint) return clearInterval(handle);
+    // A round can be left and a new one started while a tick is still in
+    // flight. Such a tick must not paint, and must certainly not time out,
+    // the round that came after it — so a clock that no longer belongs to the
+    // sprint on screen stops itself.
+    if (!sprint || sprint !== mine) return clearInterval(handle);
     const left = Math.max(0, sprint.endAt - Date.now());
     num.textContent = Math.ceil(left / 1000);
     const low = left <= total / 3;
@@ -533,6 +536,14 @@ function stopSprintClock() {
 
 /* A break in the middle of a round. The clock stops and the tafel goes off
    screen — a break is a break, not a chance to keep working the som out. */
+/* Put the tafelronde down. Whatever was answered is already written into the
+   day; what is left is simply not asked. */
+function stopSprint() {
+  if (!sprint) return;
+  clearInterval(sprint.tick);
+  sprint = null;
+}
+
 function pauseSprint() {
   if (!sprint || sprint.paused || sprint.settled) return;
   sprint.paused = Math.max(0, sprint.endAt - Date.now());
@@ -2439,6 +2450,7 @@ function openMirror(state, age) {
 /* ---------- wiring ---------- */
 function goHome() {
   stopTimer();
+  stopSprint();
   Live.stopHeartbeat();
   if (Store.isParent() && isOn("screen-mirror")) leftMirror = true;
   // the child always works in Dutch, whatever the parent last picked here
