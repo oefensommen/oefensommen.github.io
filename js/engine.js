@@ -251,6 +251,12 @@ const Engine = {
     if (q.vars && q.vars._h !== undefined) {
       s = s.replace(/\{klok\}/g, timeWords(q.vars._h, q.vars._m, lang));
     }
+    // A time the question ASKS for rather than shows. Kept apart from {klok}
+    // on purpose: _h draws a dial in the prompt, and a question whose answers
+    // are dials must not hand the answer over in its own sentence.
+    if (q.vars && q.vars._qh !== undefined) {
+      s = s.replace(/\{tijd\}/g, timeWords(q.vars._qh, q.vars._qm, lang));
+    }
     const cap = w => w ? w.charAt(0).toUpperCase() + w.slice(1) : w;
     if (q.obj2) { const w = q.obj2[lang] || q.obj2.nl; s = s.replace(/\{Obj2\}/g, cap(w)).replace(/\{obj2\}/g, w); }
     if (q.obj) { const w = q.obj[lang] || q.obj.nl; s = s.replace(/\{Obj\}/g, cap(w)).replace(/\{obj\}/g, w); }

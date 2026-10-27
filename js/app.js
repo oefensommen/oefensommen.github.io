@@ -65,6 +65,7 @@ function elapsedSec() {
   return session ? Math.floor((Date.now() - session.t0) / 1000) : 0;
 }
 function tickTimer() {
+  if (!session || session.t0 == null) return;   // nothing to count: print nothing
   $("timer").textContent = fmtTime(elapsedSec());
 }
 function startTimer() {
@@ -340,7 +341,11 @@ function renderHome() {
     status = liveBusy ? Store.watches().toUpperCase() + " " + t("live_busy")
                       : Store.watches().toUpperCase() + " " + t("live_idle");
   }
-  $("home-status").textContent = status;
+  // the chips and the tile badges already say how today went; this line is only
+  // worth its space when it says something they cannot
+  const saysMore = !!open || pakkets >= 2 || parent;
+  $("home-status").textContent = saysMore ? status : "";
+  $("home-status").classList.toggle("hidden", !saysMore);
 
   /* How today is going, without a sentence to read: one line of icons with
      numbers behind them. Nothing here is new information — it is the same
@@ -991,7 +996,9 @@ function renderQuestion() {
   // a clock question IS its dial, so it is drawn rather than described
   const face = $("question-clock");
   if (q.vars && q.vars._h !== undefined && tplOf(q) && tplOf(q).face) {
-    face.innerHTML = Klok.faceSVG(q.vars._h, q.vars._m);
+    face.innerHTML = q.vars._h2 !== undefined
+      ? Klok.facePairSVG(q.vars._h, q.vars._m, q.vars._h2, q.vars._m2)
+      : Klok.faceSVG(q.vars._h, q.vars._m);
     face.classList.remove("hidden");
   } else {
     face.innerHTML = "";
@@ -1010,10 +1017,20 @@ function renderQuestion() {
   // Once that go is spent the som is a page to read, nothing more.
   const correcting = (session.review || session.midRetry) &&
                      q.failed && !q.fixed && !q.explained && !q.retried;
+  // some klok questions ask the other way round: the time is in the sentence
+  // and the four answers are dials. The option itself stays a plain "4:30", so
+  // the mirror, the report card and the second chance all keep reading it.
+  const faceOpts = tplNow && tplNow.faceOptions;
   q.options.forEach((opt, i) => {
     const b = document.createElement("button");
-    b.className = "answer";
-    b.textContent = opt;
+    b.className = "answer" + (faceOpts ? " answer-face" : "");
+    if (faceOpts) {
+      const [fh, fm] = String(opt).split(":").map(Number);
+      b.innerHTML = Klok.faceSVG(fh, fm, 150, true);   // compact: a dial this size
+      b.setAttribute("aria-label", String(opt));
+    } else {
+      b.textContent = opt;
+    }
     if (correcting) {
       if (i === q.chosen) { b.disabled = true; b.classList.add("wrong"); }
       else b.onclick = () => secondChance(i, b);
@@ -1138,6 +1155,11 @@ function answer(i, btn) {
    back. Only during the linear first sweep; the report card is its own world. */
 function comfortSwap(cat) {
   if (!session.firstPass || session.viewOne != null) return;
+  // A klok round is ten dials and nothing else. The swap draws from the soorten
+  // the redactiesommen are mixed from, so letting it run here dropped a
+  // word problem into the middle of the clocks — and a breather from clocks is
+  // not something a klok round can give.
+  if ((session.kind || "sommen") !== "sommen") return;
   const avoid = new Set(session.questions.concat(session.pool || []).map(q => Engine.sig(q)));
 
   // the open slots still ahead, in order
@@ -1587,9 +1609,12 @@ function renderReportStrip() {
   strip.innerHTML = days.map(d => {
     const [y, m, dd] = d.ds.split("-").map(Number);
     const date = new Date(y, m - 1, dd);
-    return `<button class="strip-day${d.ds === reportDay ? " on" : ""}${d.today ? " today" : ""}"
+    // the first of a month says which month, or the strip reads 29 30 31 1 2 3
+    const head = dd === 1 ? t("months")[m - 1].slice(0, 3).toLowerCase()
+                          : wd[(date.getDay() + 6) % 7];
+    return `<button class="strip-day${d.ds === reportDay ? " on" : ""}${d.today ? " today" : ""}${dd === 1 ? " month" : ""}"
               data-day="${d.ds}"${d.today ? ' aria-current="date"' : ""}>
-              <span class="sd-wd">${wd[(date.getDay() + 6) % 7]}</span>
+              <span class="sd-wd">${head}</span>
               <span class="sd-n">${dd}</span>
               <i class="sd-dot ${d.state || "none"}"></i>
             </button>`;
@@ -1675,6 +1700,11 @@ function daySummaryHTML(ds) {
 
 /* Everything that hangs under a day: the tafels as they stand, and — for the
    parent — the day's colour, its note, the rateable sommen and the overview. */
+/* Which of the parent's disclosures are open. Rating a som redraws the whole
+   day — that is what keeps the verdicts honest — but it must not shut the list
+   the parent was working through and throw them back to the top. */
+const openPanels = {};
+
 function dayExtrasHTML(ds) {
   let out = "";
   const strips = sprintStripsHTML(ds);
@@ -1701,10 +1731,12 @@ function dayExtrasHTML(ds) {
   out += `<div class="parent-block">${dayEditorHTML(ds, mark)}`;
   const rec = data.days[ds];
   const qs = dayQuestionsHTML(ds, rec);
-  if (qs) out += `<details class="more"><summary>${esc(t("sommen"))}</summary>
+  if (qs) out += `<details class="more" data-panel="sommen"${openPanels.sommen ? " open" : ""}>
+                    <summary>${esc(t("sommen"))}</summary>
                     <p class="lessons-sub">${esc(t("rate_sub"))}</p>${qs}</details>`;
   else if (rec && rec.tiles) out += `<p class="day-nosom">${esc(t("day_no_sommen"))}</p>`;
-  out += `<details class="more"><summary>${esc(t("stats"))}</summary>
+  out += `<details class="more" data-panel="stats"${openPanels.stats ? " open" : ""}>
+            <summary>${esc(t("stats"))}</summary>
             <div id="stats-body"></div></details>
           <div id="lessons" class="lessons"></div></div>`;
   return out;
@@ -1712,12 +1744,19 @@ function dayExtrasHTML(ds) {
 
 function wireDayExtras(ds, box) {
   if (!Store.isParent()) return;
+  box.querySelectorAll("details[data-panel]").forEach(d =>
+    d.addEventListener("toggle", () => { openPanels[d.dataset.panel] = d.open; }));
   wireDayEditor(ds);
   wireRateButtons(box);
   box.querySelectorAll(".result-tile[data-open]").forEach(tile =>
     tile.addEventListener("click", () => openSomByKey(box, tile.dataset.open)));
   renderStats();
   renderLessons();
+  // the row the parent was looking at should still be under their thumb
+  if (openSom) {
+    const row = box.querySelector(`.som-row[data-key="${openSom}"]`);
+    if (row) { fillSomRow(row, true); row.scrollIntoView({ block: "center" }); }
+  }
 }
 
 /* Open one som straight from the report card. Still waiting to be answered →
@@ -1843,7 +1882,9 @@ function somDetailHTML(tplId, q) {
 
   if (shown) {
     if (tpl.face && shown.vars && shown.vars._h !== undefined) {
-      body += `<div class="det-clock">${Klok.faceSVG(shown.vars._h, shown.vars._m, 150)}</div>`;
+      body += `<div class="det-clock">${shown.vars._h2 !== undefined
+        ? Klok.facePairSVG(shown.vars._h, shown.vars._m, shown.vars._h2, shown.vars._m2)
+        : Klok.faceSVG(shown.vars._h, shown.vars._m, 150)}</div>`;
     }
     if (!real) body += `<p class="det-label">${esc(t("q_sample"))}</p>
                         <p class="det-q">${esc(Engine.text(shown, LANG))}</p>`;

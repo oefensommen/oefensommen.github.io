@@ -240,10 +240,24 @@ const Live = {
     if (this._revealKey !== key) { this._revealKey = key; this.hideAnswer(); }
 
     const text = Engine.text(q, LANG);          // rendered in the PARENT's language
+    // A klok question is a drawn dial, and "Hoe laat is het?" with four times
+    // under it tells the parent nothing about what the child is looking at.
+    const tpl = (typeof TEMPLATES !== "undefined") && TEMPLATES.find(tp => tp.id === q.tplId);
+    const dial = (tpl && tpl.face && q.vars && q.vars._h !== undefined && typeof Klok !== "undefined")
+      ? `<div class="mirror-clock">${q.vars._h2 !== undefined
+           ? Klok.facePairSVG(q.vars._h, q.vars._m, q.vars._h2, q.vars._m2)
+           : Klok.faceSVG(q.vars._h, q.vars._m, 160)}</div>`
+      : "";
+    // and when the ANSWERS are the dials, the parent gets them drawn too
+    const faceOpts = tpl && tpl.faceOptions && typeof Klok !== "undefined";
     const opts = q.options.map((o, i) => {
       let cls = "mirror-opt";
       if (q.chosen !== null && q.chosen !== undefined && i === q.chosen) {
         cls += (i === q.answerIdx) ? " picked-ok" : " picked-no";
+      }
+      if (faceOpts) {
+        const [fh, fm] = String(o).split(":").map(Number);
+        return `<div class="${cls} mirror-opt-face">${Klok.faceSVG(fh, fm, 104, true)}</div>`;
       }
       return `<div class="${cls}">${o}</div>`;
     }).join("");
@@ -268,6 +282,7 @@ const Live = {
       `<div class="mirror-split">
          <div class="mirror-main">
            <p class="mirror-q">${text}</p>
+           ${dial}
            <div class="mirror-options">${opts}</div>
            ${verdict}
            ${q.skipped ? `<div class="mirror-note">⏭ ${t("skip")}</div>` : ""}

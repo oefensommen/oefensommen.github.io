@@ -41,7 +41,7 @@
 
   /* layout */
   --shell:  1040px;
-  --rail:   96px;
+  --rail: 100px;   /* two 44px cells + the gap: the child's door back to a fout */
   --topbar: 52px;
   --shadow: 0 1px 2px rgba(29, 36, 51, .05);
 }
@@ -565,7 +565,7 @@ input:focus { border-color: var(--accent); }
   padding: 0; border-radius: var(--r-pill);
   border: none; background: #fdf6e0;
   font-size: 1.15rem; font-family: inherit;
-  color: #8a6a11; cursor: pointer;
+  color: var(--amber-ink); cursor: pointer;
   transition: background .12s, transform .1s, opacity .15s;
 }
 .hint-btn:active { transform: scale(0.96); }
@@ -592,7 +592,7 @@ input:focus { border-color: var(--accent); }
 /* the som being worked on, with the whole opdracht down the right-hand side —
    the same panel for the child and for the parent watching */
 .mirror-split, .task-split {
-  display: grid; grid-template-columns: minmax(0, 1fr) 76px;
+  display: grid; grid-template-columns: minmax(0, 1fr) var(--rail);
   gap: 18px; align-items: start;
 }
 .mirror-main, .task-main { min-width: 0; }
@@ -610,10 +610,10 @@ input:focus { border-color: var(--accent); }
   border: 1.5px solid transparent;
   transition: background .2s, color .2s;
 }
-.mark-cell.ok   { background: var(--green-soft); color: var(--green); }
-.mark-cell.fix  { background: #eaf7f0; color: #1f9e78; }
-.mark-cell.no   { background: var(--red-soft); color: var(--red); }
-.mark-cell.skip { background: #fff4e0; color: #a8760a; }
+.mark-cell.ok   { background: var(--green-soft); color: var(--green-ink); }
+.mark-cell.fix  { background: #eaf7f0; color: var(--teal-ink); }
+.mark-cell.no   { background: var(--red-soft); color: var(--red-ink); }
+.mark-cell.skip { background: #fff4e0; color: var(--amber-ink); }
 .mark-cell.here { border-color: var(--accent); color: var(--accent); background: var(--card); }
 
 @media (max-width: 520px) {
@@ -679,7 +679,7 @@ input:focus { border-color: var(--accent); }
 
 /* Stats */
 .stat-grid {
-  display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px;
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 16px;
 }
 .stat {
   background: var(--bg); border-radius: 14px; padding: 16px;
@@ -725,7 +725,7 @@ input:focus { border-color: var(--accent); }
   color: var(--muted); cursor: pointer;
   transition: border-color .12s, background .12s, color .12s;
 }
-.rate-btn.hard.on { border-color: #e8b45c; background: #fdf0d5; color: #8a6a11; }
+.rate-btn.hard.on { border-color: #e8b45c; background: #fdf0d5; color: var(--amber-ink); }
 .rate-btn.easy.on { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
 .rate-now { font-size: .78rem; font-weight: 700; color: var(--muted); }
 
@@ -748,7 +748,7 @@ input:focus { border-color: var(--accent); }
   font-size: .76rem; font-weight: 800; white-space: nowrap;
   padding: 4px 10px; border-radius: 999px;
 }
-.lesson-adj.easier { background: #fdf0d5; color: #8a6a11; }
+.lesson-adj.easier { background: #fdf0d5; color: var(--amber-ink); }
 .lesson-adj.harder { background: var(--accent-soft); color: var(--accent); }
 .lesson-undo {
   border: none; background: none; cursor: pointer; font-family: inherit;
@@ -773,7 +773,7 @@ input:focus { border-color: var(--accent); }
 }
 
 /* the parent's copy of a day's report card */
-.day-pill.fix { color: #8a6a11; background: #fdf0d5; border-color: #ecd699; }
+.day-pill.fix { color: var(--amber-ink); background: #fdf0d5; border-color: #ecd699; }
 .day-aschild {
   margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--line);
   font-size: .84rem; color: var(--muted); font-style: italic;
@@ -785,7 +785,7 @@ input:focus { border-color: var(--accent); }
    One column of content, one rail of progress beside it, and a header that is
    a single line of text-height things: nothing on this screen is a shape for
    its own sake. */
-.sprint-card { max-width: 620px; margin: 0 auto; padding: 20px 22px 24px; }
+.sprint-card { margin: 0 auto; padding: 20px 22px 24px; }
 
 .sprint-head { display: flex; align-items: center; gap: 10px; }
 .icon-ghost {
@@ -914,7 +914,7 @@ input:focus { border-color: var(--accent); }
 .som-row.off .som-text { opacity: .55; text-decoration: line-through; }
 .som-off {
   font-size: .68rem; font-weight: 800; text-transform: uppercase; letter-spacing: .04em;
-  color: #8a6a11; background: #fdf0d5; border-radius: 999px; padding: 3px 8px;
+  color: var(--amber-ink); background: #fdf0d5; border-radius: 999px; padding: 3px 8px;
 }
 .som-detail { margin-top: 12px; border-top: 1px dashed var(--line); padding-top: 12px; }
 .det-label { font-size: .8rem; color: var(--muted); margin-bottom: 6px; }
@@ -939,7 +939,7 @@ input:focus { border-color: var(--accent); }
 .det-rule input { width: 16px; height: 16px; accent-color: var(--red); }
 .det-off {
   font-size: .68rem; font-weight: 800; text-transform: uppercase;
-  color: #8a6a11; background: #fdf0d5; border-radius: 999px; padding: 2px 7px; font-style: normal;
+  color: var(--amber-ink); background: #fdf0d5; border-radius: 999px; padding: 2px 7px; font-style: normal;
 }
 .det-hint { font-size: .75rem; color: var(--muted); margin-top: 4px; }
 .det-note-line { font-size: .85rem; color: var(--muted); margin-bottom: 4px; }
@@ -949,7 +949,7 @@ input:focus { border-color: var(--accent); }
 }
 .det-note-btns { display: flex; gap: 7px; margin-top: 7px; }
 .btn.small { padding: 6px 13px; font-size: .8rem; }
-.lesson-adj.off { background: #fdf0d5; color: #8a6a11; }
+.lesson-adj.off { background: #fdf0d5; color: var(--amber-ink); }
 .lesson.note .lesson-what span { font-style: italic; }
 
 /* a vakje in the kalender opens the som it stands for; when there is no som
@@ -966,7 +966,7 @@ input:focus { border-color: var(--accent); }
 .tafel-cell {
   flex: 1 1 0; min-width: 26px; text-align: center;
   font-size: .72rem; font-weight: 700; line-height: 1;
-  padding: 7px 2px; border-radius: 6px; background: var(--bg); color: var(--text);
+  padding: 7px 2px; border-radius: 6px; background: var(--bg); color: var(--ink);
 }
 .tafel-cell.head { background: none; color: var(--muted); font-weight: 800; }
 .tafel-cell.corner { color: var(--line); }
@@ -1010,6 +1010,7 @@ input:focus { border-color: var(--accent); }
 .question-clock { display: flex; justify-content: center; margin: 2px 0 18px; }
 /* with a dial above it the prompt is one short line, so it does not need the
    reserve a three-line redactiesom does */
+.question-clock:not(.hidden) ~ .question-row .question,
 .question-clock:not(.hidden) + .question { min-height: 0; margin-bottom: 18px; text-align: center; }
 .klok-face { width: clamp(150px, 26dvh, 220px); height: auto; aspect-ratio: 1; }
 .klok-rim { fill: var(--card); stroke: var(--ink); stroke-width: 2; }
@@ -1031,7 +1032,7 @@ input:focus { border-color: var(--accent); }
 .score-ring b { font-size: 1.5rem; font-weight: 800; line-height: 1; }
 .score-ring em { font-style: normal; font-size: .7rem; color: var(--muted); }
 .score-ring.good { background: var(--green-soft); color: var(--green); }
-.score-ring.mid  { background: #fdf0d5; color: #8a6a11; }
+.score-ring.mid  { background: #fdf0d5; color: var(--amber-ink); }
 .score-ring.low  { background: var(--red-soft); color: var(--red); }
 .score-side { display: flex; flex-wrap: wrap; gap: 6px; }
 .day-doors { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 4px; }
@@ -1066,7 +1067,7 @@ input:focus { border-color: var(--accent); }
   .hint-btn:hover { background: #fdf3d0; }
   .mirror-key.shown:hover .tuck { opacity: 1; }
   .mirror-reveal:hover { border-color: var(--green); color: var(--green); background: var(--green-soft); }
-  .rate-btn.hard:hover { border-color: #e8b45c; background: #fff8e9; color: #8a6a11; }
+  .rate-btn.hard:hover { border-color: #e8b45c; background: #fff8e9; color: var(--amber-ink); }
   .rate-btn.easy:hover { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
   .lesson-undo:hover { color: var(--red); }
   .icon-ghost:hover { background: var(--accent-soft); color: var(--accent); }
@@ -1166,7 +1167,7 @@ input:focus { border-color: var(--accent); }
 .parent-block { border-top: 1px solid var(--line); padding-top: var(--s3); display: grid; gap: var(--s2); }
 .more > summary {
   cursor: pointer; font-size: var(--t-xs); font-weight: 800; color: var(--muted);
-  padding: var(--s2) 0; list-style: none;
+  min-height: var(--tap); display: flex; align-items: center; list-style: none;
 }
 .more > summary::-webkit-details-marker { display: none; }
 .more > summary::before { content: "▸ "; }
@@ -1189,3 +1190,25 @@ input:focus { border-color: var(--accent); }
   font-size: var(--t-xs); font-weight: 700; color: var(--muted);
   font-variant-numeric: tabular-nums;
 }
+
+/* an answer that IS a clock: the dial fills the button, which is a bigger and
+   calmer target than a dial floating in a box of text padding */
+.answer.answer-face {
+  display: flex; align-items: center; justify-content: center;
+  padding: var(--s2); min-height: 0;
+}
+.answer.answer-face svg { width: 100%; height: auto; max-width: 150px; }
+@media (min-width: 834px) {
+  .answer.answer-face svg { max-width: 168px; }
+}
+
+/* the first of a month wears its name instead of its weekday */
+.strip-day.month .sd-wd { color: var(--accent-ink); font-weight: 800; }
+/* two dials with the span between them */
+.klok-pair { display: flex; align-items: center; justify-content: center; gap: var(--s3); }
+.klok-pair .klok-face { width: 150px; height: 150px; }
+@media (max-width: 520px) { .klok-pair .klok-face { width: 118px; height: 118px; } }
+/* the mirror shows the dial the child is reading, at the parent's size */
+.mirror-clock { display: flex; justify-content: center; margin: var(--s2) 0 var(--s3); }
+.mirror-opt-face { display: flex; align-items: center; justify-content: center; padding: var(--s2); }
+.mirror-opt-face svg { width: 100%; max-width: 104px; height: auto; }

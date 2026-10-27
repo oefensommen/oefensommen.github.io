@@ -2,12 +2,6 @@
    A different fun emoji + message each day, plus a confetti burst.
    Deterministic per calendar day so it feels "new every day" but stable within the day. */
 
-const PARTY_EMOJIS = [
-  "🎉", "🥳", "🚀", "🦄", "🌟", "🍕", "🐙", "🎸",
-  "🦖", "🏆", "🍩", "🎈", "🐳", "🧁", "🕺", "🎆",
-  "🐧", "🦩", "🍦", "🎯", "🐨", "🌈", "🦸", "🍭",
-  "🐢", "🎮", "🐝", "🦆", "🍀", "🐬"
-];
 
 const PARTY_MSG = {
   nl: [
@@ -46,9 +40,6 @@ function dayIndex() {
   return Math.floor(new Date(d.getFullYear(), d.getMonth(), d.getDate()) / 86400000);
 }
 
-function partyEmoji() {
-  return PARTY_EMOJIS[dayIndex() % PARTY_EMOJIS.length];
-}
 
 function partyMessage(lang) {
   const list = PARTY_MSG[lang] || PARTY_MSG.nl;
