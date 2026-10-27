@@ -290,9 +290,12 @@ const Engine = {
     // an opdracht that was left half done is still lying there with sommen the
     // child has not seen yet; those are not "asked", but they must not be
     // handed out twice either
-    if (data.active && data.active.date === todayStr() && data.active.questions) {
-      data.active.questions.forEach(q => seen.add(this.sig(q)));
-      (data.active.pool || []).forEach(q => seen.add(this.sig(q)));
+    // sommen dealt into a round that is still open are not "asked" yet, but
+    // they must not be handed out twice either — whichever door holds them
+    for (const a of Object.values(allActives())) {
+      if (!a || a.date !== todayStr() || !a.questions) continue;
+      a.questions.forEach(q => seen.add(this.sig(q)));
+      (a.pool || []).forEach(q => seen.add(this.sig(q)));
     }
     const taken = new Set();                 // the ones picked just now
     let repeats = 0;

@@ -1352,3 +1352,6 @@ input:focus { border-color: var(--accent); }
 .day-run { font-size: .78rem; font-weight: 800; color: var(--muted); margin: 14px 0 -4px; }
 .det-clock { display: flex; justify-content: center; margin: 4px 0 10px; }
 .det-clock .klok-face { width: 140px; height: 140px; }
+/* a door with a round left open says so: same button, different promise */
+.btn.choice.resume { background: var(--accent); }
+.btn.choice.resume .done-badge { font-variant-numeric: tabular-nums; }

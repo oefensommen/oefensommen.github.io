@@ -269,29 +269,34 @@ function renderHome() {
     ? t("parent_hello").replace("{name}", Store.watches().toUpperCase())
     : t("hello").replace("{name}", Store.deviceUser().toUpperCase());
 
-  // an unfinished task takes over the button, so it cannot be thrown away by
-  // accidentally starting a second one
-  const open = parent ? null : activeTask();
-  $("btn-continue").classList.toggle("hidden", !open);
+  // an unfinished round takes over ITS OWN door and leaves the other two
+  // alone — see openRounds below
+  const opens = parent ? {} : { sommen: activeTask("sommen"), klok: activeTask("klok") };
+  const open = opens.sommen || opens.klok;
   // an opdracht that was worked through but still has soms put aside is not at
-  // "som 21 of 20" — it is back at the report card with a few left to do
+  // "som 11 of 10" — it is back at the report card with a few left to do
   const left = open ? open.questions.filter(q => !q.solved && !q.failed).length : 0;
   const pastEnd = open && open.idx >= open.queue.length;
-  if (open) {
-    $("continue-at").textContent = pastEnd ? "" : (open.idx + 1) + "/" + open.queue.length;
-  }
 
   // the three doors of the day, and how many times each has been through
   const ds = todayStr();
   const n = { tafels: sprintsOf(ds), sommen: sommenOf(ds), klok: kloksOf(ds) };
   const pakkets = Math.min(n.tafels, n.sommen, n.klok);
   const badge = k => k === 0 ? "" : (k === 1 ? "✓" : `✓ ×${k}`);
-  $("sprint-done").textContent = badge(n.tafels);
-  $("start-done").textContent = badge(n.sommen);
-  $("klok-done").textContent = badge(n.klok);
-  $("btn-sprint").classList.toggle("done", n.tafels > 0);
-  $("btn-start").classList.toggle("done", n.sommen > 0);
-  $("btn-klok").classList.toggle("done", n.klok > 0);
+  const door = (btn, label, badgeEl, times, half) => {
+    const b = $(btn);
+    const resume = !!half;
+    b.classList.toggle("done", times > 0 && !resume);
+    b.classList.toggle("resume", resume);
+    $(label).textContent = resume ? t("continue_task") : t("home_" + btn.replace("btn-", "")
+      .replace("sprint", "tafels").replace("start", "sommen"));
+    $(badgeEl).textContent = resume
+      ? (half.idx >= half.queue.length ? "" : (half.idx + 1) + "/" + half.queue.length)
+      : badge(times);
+  };
+  door("btn-sprint", "sprint-label", "sprint-done", n.tafels, null);
+  door("btn-start", "start-label", "start-done", n.sommen, opens.sommen);
+  door("btn-klok", "klok-label", "klok-done", n.klok, opens.klok);
 
   const todo = DOORS.filter(d => n[d.key] === 0);
   let status = t("today_todo");
@@ -310,9 +315,9 @@ function renderHome() {
 
   // the child practises; the parent watches and reviews — but the kalender
   // belongs to both of them, so the child can see their own week too
-  $("btn-start").classList.toggle("hidden", parent || !!open);
-  $("btn-klok").classList.toggle("hidden", parent || !!open);
-  $("btn-sprint").classList.toggle("hidden", parent || sprintOff || !!open);
+  $("btn-start").classList.toggle("hidden", parent);
+  $("btn-klok").classList.toggle("hidden", parent);
+  $("btn-sprint").classList.toggle("hidden", parent || sprintOff);
   $("btn-watch").classList.toggle("hidden", !parent);
   $("nav-row").classList.toggle("hidden", false);
   $("btn-stats").classList.toggle("hidden", !parent);
@@ -320,7 +325,7 @@ function renderHome() {
   // the day's report card stays reachable — the fouten to verbeter and the
   // door to the spelletjes live there
   $("btn-report").classList.toggle("hidden",
-    parent || !!open || !(data.report && data.report.date === todayStr()));
+    parent || !(data.report && data.report.date === todayStr()));
 
 }
 
@@ -648,6 +653,7 @@ function sprintStripsHTML(ds) {
    second chance — only the bank the ten are drawn from differs. */
 function startTask(kind) {
   kind = kind === "klok" ? "klok" : "sommen";
+  if (activeTask(kind)) return resumeActive(kind);     // this door was left open
   const built = kind === "klok" ? Engine.buildFaceTask(TASK_N, data)
                                 : Engine.buildTask(TASK_N, data);
   session = {
@@ -763,8 +769,11 @@ function saveActive(pushNow) {
   if (!snap) return;
   // an opdracht with nothing left to answer is not something to carry on with —
   // unless the mistakes just earned it extra sommen that have not appeared yet
-  if (session.questions.every(finished) && !storedExtension(session)) delete data.active;
-  else data.active = snap;
+  const kind = session.kind || "sommen";
+  data.actives = data.actives || {};
+  carryLegacyActive();                   // never drop the older build's slot
+  if (session.questions.every(finished) && !storedExtension(session)) delete data.actives[kind];
+  else data.actives[kind] = snap;
   Store.save(data);
   if (pushNow) Store.pushNow(data);      // a pause should reach the other device at once
 }
@@ -773,14 +782,43 @@ function saveActive(pushNow) {
    reserve sommen and all, still ends cleanly where it stands. */
 function storedExtension(a) { return 0; }
 
-/* The task to carry on with, or nothing */
-function activeTask() {
-  const a = data.active;
+/* Every unfinished round, by soort. Each door keeps its own: leaving the
+   klok at four of ten must not cost the sommen their place, and starting the
+   sommen must not quietly throw the klok away. An older build kept a single
+   slot for the whole day — it is read here as the soort it belonged to. */
+/* The older build kept one unfinished round for the whole day in
+   `data.active`. Move it into the slot of its own soort before anything
+   clears it, or a round parked by yesterday's code would vanish the moment
+   another door is opened. */
+function carryLegacyActive() {
+  const legacy = data.active;
+  if (!legacy || !legacy.questions) { delete data.active; return; }
+  data.actives = data.actives || {};
+  const k = legacy.kind || "sommen";
+  if (!data.actives[k]) data.actives[k] = legacy;
+  delete data.active;
+}
+
+function allActives() {
+  const out = Object.assign({}, data.actives || {});
+  const legacy = data.active;
+  if (legacy && legacy.questions) {
+    const k = legacy.kind || "sommen";
+    if (!out[k]) out[k] = legacy;
+  }
+  return out;
+}
+
+/* The round of this soort to carry on with, or nothing */
+function activeTask(kind) {
+  kind = kind || "sommen";
+  const a = allActives()[kind];
   if (!a || !a.questions || !a.questions.length) return null;
   if (a.date !== todayStr()) {
     // yesterday's leftovers. The sommen the child actually made were counted
     // on the day itself, so nothing is lost by letting the rest go.
-    delete data.active;
+    carryLegacyActive();
+    if (data.actives) delete data.actives[kind];
     Store.save(data);
     return null;
   }
@@ -800,8 +838,8 @@ function activeTask() {
   return a;
 }
 
-function resumeActive() {
-  const a = activeTask();
+function resumeActive(kind) {
+  const a = activeTask(kind);
   if (!a) return goHome();
   // the opdracht had already been worked all the way through — what was left
   // open is on the report card, which is where it should come back
@@ -1386,7 +1424,8 @@ function markDone100() {
   data.days[ds] = day;
   session.nextQueue = null;
   session.celebrate = true;
-  delete data.active;              // the day is done; nothing left to carry on with
+  carryLegacyActive();             // whatever belonged to another door stays
+  if (data.actives) delete data.actives[session.kind || "sommen"];   // this round is done
   writeTiles();                    // a report card that outlives the opdracht
   settleTask();                    // niveau and speeltijd, if nothing is left to review
   writeReport();                   // saves; the report card outlives the session
@@ -1579,8 +1618,12 @@ function startRetry() {
 function todaysQuestions() {
   const r = data.report;
   if (r && r.date === todayStr() && r.questions && r.questions.length) return r.questions;
-  const a = data.active;
-  if (a && a.date === todayStr() && a.questions) return a.questions.filter(q => q.chosen != null || finished(q));
+  for (const a of Object.values(allActives())) {
+    if (a && a.date === todayStr() && a.questions) {
+      const asked = a.questions.filter(q => q.chosen != null || finished(q));
+      if (asked.length) return asked;
+    }
+  }
   return [];
 }
 
@@ -2446,7 +2489,6 @@ document.addEventListener("DOMContentLoaded", () => {
   $("btn-sprint").addEventListener("click", () => startSprint(goHome));
   $("sprint-pause").addEventListener("click", pauseSprint);
   $("sprint-resume").addEventListener("click", resumeSprint);
-  $("btn-continue").addEventListener("click", resumeActive);
   $("btn-watch").addEventListener("click", () => openMirror());
   $("btn-calendar").addEventListener("click", () => { calMonth = new Date(); renderCalendar(); show("screen-calendar"); });
   $("btn-stats").addEventListener("click", () => { renderStats(); show("screen-stats"); });
