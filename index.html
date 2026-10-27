@@ -2,15 +2,21 @@
 <html lang="nl">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Oefensommen</title>
-  <link rel="stylesheet" href="css/style.css?v=202610271232">
+  <link rel="stylesheet" href="css/style.css?v=202610271307">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧮</text></svg>">
 </head>
 <body>
 
   <header class="topbar">
-    <button id="btn-brand" class="brand" title="Oefensommen">🧮</button>
+    <button id="btn-brand" class="brand" title="Oefensommen" aria-label="Oefensommen">
+      <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none"
+           stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <rect x="3" y="3" width="18" height="18" rx="5"/>
+        <path d="M7.5 9.5h9M7.5 14.5h9M12 7v3M9.5 12v5"/>
+      </svg>
+    </button>
     <div class="topbar-right">
       <div id="timerbox" class="timerbox hidden">
         <span class="timer-clock">⏱</span>
@@ -47,17 +53,6 @@
         <h1 class="welkom"><span data-i18n="welkom">Welkom</span><span id="welkom-name" class="name"></span> 👋</h1>
         <p id="login-sub" class="login-sub" data-i18n="login_hint">Typ het wachtwoord om de deur te openen</p>
 
-        <div class="door-scene" id="door-scene">
-          <div class="door-glow"></div>
-          <div class="door" id="door">
-            <div class="door-panel top"></div>
-            <div class="door-panel bottom"></div>
-            <div class="door-handle"></div>
-            <div class="door-lock" id="door-lock"><div class="keyhole"></div></div>
-          </div>
-          <div class="sparkles" id="sparkles"></div>
-        </div>
-
         <input type="text" id="login-user" class="hidden" autocomplete="username" data-i18n-ph="username" placeholder="Naam">
         <input type="password" id="login-pass" inputmode="numeric" autocomplete="current-password" data-i18n-ph="password" placeholder="Wachtwoord">
         <p id="login-error" class="error hidden" data-i18n="login_err">Dat klopt niet. Probeer het nog eens!</p>
@@ -66,43 +61,68 @@
     </section>
 
     <!-- HOME -->
-    <section id="screen-home" class="screen hidden">
-      <div class="card center home-card">
-        <h1 id="home-greeting">Hoi!</h1>
+    <section id="screen-home" class="screen hidden screen--fit">
+      <div class="card home-card">
+        <div class="home-head">
+          <h1 id="home-greeting">Hoi!</h1>
+          <p id="home-chips" class="home-chips"></p>
+        </div>
         <p id="home-status" class="status"></p>
-        <button id="btn-sprint" class="btn primary big choice hidden">⚡ <span id="sprint-label">Tafels</span> <b id="sprint-done" class="done-badge"></b></button>
-        <button id="btn-start" class="btn primary big choice">🧮 <span id="start-label">Redactiesommen</span> <b id="start-done" class="done-badge"></b></button>
-        <button id="btn-klok" class="btn primary big choice">🕐 <span id="klok-label">Klokkijken</span> <b id="klok-done" class="done-badge"></b></button>
+        <div class="home-doors">
+          <button id="btn-sprint" class="door-tile hidden">
+            <span class="door-icon">⚡</span>
+            <span id="sprint-label" class="door-name">Tafels</span>
+            <b id="sprint-done" class="door-badge"></b>
+          </button>
+          <button id="btn-start" class="door-tile">
+            <span class="door-icon">🧮</span>
+            <span id="start-label" class="door-name">Redactiesommen</span>
+            <b id="start-done" class="door-badge"></b>
+          </button>
+          <button id="btn-klok" class="door-tile">
+            <span class="door-icon">🕐</span>
+            <span id="klok-label" class="door-name">Klokkijken</span>
+            <b id="klok-done" class="door-badge"></b>
+          </button>
+        </div>
         <button id="btn-report" class="btn ghost big hidden">📋 <span data-i18n="report_btn">Rapport</span></button>
         <button id="btn-watch" class="btn primary big hidden">🔴 <span data-i18n="watch_live">Live meekijken</span></button>
-        <div id="nav-row" class="nav-row hidden">
-          <button id="btn-calendar" class="btn ghost">📅 <span data-i18n="calendar">Kalender</span></button>
-          <button id="btn-stats" class="btn ghost">📊 <span data-i18n="stats">Overzicht</span></button>
-          <button id="btn-sommen" class="btn ghost">📝 <span data-i18n="sommen">Sommen</span></button>
-        </div>
       </div>
     </section>
 
     <!-- TASK -->
-    <section id="screen-task" class="screen hidden">
+    <section id="screen-task" class="screen hidden screen--fit">
       <div class="card">
         <div class="task-head">
-          <button id="btn-quit" class="link-btn">←</button>
+          <button id="btn-quit" class="icon-ghost" aria-label="Terug">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor"
+                 stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M15 18l-6-6 6-6"></path>
+            </svg>
+          </button>
           <div class="progress-wrap"><div id="progress-bar" class="progress-bar"></div></div>
           <span id="progress-text" class="progress-text">1/20</span>
         </div>
         <div class="task-split">
           <div class="task-main">
-            <div id="question-clock" class="question-clock hidden"></div>
-            <p id="question-text" class="question"></p>
-            <img id="school-badge" class="school-badge hidden" alt="school" title="Zo'n som krijg je ook op school"
-                 src="img/school.svg">
-            <button id="btn-hint" class="hint-btn hidden" aria-label="Hint">💡 <span data-i18n="hint_btn">Hint</span><b id="hint-count" class="hint-count"></b></button>
-            <p id="hint-bubble" class="hint-bubble hidden"></p>
-            <div id="answers" class="answers"></div>
-            <div id="explain-box" class="explain-box hidden">
-              <div id="explain-body"></div>
-              <button id="btn-gotit" class="btn primary hidden">Begrepen!</button>
+            <div class="task-question-col">
+              <div id="question-clock" class="question-clock hidden"></div>
+              <div class="question-row">
+                <p id="question-text" class="question"></p>
+                <img id="school-badge" class="school-badge hidden" alt="school"
+                     title="Zo'n som krijg je ook op school" src="img/school.svg">
+              </div>
+              <div class="task-tools">
+                <button id="btn-hint" class="hint-btn hidden" aria-label="Hint">💡<b id="hint-count" class="hint-count"></b></button>
+              </div>
+              <p id="hint-bubble" class="hint-bubble hidden"></p>
+            </div>
+            <div class="task-answer-col">
+              <div id="answers" class="answers"></div>
+              <div id="explain-box" class="explain-box hidden">
+                <div id="explain-body"></div>
+                <button id="btn-gotit" class="btn primary hidden">Begrepen!</button>
+              </div>
             </div>
           </div>
           <aside id="task-marks" class="marks-panel"></aside>
@@ -111,7 +131,7 @@
     </section>
 
     <!-- TAFELSPRINT: ten tafels against the clock, two answers -->
-    <section id="screen-sprint" class="screen hidden">
+    <section id="screen-sprint" class="screen hidden screen--fit">
       <div class="card sprint-card">
         <header class="sprint-head">
           <button id="sprint-pause" class="icon-ghost" data-i18n-title="pause" aria-label="Pauze">
@@ -121,7 +141,9 @@
             </svg>
           </button>
           <h2 id="sprint-badge-label" class="sprint-title">Tafelsprint</h2>
-          <span id="sprint-count" class="sprint-secs">15</span>
+          <span class="sprint-sep" aria-hidden="true">·</span>
+          <span id="sprint-count" class="sprint-secs">20</span>
+          <span class="sprint-unit" aria-hidden="true">s</span>
           <span id="sprint-progress" class="sprint-step">1 / 10</span>
         </header>
         <div class="sprint-track"><div id="sprint-bar" class="sprint-fill"></div></div>
@@ -136,86 +158,28 @@
         </div>
 
         <div id="sprint-paused" class="sprint-paused hidden">
-          <div class="big-emoji">⏸️</div>
-          <p class="status" data-i18n="paused_sub">De klok staat stil.</p>
-          <button id="sprint-resume" class="btn primary big" data-i18n="resume_btn">Verder gaan</button>
+          <span class="paused-mark" aria-hidden="true">⏸</span>
+          <span class="paused-text" data-i18n="paused_sub">De klok staat stil.</span>
+          <button id="sprint-resume" class="btn primary" aria-label="Verder gaan">▶</button>
         </div>
       </div>
     </section>
 
-    <!-- RESULT -->
+    <!-- RAPPORT: today and every day before it, in one place -->
     <section id="screen-result" class="screen hidden">
-      <div class="card center">
-        <div id="result-emoji" class="big-emoji">🎉</div>
-        <h1 id="result-title"></h1>
-        <p id="result-score" class="status"></p>
-        <p id="result-time" class="result-time hidden"></p>
-        <div id="result-sprint" class="sprint-strip hidden"></div>
-        <div id="result-tafels" class="sprint-strip hidden"></div>
-        <div id="result-grid" class="result-grid"></div>
-        <p id="result-hint" class="review-hint hidden" data-i18n="result_hint"></p>
-        <div class="btn-row">
-          <button id="btn-retry" class="btn primary hidden" data-i18n="retry_btn">Verbeter je fouten</button>
-        </div>
-      </div>
-    </section>
-
-    <!-- CALENDAR -->
-    <section id="screen-calendar" class="screen hidden">
-      <div class="card">
-        <div class="cal-head">
-          <button id="cal-prev" class="link-btn">←</button>
-          <h2 id="cal-title">Augustus 2026</h2>
-          <button id="cal-next" class="link-btn">→</button>
-        </div>
-        <div id="cal-grid" class="cal-grid"></div>
-        <div id="cal-detail" class="cal-detail hidden"></div>
-        <div class="cal-legend">
-          <span><i class="dot done"></i> <span data-i18n="legend_done">dag af</span></span>
-          <span><i class="dot bonus"></i> <span data-i18n="legend_bonus">vooruit gewerkt</span></span>
-          <span><i class="dot partial"></i> <span data-i18n="legend_partial">geoefend</span></span>
-          <span><i class="dot miss"></i> <span data-i18n="legend_miss">niet geoefend</span></span>
-        </div>
-      </div>
-    </section>
-
-    <!-- STATS -->
-    <section id="screen-stats" class="screen hidden">
-      <div class="card">
-        <h2>📊 <span data-i18n="stats">Overzicht</span></h2>
-        <div class="stat-grid">
-          <div class="stat"><b id="stat-total">0</b><span data-i18n="total_solved">sommen gemaakt</span></div>
-          <div class="stat"><b id="stat-acc">0%</b><span data-i18n="accuracy">goed (1e keer)</span></div>
-          <div class="stat"><b id="stat-days">0</b><span data-i18n="done_days">dagen geoefend</span></div>
-        </div>
-        <h3 data-i18n="per_cat">Per soort som</h3>
-        <div id="cat-bars"></div>
-
-        <h3>✖️ <span data-i18n="tafel_title">Tafels</span></h3>
-        <p class="lessons-sub" data-i18n="tafel_sub">Uit de tafelsprints van elke dag.</p>
-        <p id="tafel-score" class="tafel-score"></p>
-        <div id="tafel-grid" class="tafel-grid"></div>
-        <p id="tafel-weak" class="tafel-weak"></p>
-        <div class="tafel-legend">
-          <span><i class="dot t-ok"></i> <span data-i18n="tafel_lg_ok">zit erin</span></span>
-          <span><i class="dot t-mid"></i> <span data-i18n="tafel_lg_mid">wankel</span></span>
-          <span><i class="dot t-low"></i> <span data-i18n="tafel_lg_low">nog niet</span></span>
-          <span><i class="dot t-none"></i> <span data-i18n="tafel_lg_none">nog niet gevraagd</span></span>
-        </div>
-      </div>
-    </section>
-
-    <!-- SOMMEN: the parent rates today's sommen, and sees what was learned -->
-    <section id="screen-sommen" class="screen hidden">
-      <div class="card">
-        <div class="cal-head">
-          <button id="sommen-back" class="link-btn">←</button>
-          <h2>📝 <span data-i18n="sommen">Sommen</span></h2>
-          <span></span>
-        </div>
-        <p id="sommen-sub" class="status"></p>
-        <div id="sommen-list"></div>
-        <div id="lessons" class="lessons"></div>
+      <div class="card report-card">
+        <header class="report-head">
+          <button id="report-back" class="icon-ghost" data-i18n-title="back_home" aria-label="Terug">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor"
+                 stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M15 5l-7 7 7 7"/>
+            </svg>
+          </button>
+          <h2 class="report-title"><span data-i18n="report_btn">Rapport</span></h2>
+          <span id="report-score" class="report-pill"></span>
+        </header>
+        <div id="report-strip" class="report-strip"></div>
+        <div id="report-day" class="report-day"></div>
       </div>
     </section>
 
@@ -262,19 +226,19 @@
 
   <div id="confetti"></div>
 
-  <script src="js/i18n.js?v=202610271232"></script>
-  <script src="js/celebrate.js?v=202610271232"></script>
-  <script src="js/config.js?v=202610271232"></script>
-  <script src="js/cloud.js?v=202610271232"></script>
-  <script src="js/storage.js?v=202610271232"></script>
-  <script src="js/templates.js?v=202610271232"></script>
-  <script src="js/explain.js?v=202610271232"></script>
-  <script src="js/klok.js?v=202610271232"></script>
-  <script src="js/levels.js?v=202610271232"></script>
-  <script src="js/rules.js?v=202610271232"></script>
-  <script src="js/sprint.js?v=202610271232"></script>
-  <script src="js/engine.js?v=202610271232"></script>
-  <script src="js/live.js?v=202610271232"></script>
-  <script src="js/app.js?v=202610271232"></script>
+  <script src="js/i18n.js?v=202610271307"></script>
+  <script src="js/celebrate.js?v=202610271307"></script>
+  <script src="js/config.js?v=202610271307"></script>
+  <script src="js/cloud.js?v=202610271307"></script>
+  <script src="js/storage.js?v=202610271307"></script>
+  <script src="js/templates.js?v=202610271307"></script>
+  <script src="js/explain.js?v=202610271307"></script>
+  <script src="js/klok.js?v=202610271307"></script>
+  <script src="js/levels.js?v=202610271307"></script>
+  <script src="js/rules.js?v=202610271307"></script>
+  <script src="js/sprint.js?v=202610271307"></script>
+  <script src="js/engine.js?v=202610271307"></script>
+  <script src="js/live.js?v=202610271307"></script>
+  <script src="js/app.js?v=202610271307"></script>
 </body>
 </html>

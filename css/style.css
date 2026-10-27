@@ -1,18 +1,49 @@
-/* Oefensommen — minimal, kid-friendly */
+/* Oefensommen — minimal, compact, icon-first. Built for an iPad in Safari:
+   touch only, both orientations, nothing below 44px, no hover to rely on. */
 :root {
-  --accent: #3b6ef6;
-  --accent-soft: #e8eefe;
-  --green: #22a95c;
-  --green-soft: #e3f6ec;
-  --red: #e5484d;
-  --red-soft: #fdebec;
-  --amber: #f5b301;
-  --ink: #1d2433;
-  --muted: #6b7280;
-  --bg: #f7f8fb;
-  --card: #ffffff;
-  --line: #e5e8ef;
-  --radius: 18px;
+  /* ink & surface */
+  --ink:        #1d2433;
+  --muted:      #6b7280;
+  --bg:         #f4f6fa;
+  --card:       #ffffff;
+  --line:       #e4e8f0;
+  --line-soft:  #eef1f6;
+
+  /* meaning — one hue per meaning, never decorative.
+     The plain colour is for FILLS and 18px+ bold text; smaller text on a
+     -soft background uses the matching -ink, which is the same hue walked
+     down to 4.5:1 on that background. */
+  --accent: #3b6ef6;  --accent-soft: #e8eefe;  --accent-ink: #3563dd;
+  --green:  #1f9d57;  --green-soft:  #e4f6ec;  --green-ink:  #187d45;
+  --amber:  #d98a00;  --amber-soft:  #fdf3dd;  --amber-ink:  #9c6300;
+  --red:    #e0484d;  --red-soft:    #fdeced;  --red-ink:    #c23e42;
+  --teal:   #119a86;  --teal-soft:   #e3f5f2;  --teal-ink:   #0d7c6c;
+
+  /* radius */
+  --r-xs: 8px; --r-sm: 10px; --r-md: 14px; --r-lg: 18px; --r-pill: 999px;
+  --radius: 18px;                  /* kept: older rules still name it */
+
+  /* spacing — 4px base, only these six */
+  --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 24px; --s6: 32px;
+
+  /* type — the child never reads below 15px, parent chrome never below 13px */
+  --t-xs:  0.8125rem;   /* 13  labels, parent chrome */
+  --t-sm:  0.9375rem;   /* 15  smallest child text */
+  --t-md:  1.0625rem;   /* 17  body, buttons */
+  --t-lg:  1.375rem;    /* 22  question */
+  --t-xl:  2rem;        /* 32  answers, score */
+  --t-2xl: 2.75rem;     /* 44  the sum in the sprint */
+
+  /* touch */
+  --tap:    44px;
+  --tap-md: 56px;
+  --tap-lg: 64px;
+
+  /* layout */
+  --shell:  1040px;
+  --rail:   96px;
+  --topbar: 52px;
+  --shadow: 0 1px 2px rgba(29, 36, 51, .05);
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -33,18 +64,21 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 14px 18px;
-  max-width: 640px;
+  min-height: var(--topbar);
+  padding: var(--s1) var(--s4);
+  padding-left: max(var(--s4), env(safe-area-inset-left));
+  padding-right: max(var(--s4), env(safe-area-inset-right));
+  max-width: var(--shell);
   width: 100%;
   margin: 0 auto;
 }
 .brand {
-  font-size: 1.7rem; line-height: 1;
+  display: flex; align-items: center; justify-content: center;
+  width: var(--tap); height: var(--tap); margin-left: calc(var(--s2) * -1);
   background: none; border: none; padding: 0; cursor: pointer;
   font-family: inherit; color: var(--ink);
-  transition: opacity .15s;
+  transition: opacity .15s, transform .08s;
 }
-.brand:hover { opacity: 0.6; }
 .brand:active { transform: scale(0.97); }
 .topbar-right { display: flex; align-items: center; gap: 10px; }
 
@@ -52,7 +86,7 @@ body {
 .timerbox {
   display: flex; align-items: center; gap: 7px;
   background: var(--card); border: 1px solid var(--line);
-  border-radius: 999px; padding: 3px 3px 3px 11px;
+  border-radius: var(--r-pill); padding: 0 var(--s1) 0 var(--s3);
 }
 .timerbox.hidden { display: none; }
 .timer-clock { font-size: .85rem; opacity: .75; }
@@ -61,25 +95,24 @@ body {
   font-variant-numeric: tabular-nums; min-width: 34px;
 }
 .timer-btn {
-  width: 26px; height: 26px; border-radius: 50%;
+  width: var(--tap); height: var(--tap); border-radius: 50%;
   border: none; background: var(--bg); color: var(--muted);
   font-size: .7rem; line-height: 1; cursor: pointer;
   display: flex; align-items: center; justify-content: center;
   transition: background .15s, color .15s, transform .08s;
 }
-.timer-pause:hover { background: var(--accent-soft); color: var(--accent); }
 .timer-pause:active { transform: scale(0.92); }
 .timer-pause.hidden { display: none; }
 
 /* one flag, and a menu behind it for whoever is allowed to switch */
 .langpick { position: relative; }
 .flag-btn {
-  display: flex; align-items: center; gap: 3px;
-  background: none; border: 2px solid transparent; border-radius: 10px;
-  padding: 3px 5px; font-size: 1.3rem; line-height: 1; cursor: default;
+  display: flex; align-items: center; justify-content: center; gap: 3px;
+  min-width: var(--tap); min-height: var(--tap);
+  background: none; border: 2px solid transparent; border-radius: var(--r-sm);
+  padding: 0 var(--s1); font-size: 1.3rem; line-height: 1; cursor: default;
 }
 .flag-btn.switchable { cursor: pointer; }
-.flag-btn.switchable:hover, .flag-btn.open { border-color: var(--accent); background: var(--accent-soft); }
 .caret { font-size: .62rem; color: var(--muted); }
 .lang-menu {
   position: absolute; right: 0; top: calc(100% + 6px); z-index: 40;
@@ -94,17 +127,15 @@ body {
   padding: 9px 10px; font-size: .95rem; font-family: inherit;
   color: var(--ink); cursor: pointer; white-space: nowrap;
 }
-.lang-opt:hover { background: var(--bg); }
 .lang-opt.active { background: var(--accent-soft); color: var(--accent); font-weight: 700; }
 .icon-btn {
   background: var(--card); border: 1px solid var(--line);
-  border-radius: 999px; width: 34px; height: 34px;
-  font-size: .95rem; line-height: 1; cursor: pointer; color: var(--muted);
+  border-radius: var(--r-pill); width: var(--tap); height: var(--tap);
+  font-size: var(--t-md); line-height: 1; cursor: pointer; color: var(--muted);
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;
   transition: color .15s, border-color .15s, transform .08s;
 }
-.icon-btn:hover { border-color: var(--accent); color: var(--accent); }
 .icon-btn:active { transform: scale(0.94); }
 .icon-btn svg { display: block; }
 
@@ -123,24 +154,41 @@ body {
   transition: opacity .15s, border-color .15s;
 }
 .flag.active { opacity: 1; border-color: var(--accent); background: var(--accent-soft); }
-.flag:hover { opacity: 1; }
 
 /* Layout */
 #app {
   flex: 1;
   width: 100%;
-  max-width: 640px;
+  max-width: var(--shell);
   margin: 0 auto;
-  padding: 8px 16px 32px;
+  padding: var(--s2) var(--s4) var(--s5);
+  padding-left: max(var(--s4), env(safe-area-inset-left));
+  padding-right: max(var(--s4), env(safe-area-inset-right));
+  padding-bottom: max(var(--s5), env(safe-area-inset-bottom));
+}
+
+/* A child screen fills the iPad instead of floating in the middle of it.
+   min-height only, never a fixed height and never overflow:hidden — a long
+   redactiesom must be allowed to scroll rather than be cut off. */
+/* A child screen is given the whole height and uses it: the card sits in the
+   middle of it rather than pinned to the top with the rest of an iPad empty
+   underneath. `align-content: center` only centres while there is room — the
+   moment the content is taller than the screen the grid lets it grow and the
+   page scrolls, so a long som is never clipped. */
+.screen--fit {
+  min-height: calc(100svh - var(--topbar) - var(--s6));
+  min-height: calc(100dvh - var(--topbar) - var(--s6));
+  display: grid;
+  align-content: center;
 }
 .screen.hidden, .hidden { display: none !important; }
 
 .card {
   background: var(--card);
   border: 1px solid var(--line);
-  border-radius: var(--radius);
-  padding: 28px 24px;
-  box-shadow: 0 2px 10px rgba(29, 36, 51, 0.04);
+  border-radius: var(--r-lg);
+  padding: var(--s4);
+  box-shadow: var(--shadow);
 }
 .card.center { text-align: center; }
 
@@ -167,143 +215,89 @@ input:focus { border-color: var(--accent); }
 
 /* Buttons */
 .btn {
-  display: inline-block;
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--s2);
   border: none;
-  border-radius: 14px;
-  font-size: 1.05rem;
+  border-radius: var(--r-md);
+  min-height: var(--tap-md);
+  font-size: var(--t-md);
   font-weight: 700;
   font-family: inherit;
-  padding: 13px 22px;
+  padding: var(--s2) var(--s5);
   cursor: pointer;
-  transition: transform .08s, background .15s;
+  transition: background .15s, transform .1s;
 }
-.btn:active { transform: scale(0.97); }
-.btn.big { width: 100%; max-width: 320px; margin: 6px auto; display: block; }
+.btn:active { transform: scale(0.98); }
+.btn.big { width: 100%; margin: var(--s2) auto 0; display: flex; }
 .btn.primary { background: var(--accent); color: #fff; }
-.btn.primary:hover { background: #2f5ce0; }
 .btn.ghost { background: var(--accent-soft); color: var(--accent); }
-.btn.ghost:hover { background: #dbe6fd; }
 .link-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: var(--tap); min-height: var(--tap);
   background: none; border: none; color: var(--muted);
-  font-size: 1rem; cursor: pointer; padding: 8px; font-family: inherit;
+  font-size: 1.25rem; cursor: pointer; padding: 0; font-family: inherit;
+  border-radius: var(--r-sm);
 }
-.link-btn:hover { color: var(--ink); }
 
 .error { color: var(--red); margin-bottom: 10px; font-weight: 600; }
 
 /* ---------- Login / magic door ---------- */
-.login-wrap { text-align: center; max-width: 360px; margin: 4vh auto 0; padding: 0 10px; }
+.login-wrap { text-align: center; max-width: 380px; margin: clamp(24px, 8dvh, 72px) auto 0; padding: 0 var(--s3); }
 .welkom { font-size: 1.8rem; margin-bottom: 6px; letter-spacing: -0.02em; }
 .welkom .name { color: var(--accent); }
 .login-sub { color: var(--muted); margin-bottom: 22px; }
 
-.door-scene {
-  position: relative;
-  width: 190px; height: 260px;
-  margin: 0 auto 26px;
-  perspective: 1000px;
-}
-
-/* glowing magical interior revealed behind the door */
-.door-glow {
-  position: absolute; inset: 0;
-  border-radius: 95px 95px 12px 12px;
-  background: radial-gradient(circle at 50% 62%, #fff7d6, #ffd451 42%, #f5a623 82%);
-  box-shadow: 0 0 0 0 rgba(245,179,1,0);
-  transition: box-shadow .9s ease;
-}
-.door-scene.open .door-glow { box-shadow: 0 0 70px 22px rgba(245,179,1,0.8); }
-
-/* the door */
-.door {
-  position: absolute; inset: 0;
-  border-radius: 95px 95px 12px 12px;
-  background:
-    repeating-linear-gradient(180deg, rgba(255,255,255,0.05) 0 2px, transparent 2px 26px),
-    linear-gradient(135deg, #4b3b8f, #2b2358);
-  border: 4px solid #6b57c9;
-  transform-origin: left center;
-  transform: rotateY(0deg);
-  transition: transform 1.15s cubic-bezier(.62,.03,.2,1);
-  box-shadow: inset 0 0 34px rgba(0,0,0,0.45);
-  overflow: hidden;
-}
-.door-scene.open .door { transform: rotateY(-118deg); }
-
-.door-panel {
-  position: absolute; left: 20px; right: 20px;
-  border: 2px solid rgba(255,255,255,0.14);
-  background: rgba(255,255,255,0.03);
-}
-.door-panel.top { top: 22px; height: 100px; border-radius: 44px 44px 12px 12px; }
-.door-panel.bottom { top: 134px; height: 100px; border-radius: 12px; }
-
-.door-handle {
-  position: absolute; right: 24px; top: 138px;
-  width: 13px; height: 13px; border-radius: 50%;
-  background: radial-gradient(circle at 35% 35%, #ffe9a8, #f5b301);
-  box-shadow: 0 2px 4px rgba(0,0,0,.45); z-index: 2;
-}
-
-/* golden lock */
-.door-lock {
-  position: absolute; left: 50%; top: 152px; transform: translate(-50%,-50%);
-  width: 50px; height: 50px; border-radius: 50%;
-  background: radial-gradient(circle at 38% 32%, #ffe89a, #f5b301 58%, #c98a00);
-  border: 3px solid #a97600;
-  display: flex; align-items: center; justify-content: center;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.4), inset 0 -3px 6px rgba(0,0,0,0.25);
-  z-index: 3;
-}
-.keyhole {
-  width: 9px; height: 18px; background: #4a3200;
-  border-radius: 50% 50% 4px 4px; position: relative; margin-top: 4px;
-}
-.keyhole::before {
-  content: ""; position: absolute; top: -6px; left: 0.5px;
-  width: 8px; height: 9px; border-radius: 50%; background: #4a3200;
-}
-
-/* unlock: happy pop + brighten */
-.door-lock.unlocking { animation: lock-pop .55s ease forwards; }
-@keyframes lock-pop {
-  0%   { transform: translate(-50%,-50%) rotate(0) scale(1); }
-  30%  { transform: translate(-50%,-50%) rotate(-14deg) scale(1.05); }
-  55%  { transform: translate(-50%,-50%) rotate(12deg) scale(1.1); }
-  75%  { transform: translate(-50%,-50%) rotate(-6deg) scale(1.14); }
-  100% { transform: translate(-50%,-50%) rotate(0) scale(1.18); filter: brightness(1.35); }
-}
-
-/* wrong password: shake + red flash */
-.door-scene.denied { animation: door-shake .5s; }
-@keyframes door-shake {
-  0%,100% { transform: translateX(0); }
-  15% { transform: translateX(-10px); } 30% { transform: translateX(10px); }
-  45% { transform: translateX(-8px); }  60% { transform: translateX(8px); }
-  75% { transform: translateX(-4px); }
-}
-.door-lock.deny { animation: lock-deny .5s; }
-@keyframes lock-deny { 0%,100% { filter: none; } 50% { filter: hue-rotate(-55deg) saturate(2.5) brightness(1.1); } }
-
-/* sparkle burst */
-.sparkles { position: absolute; inset: 0; pointer-events: none; z-index: 4; }
-.spark {
-  position: absolute; left: 50%; top: 56%;
-  width: 9px; height: 9px; border-radius: 50%;
-  opacity: 0;
-}
-.door-scene.open .spark { animation: spark-fly .95s ease-out forwards; }
-@keyframes spark-fly {
-  0%   { opacity: 1; transform: translate(-50%,-50%) scale(1); }
-  100% { opacity: 0; transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(0.2); }
+/* the wrong password: one short shake, no theatre */
+.login-wrap.denied { animation: login-shake .4s; }
+@keyframes login-shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-7px); }
+  75% { transform: translateX(7px); }
 }
 #screen-login input { margin-top: 4px; }
 
-/* Home */
-.home-card { padding-bottom: 26px; }
-.home-card h1 { margin-bottom: 6px; }
-.status { color: var(--muted); margin-bottom: 20px; font-size: 1.02rem; }
-.nav-row { display: flex; gap: 10px; justify-content: center; margin-top: 18px; flex-wrap: wrap; }
+/* ---------- Home — three doors and one line that says how today went ------- */
+.home-card { display: grid; gap: var(--s3); }
+.home-head {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: var(--s3); flex-wrap: wrap;
+}
+.home-card h1 { margin: 0; font-size: 1.5rem; }
+.status { color: var(--muted); margin: 0; font-size: var(--t-sm); }
+
+/* ⚡ 10/10 · 🧮 9/10 · 🕐 8/10 · ⏱ 14m · 92 */
+.home-chips {
+  display: flex; align-items: center; gap: var(--s2); flex-wrap: wrap;
+  margin: 0; font-size: var(--t-sm); font-weight: 700; color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.home-chips i { font-style: normal; opacity: .4; }
+.home-chips b { color: var(--ink); }
+
+.home-doors { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--s3); }
+.door-tile {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: var(--s1);
+  min-height: 120px; padding: var(--s3) var(--s2);
+  border: none; border-radius: var(--r-md);
+  background: var(--accent); color: #fff;
+  font-family: inherit; cursor: pointer;
+  transition: background .15s, transform .1s;
+}
+.door-tile:active { transform: scale(.98); }
+.door-tile.done { background: var(--green); }
+.door-tile.resume { background: var(--accent); }
+.door-icon { font-size: 1.75rem; line-height: 1; }
+.door-name { font-size: var(--t-sm); font-weight: 800; text-align: center; line-height: 1.2; }
+.door-badge {
+  font-size: var(--t-xs); font-weight: 700; opacity: .95;
+  font-variant-numeric: tabular-nums; min-height: 1em;
+}
+
+/* a child reads two words on a tile; on a narrow phone three tiles still fit */
+@media (max-width: 420px) {
+  .door-tile { min-height: 104px; }
+  .door-name { font-size: var(--t-xs); }
+}
 
 /* Task */
 .task-head { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; }
@@ -318,33 +312,34 @@ input:focus { border-color: var(--accent); }
   font-weight: 700; color: var(--muted); font-size: .78rem;
   font-variant-numeric: tabular-nums; min-width: 46px; text-align: right;
 }
+/* The question, and the school's mark beside it rather than under it. No
+   reserved height: a one-line som takes one line. */
+.question-row { display: flex; align-items: flex-start; gap: var(--s2); }
 .question {
-  font-size: 1.3rem;
-  line-height: 1.55;
-  margin-bottom: 26px;
-  min-height: 90px;
+  flex: 1; min-width: 0;
+  font-size: var(--t-md);
+  line-height: 1.45;
+  margin: 0;
 }
+/* On a redactiesom the reading IS the exercise; on an iPad there is room to
+   say it at the size it deserves instead of having the answers shout over it. */
+@media (min-width: 834px) {
+  .question { font-size: var(--t-lg); line-height: 1.4; }
+}
+.task-tools { display: flex; align-items: center; gap: var(--s2); margin-top: var(--s3); }
 
-.answers { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.answers { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s3); margin-top: var(--s4); }
 .answer {
   border: 1.5px solid var(--line);
   background: var(--card);
-  border-radius: 16px;
-  font-size: 1.2rem;
+  border-radius: var(--r-md);
+  font-size: var(--t-md);
   font-weight: 800;
   font-family: inherit;
   font-variant-numeric: tabular-nums;
-  min-height: 64px; padding: 14px 10px;
+  min-height: var(--tap-lg); padding: var(--s3) var(--s2);
   cursor: pointer;
   transition: border-color .15s, background .15s, transform .08s;
-}
-/* Hover only where there is a real pointer to hover with: a touchscreen keeps
-   the last tapped spot in :hover, which on the next question looks like an
-   answer is already chosen. The .fresh guard covers the mouse version of the
-   same thing — a new question must never light up under a resting cursor, so
-   hover only starts once the pointer actually moves. */
-@media (hover: hover) and (pointer: fine) {
-  .answers:not(.fresh) .answer:hover { border-color: var(--accent); }
 }
 .answer:active { transform: scale(0.97); }
 .answer.correct { border-color: var(--green); background: var(--green-soft); color: var(--green); }
@@ -393,7 +388,6 @@ input:focus { border-color: var(--accent); }
   font-family: inherit; cursor: pointer;
   transition: transform .08s, box-shadow .15s;
 }
-.result-tile:hover { box-shadow: 0 2px 8px rgba(29, 36, 51, .12); }
 .result-tile:active { transform: scale(0.95); }
 .result-tile { position: relative; }
 .result-tile .num { font-size: 0.8rem; font-weight: 700; color: var(--muted); }
@@ -407,9 +401,7 @@ input:focus { border-color: var(--accent); }
   .result-grid { grid-template-columns: repeat(5, 1fr); gap: 7px; }
 }
 
-.result-time { color: var(--muted); font-size: 0.95rem; margin-top: -10px; margin-bottom: 4px; }
 
-.btn-row { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
 .btn-row .btn { flex: 1 1 0; min-width: 150px; max-width: 260px; }
 
 /* Celebration confetti */
@@ -423,7 +415,7 @@ input:focus { border-color: var(--accent); }
 }
 @keyframes confetti-fall {
   0%   { transform: translateY(-10px) rotate(0deg); opacity: 1; }
-  100% { transform: translateY(105vh) rotate(720deg); opacity: 0.9; }
+  100% { transform: translateY(105dvh) rotate(720deg); opacity: 0.9; }
 }
 .big-emoji.party { animation: party-pop 0.9s ease; display: inline-block; }
 @keyframes party-pop {
@@ -434,53 +426,21 @@ input:focus { border-color: var(--accent); }
 }
 
 /* Calendar */
-.cal-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
 .cal-head .link-btn { font-size: 1.3rem; }
-.cal-grid {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 6px;
-}
-.cal-cell {
-  aspect-ratio: 1;
-  border-radius: 10px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 1px;
-  font-size: 0.9rem;
-  font-weight: 600;
-  background: var(--bg);
-  color: var(--muted);
-  border: none; padding: 0; font-family: inherit; cursor: pointer;
-  transition: transform .08s;
-}
-.cal-cell:active { transform: scale(0.94); }
 .cal-cell.picked { outline: 2.5px solid var(--ink); outline-offset: 1px; }
 .cal-cell.today.picked { outline-color: var(--accent); }
 /* the weekday sits on the day itself now that the month runs straight through */
 .cal-cell .wd { font-size: 0.58rem; font-weight: 700; opacity: .55; line-height: 1; }
-.cal-cell .dnum { line-height: 1; }
 .cal-cell.done { background: var(--green); color: #fff; }
 .cal-cell.partial { background: var(--amber); color: #fff; }
 .cal-cell.miss { background: var(--red); color: #fff; }
 /* a corner fold marks a day the parent coloured by hand */
 .cal-cell { position: relative; overflow: hidden; }
-.by-hand {
-  position: absolute; top: 0; right: 0;
-  border-width: 0 11px 11px 0; border-style: solid;
-  border-color: transparent rgba(255,255,255,.85) transparent transparent;
-}
 .cal-cell:not(.done):not(.partial):not(.miss) .by-hand {
   border-right-color: var(--muted);
 }
 .cal-cell.today { outline: 2.5px solid var(--accent); outline-offset: 1px; }
 /* one day's report, opened by tapping the day */
-.cal-detail {
-  margin-top: 16px; padding: 14px 16px;
-  background: var(--bg); border-radius: 14px;
-}
 .day-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
 .day-head b { font-size: 1.05rem; }
 .day-counts { display: flex; flex-wrap: wrap; gap: 7px; }
@@ -498,10 +458,6 @@ input:focus { border-color: var(--accent); }
 }
 .day-cat b { color: var(--ink); }
 .day-none { color: var(--muted); font-size: 0.9rem; margin-top: 6px; }
-.cal-legend {
-  display: flex; gap: 16px; justify-content: center; margin-top: 16px;
-  font-size: 0.85rem; color: var(--muted); flex-wrap: wrap;
-}
 .dot { display: inline-block; width: 11px; height: 11px; border-radius: 4px; margin-right: 4px; }
 .dot.done { background: var(--green); }
 .dot.partial { background: var(--amber); }
@@ -535,70 +491,6 @@ input:focus { border-color: var(--accent); }
 .day-save { margin-top: 9px; padding: 8px 18px; font-size: .88rem; }
 .day-saved { margin-left: 8px; color: var(--green); font-weight: 800; }
 
-/* ---------- Level badge ----------
-   A small gold pill in the top bar; the full story is in its tooltip. */
-
-/* the level a category just reached, announced on the result screen */
-.levelup-line {
-  margin: 4px 0 2px;
-  font-weight: 700;
-  color: #a4780c;
-  font-size: .98rem;
-}
-.levelup-line span { display: inline-block; }
-
-/* Where the child stands: the ladder to the next niveau, then the niveau and
-   the reeks, then what the vakjes are for. One block, three lines. */
-.streak-ticks {
-  margin-top: 24px; padding-top: 22px;
-  border-top: 1px solid var(--line);
-}
-.ticks { display: flex; justify-content: center; gap: 10px; }
-.tick {
-  width: 36px; height: 36px; border-radius: 12px;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 1.05rem; font-weight: 800;
-  background: var(--bg); color: transparent;
-  border: 2px dashed var(--line);
-  transition: transform .18s ease;
-}
-.tick.on {
-  color: #fff; border: none;
-  background: linear-gradient(160deg, #34c172, #1c9a53);
-  box-shadow: 0 3px 10px rgba(28, 154, 83, .32), inset 0 1px 0 rgba(255,255,255,.35);
-}
-.tick.on.fresh { animation: tick-pop .5s cubic-bezier(.2,1.5,.4,1); }  /* just earned */
-@keyframes tick-pop {
-  0%   { transform: scale(0.4); }
-  70%  { transform: scale(1.16); }
-  100% { transform: scale(1); }
-}
-
-.standing { display: flex; justify-content: center; gap: 9px; margin-top: 20px; }
-.chip {
-  display: inline-flex; align-items: baseline; gap: 6px;
-  padding: 7px 15px; border-radius: 999px;
-  font-size: .92rem; letter-spacing: -0.01em;
-  border: 1px solid var(--line); background: var(--card);
-  box-shadow: 0 1px 2px rgba(29, 36, 51, .05);
-}
-.chip i { font-style: normal; font-size: .9rem; }
-.chip b { font-weight: 800; color: var(--ink); }
-.chip em { font-style: normal; color: var(--muted); font-size: .82rem; }
-/* the niveau is the thing worth working towards, so it wears the gold */
-.chip.lv {
-  border-color: #ecd699;
-  background: linear-gradient(180deg, #fffdf6 0%, #fdf3d8 100%);
-  box-shadow: 0 1px 2px rgba(154, 121, 24, .10), inset 0 1px 0 #fff;
-}
-.chip.lv b { color: #8a6a11; }
-.chip.lv.maxed {
-  border-color: #9ad9b6;
-  background: linear-gradient(180deg, #f7fdfa 0%, #ddf4e8 100%);
-}
-.chip.lv.maxed b { color: #14663a; }
-
-.ladder-goal { margin-top: 12px; font-size: .84rem; color: var(--muted); }
 
 /* the nudge to go and look at what went wrong */
 .review-hint {
@@ -608,20 +500,15 @@ input:focus { border-color: var(--accent); }
 }
 
 /* per-category level pips in the parent's overview */
-.cat-level { display: inline-flex; gap: 3px; margin-left: 8px; vertical-align: middle; }
-.cat-level i {
-  width: 7px; height: 7px; border-radius: 50%;
-  background: var(--line);
-}
 .cat-level i.on { background: #e0a413; }
 
 /* ---------- Countdown ---------- */
 #screen-count {
   display: flex; flex-direction: column; align-items: center; justify-content: center;
-  min-height: 60vh; gap: 22px;
+  min-height: 40dvh; gap: var(--s5);
 }
 #screen-count.hidden { display: none; }
-.count-stage { position: relative; width: 210px; height: 210px; }
+.count-stage { position: relative; width: 132px; height: 132px; }
 .count-ring { width: 100%; height: 100%; transform: rotate(-90deg); }
 .count-track { fill: none; stroke: var(--line); stroke-width: 7; }
 .count-arc {
@@ -632,15 +519,15 @@ input:focus { border-color: var(--accent); }
 .count-number {
   position: absolute; inset: 0;
   display: flex; align-items: center; justify-content: center;
-  font-size: 5.5rem; font-weight: 800; color: var(--accent);
+  font-size: var(--t-2xl); font-weight: 800; color: var(--accent);
   letter-spacing: -0.04em;
 }
 .count-number.tick { animation: count-pop .95s cubic-bezier(.2,.8,.3,1); }
 @keyframes count-pop {
   0%   { transform: scale(0.35); opacity: 0; }
   22%  { transform: scale(1.14); opacity: 1; }
-  40%  { transform: scale(1); }
-  100% { transform: scale(0.96); opacity: 0.75; }
+  40%  { transform: scale(1); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
 }
 .count-number.go {
   font-size: 3.1rem; color: var(--green);
@@ -651,7 +538,7 @@ input:focus { border-color: var(--accent); }
   45%  { transform: scale(1.2) rotate(3deg); opacity: 1; }
   100% { transform: scale(1) rotate(0); opacity: 1; }
 }
-.count-label { color: var(--muted); font-size: 1.05rem; font-weight: 600; }
+.count-label { color: var(--muted); font-size: var(--t-sm); font-weight: 600; }
 
 /* ---------- Parent live mirror ---------- */
 .mirror-head {
@@ -672,18 +559,18 @@ input:focus { border-color: var(--accent); }
 }
 /* the 💡: help with UNDERSTANDING the som, tucked under the question */
 .hint-btn {
-  display: inline-flex; align-items: center; gap: 6px;
-  margin: -6px 0 16px;
-  padding: 7px 14px; border-radius: 999px;
+  position: relative;
+  display: inline-flex; align-items: center; justify-content: center;
+  width: var(--tap); height: var(--tap); flex: none;
+  padding: 0; border-radius: var(--r-pill);
   border: none; background: #fdf6e0;
-  font-size: .82rem; font-weight: 700; font-family: inherit;
+  font-size: 1.15rem; font-family: inherit;
   color: #8a6a11; cursor: pointer;
-  transition: background .12s, transform .08s, opacity .15s;
+  transition: background .12s, transform .1s, opacity .15s;
 }
-.hint-btn:hover { background: #fdf3d0; }
 .hint-btn:active { transform: scale(0.96); }
 .hint-bubble {
-  margin: -4px 0 16px;
+  margin: var(--s3) 0 0;
   padding: 11px 14px;
   background: #fffbea; border: 1px solid #f0e2ae; border-radius: 12px;
   font-size: .95rem; line-height: 1.55; color: var(--ink);
@@ -718,7 +605,7 @@ input:focus { border-color: var(--accent); }
 .mark-cell {
   aspect-ratio: 1; border-radius: 9px;
   display: flex; align-items: center; justify-content: center;
-  font-size: .72rem; font-weight: 800; font-variant-numeric: tabular-nums;
+  font-size: var(--t-xs); font-weight: 800; font-variant-numeric: tabular-nums;
   background: var(--bg); color: #aeb4c0;
   border: 1.5px solid transparent;
   transition: background .2s, color .2s;
@@ -730,204 +617,10 @@ input:focus { border-color: var(--accent); }
 .mark-cell.here { border-color: var(--accent); color: var(--accent); background: var(--card); }
 
 @media (max-width: 520px) {
-  .mark-list { grid-template-columns: 1fr; gap: 4px; }
-  .mark-cell { aspect-ratio: auto; height: 22px; border-radius: 6px; font-size: .65rem; }
+  .mark-list { grid-template-columns: 1fr; gap: var(--s1); }
+  .mark-cell { aspect-ratio: auto; height: 34px; border-radius: var(--r-xs); font-size: var(--t-xs); }
 }
 
-.mark-row { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
-.mark-btn {
-  border: 1.5px solid var(--line); background: var(--card);
-  border-radius: 999px; padding: 6px 12px;
-  font-size: .8rem; font-weight: 700; font-family: inherit;
-  color: var(--muted); cursor: pointer;
-  transition: border-color .12s, color .12s, background .12s;
-}
-.mark-btn.done.on    { background: var(--green); border-color: var(--green); color: #fff; }
-.mark-btn.partial.on { background: var(--amber); border-color: var(--amber); color: #fff; }
-.mark-btn.miss.on    { background: var(--red);   border-color: var(--red);   color: #fff; }
-.mark-btn.auto.on    { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
-.day-note-input {
-  display: block; width: 100%; max-width: none; margin: 10px 0 0;
-  padding: 10px 12px; font-size: .9rem; text-align: left;
-  border: 1.5px solid var(--line); border-radius: 10px; font-family: inherit;
-}
-.day-save { margin-top: 9px; padding: 8px 18px; font-size: .88rem; }
-.day-saved { margin-left: 8px; color: var(--green); font-weight: 800; }
-
-/* ---------- Level badge ----------
-   A small gold pill in the top bar; the full story is in its tooltip. */
-
-/* the level a category just reached, announced on the result screen */
-.levelup-line {
-  margin: 4px 0 2px;
-  font-weight: 700;
-  color: #a4780c;
-  font-size: .98rem;
-}
-.levelup-line span { display: inline-block; }
-
-/* Where the child stands: the ladder to the next niveau, then the niveau and
-   the reeks, then what the vakjes are for. One block, three lines. */
-.streak-ticks {
-  margin-top: 24px; padding-top: 22px;
-  border-top: 1px solid var(--line);
-}
-.ticks { display: flex; justify-content: center; gap: 10px; }
-.tick {
-  width: 36px; height: 36px; border-radius: 12px;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 1.05rem; font-weight: 800;
-  background: var(--bg); color: transparent;
-  border: 2px dashed var(--line);
-  transition: transform .18s ease;
-}
-.tick.on {
-  color: #fff; border: none;
-  background: linear-gradient(160deg, #34c172, #1c9a53);
-  box-shadow: 0 3px 10px rgba(28, 154, 83, .32), inset 0 1px 0 rgba(255,255,255,.35);
-}
-.tick.on.fresh { animation: tick-pop .5s cubic-bezier(.2,1.5,.4,1); }  /* just earned */
-@keyframes tick-pop {
-  0%   { transform: scale(0.4); }
-  70%  { transform: scale(1.16); }
-  100% { transform: scale(1); }
-}
-
-.standing { display: flex; justify-content: center; gap: 9px; margin-top: 20px; }
-.chip {
-  display: inline-flex; align-items: baseline; gap: 6px;
-  padding: 7px 15px; border-radius: 999px;
-  font-size: .92rem; letter-spacing: -0.01em;
-  border: 1px solid var(--line); background: var(--card);
-  box-shadow: 0 1px 2px rgba(29, 36, 51, .05);
-}
-.chip i { font-style: normal; font-size: .9rem; }
-.chip b { font-weight: 800; color: var(--ink); }
-.chip em { font-style: normal; color: var(--muted); font-size: .82rem; }
-/* the niveau is the thing worth working towards, so it wears the gold */
-.chip.lv {
-  border-color: #ecd699;
-  background: linear-gradient(180deg, #fffdf6 0%, #fdf3d8 100%);
-  box-shadow: 0 1px 2px rgba(154, 121, 24, .10), inset 0 1px 0 #fff;
-}
-.chip.lv b { color: #8a6a11; }
-.chip.lv.maxed {
-  border-color: #9ad9b6;
-  background: linear-gradient(180deg, #f7fdfa 0%, #ddf4e8 100%);
-}
-.chip.lv.maxed b { color: #14663a; }
-
-.ladder-goal { margin-top: 12px; font-size: .84rem; color: var(--muted); }
-
-/* the nudge to go and look at what went wrong */
-.review-hint {
-  margin: -12px 0 18px;
-  color: var(--muted);
-  font-size: .88rem;
-}
-
-/* per-category level pips in the parent's overview */
-.cat-level { display: inline-flex; gap: 3px; margin-left: 8px; vertical-align: middle; }
-.cat-level i {
-  width: 7px; height: 7px; border-radius: 50%;
-  background: var(--line);
-}
-.cat-level i.on { background: #e0a413; }
-
-/* ---------- Countdown ---------- */
-#screen-count {
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  min-height: 60vh; gap: 22px;
-}
-#screen-count.hidden { display: none; }
-.count-stage { position: relative; width: 210px; height: 210px; }
-.count-ring { width: 100%; height: 100%; transform: rotate(-90deg); }
-.count-track { fill: none; stroke: var(--line); stroke-width: 7; }
-.count-arc {
-  fill: none; stroke: var(--accent); stroke-width: 7; stroke-linecap: round;
-  stroke-dasharray: 327; stroke-dashoffset: 0;
-  transition: stroke-dashoffset 1s linear, stroke .4s ease;
-}
-.count-number {
-  position: absolute; inset: 0;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 5.5rem; font-weight: 800; color: var(--accent);
-  letter-spacing: -0.04em;
-}
-.count-number.tick { animation: count-pop .95s cubic-bezier(.2,.8,.3,1); }
-@keyframes count-pop {
-  0%   { transform: scale(0.35); opacity: 0; }
-  22%  { transform: scale(1.14); opacity: 1; }
-  40%  { transform: scale(1); }
-  100% { transform: scale(0.96); opacity: 0.75; }
-}
-.count-number.go {
-  font-size: 3.1rem; color: var(--green);
-  animation: count-go .8s cubic-bezier(.2,.8,.3,1);
-}
-@keyframes count-go {
-  0%   { transform: scale(0.4) rotate(-8deg); opacity: 0; }
-  45%  { transform: scale(1.2) rotate(3deg); opacity: 1; }
-  100% { transform: scale(1) rotate(0); opacity: 1; }
-}
-.count-label { color: var(--muted); font-size: 1.05rem; font-weight: 600; }
-
-/* ---------- Parent live mirror ---------- */
-.mirror-head {
-  display: flex; align-items: center; gap: 9px;
-  padding-bottom: 14px; margin-bottom: 16px;
-  border-bottom: 1px solid var(--line);
-}
-.mirror-head b { font-size: 1.05rem; }
-.mirror-status { color: var(--muted); font-size: .95rem; flex: 1; }
-.live-dot {
-  width: 10px; height: 10px; border-radius: 50%; background: var(--red);
-  animation: live-pulse 1.6s ease-in-out infinite; flex-shrink: 0;
-}
-.live-dot.idle { background: var(--line); animation: none; }
-@keyframes live-pulse {
-  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(229,72,77,.5); }
-  50%      { opacity: .55; box-shadow: 0 0 0 7px rgba(229,72,77,0); }
-}
-/* the 💡: help with UNDERSTANDING the som, tucked under the question */
-.hint-btn {
-  display: inline-flex; align-items: center; gap: 6px;
-  margin: -6px 0 16px;
-  padding: 7px 14px; border-radius: 999px;
-  border: none; background: #fdf6e0;
-  font-size: .82rem; font-weight: 700; font-family: inherit;
-  color: #8a6a11; cursor: pointer;
-  transition: background .12s, transform .08s, opacity .15s;
-}
-.hint-btn:hover { background: #fdf3d0; }
-.hint-btn:active { transform: scale(0.96); }
-.hint-bubble {
-  margin: -4px 0 16px;
-  padding: 11px 14px;
-  background: #fffbea; border: 1px solid #f0e2ae; border-radius: 12px;
-  font-size: .95rem; line-height: 1.55; color: var(--ink);
-  text-align: left;
-}
-
-/* the second chance and the uitleg, under the answers */
-.explain-box {
-  margin-top: 18px; padding: 15px 17px;
-  background: var(--bg); border-radius: 14px;
-  text-align: left;
-}
-.fix-hint { font-weight: 700; color: var(--ink); font-size: .98rem; }
-.fix-praise { font-weight: 800; color: var(--green); font-size: 1.05rem; }
-.explain-title { display: block; margin-bottom: 6px; color: var(--muted); font-size: .88rem; }
-.explain-text { font-size: 1.02rem; line-height: 1.6; }
-.explain-box .btn { margin-top: 14px; padding: 10px 22px; }
-
-/* the som being worked on, with the whole opdracht down the right-hand side —
-   the same panel for the child and for the parent watching */
-.mirror-split, .task-split {
-  display: grid; grid-template-columns: minmax(0, 1fr) 76px;
-  gap: 18px; align-items: start;
-}
-.mirror-main, .task-main { min-width: 0; }
 /* the task and mirror rails share the sprint's rail; only the split needs
    saying here */
 @media (max-width: 600px) {
@@ -961,7 +654,6 @@ input:focus { border-color: var(--accent); }
 }
 .mirror-key.shown b { color: #0d5030; font-size: 1.08rem; }
 .mirror-key.shown .tuck { margin-left: auto; opacity: .65; font-size: .9rem; }
-.mirror-key.shown:hover .tuck { opacity: 1; }
 @keyframes answer-in {
   from { opacity: 0; transform: translateY(-4px); }
   to   { opacity: 1; transform: none; }
@@ -980,7 +672,6 @@ input:focus { border-color: var(--accent); }
   color: var(--muted); cursor: pointer;
   transition: border-color .15s, color .15s, background .15s;
 }
-.mirror-reveal:hover { border-color: var(--green); color: var(--green); background: var(--green-soft); }
 .mirror-reveal:active { transform: scale(0.99); }
 .mirror-idle { text-align: center; padding: 26px 8px; color: var(--muted); }
 .mirror-idle .big-emoji { opacity: .8; }
@@ -1006,8 +697,6 @@ input:focus { border-color: var(--accent); }
 .cat-bar-fill { height: 100%; background: var(--green); border-radius: 999px; }
 .cat-bar-fill.low { background: var(--red); }
 .cat-bar-fill.mid { background: var(--amber); }
-.level-line { margin-top: 18px; color: var(--muted); }
-.btn-back { margin-top: 20px; }
 
 /* the day's sommen, under that day's report card in the kalender */
 .day-sommen { margin-top: 18px; border-top: 1px solid var(--line); padding-top: 6px; }
@@ -1036,8 +725,6 @@ input:focus { border-color: var(--accent); }
   color: var(--muted); cursor: pointer;
   transition: border-color .12s, background .12s, color .12s;
 }
-.rate-btn.hard:hover { border-color: #e8b45c; background: #fff8e9; color: #8a6a11; }
-.rate-btn.easy:hover { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
 .rate-btn.hard.on { border-color: #e8b45c; background: #fdf0d5; color: #8a6a11; }
 .rate-btn.easy.on { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
 .rate-now { font-size: .78rem; font-weight: 700; color: var(--muted); }
@@ -1067,14 +754,16 @@ input:focus { border-color: var(--accent); }
   border: none; background: none; cursor: pointer; font-family: inherit;
   color: var(--muted); font-size: 1rem; padding: 2px 4px; line-height: 1;
 }
-.lesson-undo:hover { color: var(--red); }
 
 /* how many 💡 are left, and what it looks like when there are none */
+/* the count rides on the lamp instead of beside it */
 .hint-count {
+  position: absolute; top: -2px; right: -2px;
   font-variant-numeric: tabular-nums;
-  background: #f0e2ae; color: #7a5c0d;
-  border-radius: 999px; min-width: 17px; padding: 0 5px;
-  font-size: .72rem; line-height: 17px; text-align: center;
+  background: var(--amber); color: #fff;
+  border-radius: var(--r-pill); min-width: 18px; padding: 0 4px;
+  font-size: var(--t-xs); line-height: 18px; text-align: center;
+  font-weight: 800;
 }
 .hint-count:empty { display: none; }
 .hint-btn.spent {
@@ -1085,7 +774,6 @@ input:focus { border-color: var(--accent); }
 
 /* the parent's copy of a day's report card */
 .day-pill.fix { color: #8a6a11; background: #fdf0d5; border-color: #ecd699; }
-.day-run { font-size: .78rem; font-weight: 700; color: var(--muted); margin: 12px 0 4px; }
 .day-aschild {
   margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--line);
   font-size: .84rem; color: var(--muted); font-style: italic;
@@ -1101,25 +789,29 @@ input:focus { border-color: var(--accent); }
 
 .sprint-head { display: flex; align-items: center; gap: 10px; }
 .icon-ghost {
-  flex: none; width: 30px; height: 30px; border-radius: 9px;
+  flex: none; width: var(--tap); height: var(--tap); border-radius: var(--r-sm);
   border: none; background: var(--bg); color: var(--muted);
   display: flex; align-items: center; justify-content: center;
   cursor: pointer; font-family: inherit;
   transition: background .15s, color .15s, transform .08s;
 }
-.icon-ghost:hover { background: var(--accent-soft); color: var(--accent); }
 .icon-ghost:active { transform: scale(.94); }
 .sprint-title {
   font-size: .78rem; font-weight: 800; letter-spacing: .08em;
   text-transform: uppercase; color: var(--muted);
 }
+/* The seconds sit in a box wide enough for two digits, so dropping from 10 to
+   9 does not drag the title and the "s" along with it. Generated content used
+   to hold the separator and the unit, which meant the whole run of text
+   re-measured once a question — always at 10, which is what was noticed. */
 .sprint-secs {
-  font-size: .78rem; font-weight: 700; color: var(--muted);
+  display: inline-block; min-width: 2.2ch; text-align: right;
+  font-size: var(--t-xs); font-weight: 700; color: var(--muted);
   font-variant-numeric: tabular-nums;
 }
-.sprint-secs::before { content: "· "; opacity: .5; }
-.sprint-secs::after { content: "s"; opacity: .6; margin-left: 1px; }
-.sprint-secs.low { color: var(--red); }
+.sprint-sep { color: var(--muted); opacity: .45; font-size: var(--t-xs); }
+.sprint-unit { color: var(--muted); opacity: .6; font-size: var(--t-xs); font-weight: 700; }
+.sprint-secs.low, .sprint-secs.low + .sprint-unit { color: var(--red); opacity: 1; }
 .sprint-step {
   margin-left: auto;
   font-size: .78rem; font-weight: 700; color: var(--muted);
@@ -1127,10 +819,12 @@ input:focus { border-color: var(--accent); }
 }
 
 /* the clock: a hairline that drains, right where the eye already is */
+/* the sprint clock: a hairline track with a draining fill */
 .sprint-track {
-  height: 3px; background: var(--line); border-radius: 999px;
-  overflow: hidden; margin: 12px 0 0;
+  height: 3px; background: var(--line); border-radius: var(--r-pill);
+  overflow: hidden; margin-top: var(--s3);
 }
+.paused-text { font-size: var(--t-sm); color: var(--muted); }
 .sprint-fill { height: 100%; width: 100%; background: var(--accent); border-radius: 999px; }
 .sprint-fill.low { background: var(--red); }
 
@@ -1165,15 +859,25 @@ input:focus { border-color: var(--accent); }
 /* beat one: not even there — the som has to be worked out, not weighed up.
    The space is kept, so nothing jumps when the answers arrive. */
 .sprint-answers.blind .sprint-opt { opacity: 0; visibility: hidden; }
+/* one line under the answers: an icon for the beat, a word only when there is
+   something to say */
 .sprint-flash {
-  min-height: 1.4em; margin-top: 16px; text-align: center;
-  font-size: .9rem; font-weight: 700; color: var(--muted);
+  margin-top: var(--s3); text-align: center;
+  font-size: var(--t-sm); font-weight: 700; color: var(--muted);
+  min-height: 1.5em;
 }
-.sprint-flash.think { font-weight: 500; }
+.sprint-flash.think { font-weight: 600; }
+.sprint-flash:empty { min-height: 1.5em; }
 .sprint-flash.good { color: var(--green); }
 .sprint-flash.bad  { color: var(--red); }
 
-.sprint-paused { text-align: center; padding: 26px 0 10px; }
+.sprint-paused {
+  display: flex; align-items: center; justify-content: center; gap: var(--s3);
+  padding: var(--s4) 0 var(--s2);
+  font-size: var(--t-sm); color: var(--muted);
+}
+.sprint-paused .paused-mark { font-size: 1.25rem; }
+.sprint-paused .btn { min-width: var(--tap); min-height: var(--tap); padding: 0 var(--s4); }
 
 @media (max-width: 520px) {
   .sprint-card { padding: 18px 16px 20px; }
@@ -1199,8 +903,6 @@ input:focus { border-color: var(--accent); }
 
 @media (max-width: 520px) {
   .sprint-body { align-items: flex-start; gap: 10px; }
-  .sprint-clock, .sprint-ring { width: 64px; height: 64px; }
-  .sprint-count { font-size: 1.4rem; }
   .sprint-q { font-size: 2.1rem; margin: 0 0 14px; }
   .sprint-opt { font-size: 1.35rem; padding: 14px 4px; }
 }
@@ -1254,7 +956,6 @@ input:focus { border-color: var(--accent); }
    left to open it is simply a picture */
 .cal-detail .result-tile { cursor: pointer; }
 .cal-detail .result-tile.flat { cursor: default; }
-.cal-detail .result-tile:not(.flat):hover { box-shadow: 0 2px 8px rgba(29, 36, 51, .16); }
 .som-row.open { background: var(--bg); border-radius: 12px; padding: 12px; }
 .day-nosom { font-size: .85rem; color: var(--muted); margin-top: 14px; line-height: 1.5; }
 .sprint-strip .sprint-line + .sprint-chips + .sprint-line { margin-top: 12px; }
@@ -1275,10 +976,6 @@ input:focus { border-color: var(--accent); }
 .tafel-cell.none { background: var(--bg); color: #c3c8d2; }
 .tafel-weak { font-size: .85rem; color: var(--muted); line-height: 1.5; }
 .tafel-weak.good { color: var(--green); }
-.tafel-legend {
-  display: flex; flex-wrap: wrap; gap: 12px; margin-top: 10px;
-  font-size: .75rem; color: var(--muted);
-}
 .tafel-legend .dot { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
 .dot.t-ok { background: var(--green-soft); }
 .dot.t-mid { background: #fdf0d5; }
@@ -1295,21 +992,17 @@ input:focus { border-color: var(--accent); }
 
 /* a fout in the task list can be reopened for one more go — it asks quietly */
 .mark-cell.can-fix { cursor: pointer; animation: tile-nudge 1.6s ease-in-out infinite; }
-.mark-cell.can-fix:hover { box-shadow: 0 2px 8px rgba(29, 36, 51, .16); }
 
 /* a day earned in advance: green, but its own green, so it can be told apart */
 .cal-cell.bonus { background: #2ab8a0; color: #fff; }
 .dot.bonus { background: #2ab8a0; }
 
 /* the two doors of the day, and the tick that says one is already open */
-.btn.choice { display: flex; align-items: center; justify-content: center; gap: 8px; }
-.btn.choice.done { background: var(--green); }
-.done-badge { font-size: .8rem; opacity: .95; }
-.done-badge:empty { display: none; }
+
 
 /* the school's little logo on a som shaped like the werkblad's */
 .school-badge {
-  display: block; width: 34px; height: auto; margin: -4px 0 10px auto; opacity: .9;
+  flex: none; width: 22px; height: auto; margin-top: 2px; opacity: .9;
 }
 .school-badge.row { display: inline-block; width: 22px; margin: 0; vertical-align: middle; }
 
@@ -1318,7 +1011,7 @@ input:focus { border-color: var(--accent); }
 /* with a dial above it the prompt is one short line, so it does not need the
    reserve a three-line redactiesom does */
 .question-clock:not(.hidden) + .question { min-height: 0; margin-bottom: 18px; text-align: center; }
-.klok-face { width: 210px; height: 210px; max-width: 70vw; }
+.klok-face { width: clamp(150px, 26dvh, 220px); height: auto; aspect-ratio: 1; }
 .klok-rim { fill: var(--card); stroke: var(--ink); stroke-width: 2; }
 .klok-ticks line { stroke: var(--ink); }
 .klok-num { font-size: 15px; font-weight: 800; fill: var(--ink); font-family: inherit; }
@@ -1352,6 +1045,147 @@ input:focus { border-color: var(--accent); }
 .day-run { font-size: .78rem; font-weight: 800; color: var(--muted); margin: 14px 0 -4px; }
 .det-clock { display: flex; justify-content: center; margin: 4px 0 10px; }
 .det-clock .klok-face { width: 140px; height: 140px; }
-/* a door with a round left open says so: same button, different promise */
-.btn.choice.resume { background: var(--accent); }
-.btn.choice.resume .done-badge { font-variant-numeric: tabular-nums; }
+
+
+/* ---------- hover, and only where there is a pointer ----------
+   iPad keeps :hover on the last thing tapped until something else is
+   tapped, so an answered tile would sit there looking selected. Every
+   hover affordance lives behind this guard; touch gets :active instead. */
+@media (hover: hover) and (pointer: fine) {
+  .brand:hover { opacity: 0.6; }
+  .timer-pause:hover { background: var(--accent-soft); color: var(--accent); }
+  .flag-btn.switchable:hover, .flag-btn.open { border-color: var(--accent); background: var(--accent-soft); }
+  .lang-opt:hover { background: var(--bg); }
+  .icon-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .flag:hover { opacity: 1; }
+  .btn.primary:hover { background: #2f5ce0; }
+  .btn.ghost:hover { background: #dbe6fd; }
+  .link-btn:hover { color: var(--ink); }
+  .answers:not(.fresh) .answer:hover { border-color: var(--accent); }
+  .result-tile:hover { box-shadow: 0 2px 8px rgba(29, 36, 51, .12); }
+  .hint-btn:hover { background: #fdf3d0; }
+  .mirror-key.shown:hover .tuck { opacity: 1; }
+  .mirror-reveal:hover { border-color: var(--green); color: var(--green); background: var(--green-soft); }
+  .rate-btn.hard:hover { border-color: #e8b45c; background: #fff8e9; color: #8a6a11; }
+  .rate-btn.easy:hover { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+  .lesson-undo:hover { color: var(--red); }
+  .icon-ghost:hover { background: var(--accent-soft); color: var(--accent); }
+  .cal-detail .result-tile:not(.flat):hover { box-shadow: 0 2px 8px rgba(29, 36, 51, .16); }
+  .mark-cell.can-fix:hover { box-shadow: 0 2px 8px rgba(29, 36, 51, .16); }
+}
+
+/* ==========================================================================
+   iPad — the sizes the app is actually used at.
+   Everything above this line is the phone layout; these two blocks are the
+   only rules that look UP from it, which is what was missing entirely.
+   ========================================================================== */
+
+@media (min-width: 834px) {
+  .card { padding: var(--s5); }
+  h1 { font-size: 1.75rem; }
+  .question { font-size: var(--t-lg); }
+  .answer { font-size: var(--t-xl); min-height: var(--tap-lg); }
+  .sprint-q { font-size: var(--t-2xl); }
+  .sprint-opt { height: var(--tap-lg); font-size: var(--t-xl); }
+}
+
+/* Landscape on an iPad is a wide, short window: the question and its answers
+   stop stacking and sit side by side, with the rail of ten still on the
+   right. Nothing is hidden — it is the same content, laid out across the
+   width that is there instead of down a column that is not. */
+@media (orientation: landscape) and (min-width: 1000px) {
+  .task-split {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) var(--rail);
+    gap: var(--s5);
+    align-items: start;
+  }
+  .task-main { display: contents; }         /* question and answers become columns */
+  .task-question-col { min-width: 0; }
+  .task-answer-col { min-width: 0; align-self: center; }
+  .sprint-body { gap: var(--s5); }
+  .home-doors { gap: var(--s4); }
+  .door-tile { min-height: 150px; }
+}
+
+/* the beat icon under the sprint answers */
+.beat-icon { font-size: 1.1rem; vertical-align: -2px; }
+
+/* ---------- motion: only what carries meaning ----------
+   The sprint bar drains because that IS the information. Everything else
+   stops moving for anyone who asked their device to stop moving things. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .001ms !important;
+  }
+  .sprint-fill { transition-duration: inherit !important; }
+  .mark-cell.can-fix { animation: none !important; outline: 2px solid var(--red); }
+}
+
+/* ---------- the rapport: head, day strip, day body ---------- */
+.report-card { display: grid; gap: var(--s3); }
+.report-head { display: flex; align-items: center; gap: var(--s3); }
+.report-title { font-size: var(--t-md); font-weight: 800; }
+.report-pill {
+  margin-left: auto; display: inline-flex; align-items: baseline; gap: 1px;
+  border-radius: var(--r-md); padding: var(--s1) var(--s3);
+  background: var(--bg); font-variant-numeric: tabular-nums;
+  font-size: var(--t-lg); font-weight: 800;
+}
+.report-pill em { font-style: normal; font-size: var(--t-xs); color: var(--muted); }
+.report-pill.good { background: var(--green-soft); color: var(--green-ink); }
+.report-pill.mid  { background: var(--amber-soft); color: var(--amber-ink); }
+.report-pill.low  { background: var(--red-soft); color: var(--red-ink); }
+
+/* a fortnight on one line: the month grid's wall of red is gone */
+.report-strip {
+  display: flex; gap: var(--s1); overflow-x: auto; padding-bottom: var(--s1);
+  scroll-snap-type: x proximity; -webkit-overflow-scrolling: touch;
+  border-bottom: 1px solid var(--line-soft);
+}
+.strip-day {
+  flex: 0 0 auto; width: 44px; min-height: 56px; scroll-snap-align: center;
+  display: grid; gap: 2px; justify-items: center; align-content: center;
+  border: 1.5px solid transparent; border-radius: var(--r-sm);
+  background: none; font-family: inherit; cursor: pointer; padding: var(--s1) 0;
+}
+.strip-day .sd-wd { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; }
+.strip-day .sd-n  { font-size: var(--t-sm); font-weight: 800; font-variant-numeric: tabular-nums; }
+.strip-day .sd-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--line); }
+.sd-dot.done   { background: var(--green); }
+.sd-dot.bonus  { background: var(--teal); }
+.sd-dot.partial{ background: var(--amber); }
+.sd-dot.miss   { background: var(--red); }
+.strip-day.on { border-color: var(--accent); background: var(--accent-soft); }
+.strip-day.today .sd-n { color: var(--accent-ink); }
+
+.report-day { display: grid; gap: var(--s2); }
+.day-praise { font-size: var(--t-md); font-weight: 800; text-align: center; margin: var(--s1) 0; }
+.day-praise.perfect { color: var(--green-ink); }
+.parent-block { border-top: 1px solid var(--line); padding-top: var(--s3); display: grid; gap: var(--s2); }
+.more > summary {
+  cursor: pointer; font-size: var(--t-xs); font-weight: 800; color: var(--muted);
+  padding: var(--s2) 0; list-style: none;
+}
+.more > summary::-webkit-details-marker { display: none; }
+.more > summary::before { content: "▸ "; }
+.more[open] > summary::before { content: "▾ "; }
+/* Landscape splits the day in two, but only below the summary: the score, the
+   doors and the praise read across the whole width, and the reading order
+   stays top-to-bottom-left-to-right. */
+@media (orientation: landscape) and (min-width: 1000px) {
+  .report-day { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; }
+  .report-day > .day-score,
+  .report-day > .day-doors,
+  .report-day > .day-praise,
+  .report-day > .day-run,
+  .report-day > .result-grid,
+  .report-day > .parent-block { grid-column: 1 / -1; }
+}
+.time-pill {
+  display: inline-flex; align-items: center; gap: var(--s1);
+  background: var(--bg); border-radius: var(--r-pill); padding: var(--s1) var(--s3);
+  font-size: var(--t-xs); font-weight: 700; color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}

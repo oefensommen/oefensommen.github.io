@@ -47,7 +47,6 @@ const SelfUpdate = {
 
 let data = Store.load();
 let session = null;           // { questions, idx, firstPass, queue }
-let calMonth = null;          // Date of shown calendar month
 let timerInt = null;
 
 SelfUpdate.check();
@@ -139,10 +138,10 @@ function setLang(lang) {
   renderLoginFields();          // applyI18n resets the hint; restore the right one
   if (!$("screen-task").classList.contains("hidden") && session) renderQuestion();
   if (!$("screen-home").classList.contains("hidden")) renderHome();
-  if (!$("screen-result").classList.contains("hidden") && session) renderResult();
-  if (!$("screen-calendar").classList.contains("hidden")) renderCalendar();
-  if (!$("screen-stats").classList.contains("hidden")) renderStats();
-  if (!$("screen-sommen").classList.contains("hidden")) renderSommen();
+  // openReportAt dispatches to renderResult() itself when today is live, so
+  // this must not also call renderResult — that would reset the day the parent
+  // had picked out of the strip back to today
+  if (!$("screen-result").classList.contains("hidden")) openReportAt(reportDay);
   if (!$("screen-mirror").classList.contains("hidden")) Live.rerender();
 }
 
@@ -218,6 +217,36 @@ function dayTally(ds) {
   const n = per.tafels.n + per.sommen.n + per.klok.n;
   const c = per.tafels.c + per.sommen.c + per.klok.c;
   return { per, n, c, score: n ? Math.round(100 * c / n) : null };
+}
+
+/* The last stretch of days, newest first: everything the merged rapport needs
+   to draw a strip instead of a month grid. One row per day, and a day that
+   was not practised says so rather than being left out — the gap is the
+   point. */
+function dayStrip(n) {
+  const plan = dayPlan();
+  const out = [];
+  let ds = todayStr();
+  for (let i = 0; i < (n || 14); i++) {
+    const rec = data.days[ds] || null;
+    const tally = dayTally(ds);
+    const mark = (data.marks || {})[ds] || null;
+    out.push({
+      ds,
+      state: (mark && mark.c) || plan[ds] || "",
+      note: mark && mark.note ? mark.note : "",
+      mins: tally.n ? Math.max(1, Math.round(daySecs(ds) / 60)) : 0,
+      score: tally.score,
+      per: tally.per,
+      asked: tally.n,
+      right: tally.c,
+      done: DOORS.filter(d => tally.per[d.key].n).map(d => d.key),
+      today: ds === todayStr(),
+      hasReport: !!(rec && rec.tiles && rec.tiles.length)
+    });
+    ds = shiftDay(ds, -1);
+  }
+  return out;
 }
 
 /* The three doors of a day, in the order the home screen shows them. */
@@ -313,28 +342,45 @@ function renderHome() {
   }
   $("home-status").textContent = status;
 
+  /* How today is going, without a sentence to read: one line of icons with
+     numbers behind them. Nothing here is new information — it is the same
+     counts the tiles carry, said compactly enough to take in at a glance. */
+  const tally = dayTally(ds);
+  const chips = [];
+  for (const d of DOORS) {
+    const per = tally.per[d.key];
+    if (per.n) chips.push(`${t("door_icon")[d.key]} ${per.c}/${per.n}`);
+  }
+  if (tally.n) {
+    const mins = Math.max(1, Math.round(daySecs(ds) / 60));
+    chips.push(`⏱ ${mins}m`);
+    chips.push(`<b>${tally.score}</b>`);
+  }
+  $("home-chips").innerHTML = chips.join('<i aria-hidden="true">·</i>');
+  $("home-chips").classList.toggle("hidden", !chips.length);
+
   // the child practises; the parent watches and reviews — but the kalender
   // belongs to both of them, so the child can see their own week too
   $("btn-start").classList.toggle("hidden", parent);
   $("btn-klok").classList.toggle("hidden", parent);
   $("btn-sprint").classList.toggle("hidden", parent || sprintOff);
   $("btn-watch").classList.toggle("hidden", !parent);
-  $("nav-row").classList.toggle("hidden", false);
-  $("btn-stats").classList.toggle("hidden", !parent);
-  $("btn-sommen").classList.toggle("hidden", !parent);
-  // the day's report card stays reachable — the fouten to verbeter and the
-  // door to the spelletjes live there
-  $("btn-report").classList.toggle("hidden",
-    parent || !(data.report && data.report.date === todayStr()));
+  // the rapport is the one place "how is it going" lives, for both of them
+  $("btn-report").classList.remove("hidden");
 
 }
 
 /* ---------- task flow ---------- */
-/* 5… 4… 3… 2… 1… — the ring empties while the number pops, then we're off. */
+/* 3… 2… 1… — the ring empties while the number pops, then we're off.
+   Three beats, not five: the child has just tapped a tile, they do not need
+   five seconds to be told it worked. BEATS drives the ring maths too, so the
+   arc always arrives at empty on the last beat. */
+const COUNT_BEATS = 3;
+
 function runCountdown(then) {
   const CIRC = 327;
   const numEl = $("count-number"), arc = $("count-progress");
-  let n = 5;
+  let n = COUNT_BEATS;
 
   arc.style.transition = "none";
   arc.style.stroke = "";
@@ -351,8 +397,8 @@ function runCountdown(then) {
     if (n > 0) {
       numEl.textContent = n;
       numEl.classList.add("tick");
-      arc.style.strokeDashoffset = String(CIRC * (1 - (n - 1) / 5));
-      if (n <= 2) arc.style.stroke = "var(--amber)";
+      arc.style.strokeDashoffset = String(CIRC * (1 - (n - 1) / COUNT_BEATS));
+      if (n <= Math.ceil(COUNT_BEATS / 2)) arc.style.stroke = "var(--amber)";
       n--;
       setTimeout(beat, 1000);
     } else {
@@ -442,7 +488,12 @@ function applySprintPhase(ph) {
   box.classList.toggle("blind", ph === 0);
   box.classList.toggle("shut", ph < 2);
   box.querySelectorAll(".sprint-opt").forEach(b => b.disabled = ph < 2);
-  flash.textContent = ph === 0 ? t("sprint_blind") : ph === 1 ? t("sprint_think") : "";
+  // an icon for the beat, the words small beneath it: 👀 look, 🤔 choose
+  const beat = ph === 0 ? ["👀", t("sprint_blind")]
+             : ph === 1 ? ["🤔", t("sprint_think")] : null;
+  flash.innerHTML = beat
+    ? `<span class="beat-icon" aria-hidden="true">${beat[0]}</span> ${esc(beat[1])}`
+    : "";
   flash.className = "sprint-flash" + (ph < 2 ? " think" : "");
 }
 
@@ -512,7 +563,10 @@ function startSprintClock(msLeft) {
     // sprint on screen stops itself.
     if (!sprint || sprint !== mine) return clearInterval(handle);
     const left = Math.max(0, sprint.endAt - Date.now());
-    num.textContent = Math.ceil(left / 1000);
+    // never paint a 0: the tick that reaches zero is up to 100ms ahead of the
+    // tick that settles the question, and "0s" flashing once a question reads
+    // as a fault rather than as the end of the time
+    num.textContent = Math.max(1, Math.ceil(left / 1000));
     const low = left <= total / 3;
     num.classList.toggle("low", low);
     bar.classList.toggle("low", low);
@@ -1219,7 +1273,10 @@ function renderHintButton(q) {
   btn.classList.toggle("spent", !usable);
   btn.disabled = !usable;
   $("hint-count").textContent = q.hinted ? "" : String(left);
-  btn.title = usable ? "" : t("hint_none").replace("{n}", HINTS_PER);
+  // the lamp carries no word any more, so the word lives where a screen
+  // reader and a long-press can still find it
+  btn.setAttribute("aria-label", t("hint_btn"));
+  btn.title = usable ? t("hint_btn") : t("hint_none").replace("{n}", HINTS_PER);
 }
 
 function showExplainBox(html, withButton) {
@@ -1321,8 +1378,7 @@ function finishPass() {
   }
 
   stopTimer();
-  renderResult();
-  show("screen-result");
+  openReportAt(todayStr());
 }
 
 /* Close the books on a whole opdracht: the time it took, the level and the
@@ -1460,9 +1516,20 @@ function writeReport() {
   Store.save(data);
 }
 
+/* The door into the rapport.
+
+   For the CHILD a round finished earlier today is rebuilt into a session
+   first, so its red vakjes still open for the second chance. The PARENT never
+   gets that session: the report they are looking at is the child's, and a
+   parent tapping a red vakje would spend a second chance that is not theirs —
+   it would write "put right" into the child's record and take the chance away
+   before the child ever saw it. The parent reads the stored day instead, which
+   is where their own tools live anyway. */
 function openReport() {
   const r = data.report;
-  if (!r || r.date !== todayStr() || !r.questions || !r.questions.length) return;
+  if (Store.isParent() || !r || r.date !== todayStr() || !r.questions || !r.questions.length) {
+    return openReportAt(todayStr());
+  }
   session = {
     questions: r.questions.map(q => Object.assign({}, q)),
     pool: [],
@@ -1475,107 +1542,182 @@ function openReport() {
     kind: r.kind || "sommen"
   };
   Live.startHeartbeat();
-  renderResult();
+  openReportAt(todayStr());
+}
+
+/* ---------- the rapport ----------
+
+   One destination for "how is it going": today's round, every day before it,
+   and — for the parent — the tools that belong to a day. The month grid is
+   gone; a day is picked from a strip of the last fortnight.
+
+   Region C has two renderers writing into the same node. Today with a live
+   opdracht is drawn by renderResult(), because the tiles there are the LIVE
+   questions and tapping a red one is the child's second chance, which only
+   exists on the session. Every other day is drawn by showDay() out of the
+   stored record. */
+const STRIP_DAYS = 14;
+
+function openReportAt(ds) {
+  reportDay = ds || todayStr();
+  const live = reportDay === todayStr() && session && session.questions;
+  renderReportHead();
+  renderReportStrip();
+  if (live) renderResult(); else showDay(reportDay);
   show("screen-result");
 }
 
-/* ---------- result ---------- */
+let reportDay = null;
+
+function renderReportHead() {
+  const sc = dayTally(reportDay).score;
+  const pill = $("report-score");
+  pill.innerHTML = sc == null ? "" : `${sc}<em>/100</em>`;
+  pill.className = "report-pill" + (sc == null ? " hidden"
+    : sc >= 80 ? " good" : sc >= 50 ? " mid" : " low");
+}
+
+/* The last fortnight as one line of days: weekday, number, and a dot for how
+   the day went. Today sits at the end, where the eye lands, and is selected
+   when the rapport opens. */
+function renderReportStrip() {
+  const strip = $("report-strip");
+  const days = dayStrip(STRIP_DAYS).reverse();      // oldest first, today last
+  const wd = t("weekdays");
+  strip.innerHTML = days.map(d => {
+    const [y, m, dd] = d.ds.split("-").map(Number);
+    const date = new Date(y, m - 1, dd);
+    return `<button class="strip-day${d.ds === reportDay ? " on" : ""}${d.today ? " today" : ""}"
+              data-day="${d.ds}"${d.today ? ' aria-current="date"' : ""}>
+              <span class="sd-wd">${wd[(date.getDay() + 6) % 7]}</span>
+              <span class="sd-n">${dd}</span>
+              <i class="sd-dot ${d.state || "none"}"></i>
+            </button>`;
+  }).join("");
+  strip.querySelectorAll(".strip-day").forEach(b =>
+    b.addEventListener("click", () => openReportAt(b.dataset.day)));
+  const on = strip.querySelector(".strip-day.on");
+  if (on) on.scrollIntoView({ block: "nearest", inline: "center" });
+}
+
 function renderResult() {
   const qs = session.questions;
-  const allDone = qs.every(finished);                       // nothing left to answer
-  const sc = scoreNow(qs);                 // a fout put right counts as good
+  const allDone = qs.every(finished);
+  const sc = scoreNow(qs);
   const perfect = allDone && sc.correct === sc.total;
-  const nRight = sc.correct;
+  const ds = todayStr();
+  reportDay = ds;
 
-  $("result-title").textContent =
-    perfect ? t("result_perfect") : (allDone ? t("result_done") : t("result_almost"));
-  $("result-emoji").textContent = perfect ? partyEmoji() : "💪";
-  $("result-emoji").classList.toggle("party", perfect);
-  $("result-score").textContent = perfect
-    ? partyMessage(LANG)
-    : t("result_score").replace("{c}", nRight).replace("{t}", qs.length);
-
-  // numbered grid: right, wrong, corrected, explained, or still to be done.
-  // No answers are given away here — a wrong som has to be opened, and there
-  // the child gets a second go at it before the answer is shown.
-  const strip = $("result-sprint");
-  strip.innerHTML = sprintStripsHTML(todayStr());
-  strip.classList.toggle("hidden", !strip.innerHTML);
-
-  // the tafels as they stand today: the two sprints above are what happened,
-  // this is what they add up to
-  const tbox = $("result-tafels");
-  const tsc = tafelScore();
-  if (tsc.asked) {
-    const weak = tafelWeakHTML();
-    tbox.innerHTML =
-      `<div class="sprint-line"><b>✖️ ${esc(t("tafel_title"))}</b>
-         <span>${tsc.known}/${tsc.total}</span></div>
-       <div class="tafel-grid small">${tafelGridHTML()}</div>
-       <p class="tafel-weak${weak.good ? " good" : ""}">${esc(weak.text)}</p>`;
-  } else {
-    tbox.innerHTML = "";
-  }
-  tbox.classList.toggle("hidden", !tsc.asked);
-
-  const grid = $("result-grid");
-  grid.innerHTML = "";
-  qs.forEach((q, i) => {
-    // to the child a som is good or it is not — a som put right is good, and
-    // it looks it. The parent sees the difference on their own screens.
+  // the tiles of the round just worked: these are the LIVE questions, so a red
+  // one can still be opened for its second chance
+  const tiles = qs.map((q, i) => {
     const state = (q.correctFirst || q.fixed) ? "ok"
-      : q.solved ? "ok2"
-      : q.failed ? (q.explained ? "exp" : "no")
-      : "todo";
-    const icon  = { ok: "✅", ok2: "✅", exp: "❌", no: "❌", todo: "⏭" }[state];
-    const cell = document.createElement("button");
-    cell.className = "result-tile " + state;
-    cell.title = t({ ok: q.fixed ? "tile_fixed" : "tile_done", ok2: "tile_second",
-                     exp: "tile_explained", no: "tile_wrong", todo: "tile_todo" }[state]) +
-                 (q.hinted ? " · 💡" : "");
-    cell.innerHTML = `<span class="num">${i + 1}</span><span class="mark">${icon}</span>` +
-                     (q.hinted ? `<span class="tile-hint">💡</span>` : "");
-    cell.addEventListener("click", () => openQuestion(i));
-    grid.appendChild(cell);
-  });
+      : q.solved ? "ok2" : q.failed ? (q.explained ? "exp" : "no") : "todo";
+    const icon = { ok: "✅", ok2: "✅", exp: "❌", no: "❌", todo: "⏭" }[state];
+    const tip = t({ ok: q.fixed ? "tile_fixed" : "tile_done", ok2: "tile_second",
+                    exp: "tile_explained", no: "tile_wrong", todo: "tile_todo" }[state]) +
+                (q.hinted ? " · 💡" : "");
+    return `<button class="result-tile ${state}" data-q="${i}" title="${esc(tip)}">
+              <span class="num">${i + 1}</span><span class="mark">${icon}</span>
+              ${q.hinted ? `<span class="tile-hint">💡</span>` : ""}
+            </button>`;
+  }).join("");
 
-  // show how long the 20 questions took (first pass)
-  const timeEl = $("result-time");
-  if (session.lastSec != null) {
-    timeEl.textContent = `⏱ ${t("done_in")} ${fmtTime(session.lastSec)}`;
-    timeEl.classList.remove("hidden");
-  } else {
-    timeEl.classList.add("hidden");
-  }
-
-  // a wrong som is worth going back to: this is the only place the good answer
-  // can be seen, and it changes nothing about the score
-
-  // only the soms that were put aside can still be done
   const left = qs.filter(q => !finished(q)).length;
-  $("btn-retry").textContent = left ? t("finish_rest").replace("{n}", left) : "";
-  $("btn-retry").classList.toggle("hidden", !left);
-
-
-  // A fout is not a wall, it is the doorstep: the answer lives behind the red
-  // vakje and nowhere else, so the child is told to go and look.
   const unreviewed = qs.filter(q => q.failed && !q.fixed && !q.explained).length;
+  const praise = perfect ? `🎉 ${esc(partyMessage(LANG))}`
+    : allDone ? `💪 ${esc(t("result_score").replace("{c}", sc.correct).replace("{t}", qs.length))}`
+    : `⏭ ${esc(t("finish_rest").replace("{n}", left))}`;
 
-  const hint = $("result-hint");
-  if (allDone && unreviewed > 0) {
-    hint.textContent = t("fix_first_noplay");
-    hint.classList.remove("hidden");
-  } else {
-    hint.classList.add("hidden");
+  const box = $("report-day");
+  box.innerHTML =
+    daySummaryHTML(ds) +
+    `<p class="day-praise${perfect ? " perfect" : ""}">${praise}</p>
+     <p class="day-run">${t("door_icon")[session.kind || "sommen"]} ${esc(t("home_" + (session.kind || "sommen")))}</p>
+     <div class="result-grid">${tiles}</div>` +
+    (left && !Store.isParent() ? `<button id="btn-retry" class="btn primary">${esc(t("retry_btn"))}</button>` : "") +
+    (allDone && unreviewed ? `<p class="review-hint">${esc(t("fix_first_noplay"))}</p>` : "") +
+    dayExtrasHTML(ds);
+
+  if (!Store.isParent()) {
+    box.querySelectorAll(".result-tile[data-q]").forEach(tile =>
+      tile.addEventListener("click", () => openQuestion(+tile.dataset.q)));
+    const retry = $("btn-retry");
+    if (retry) retry.addEventListener("click", startRetry);
   }
+  wireDayExtras(ds, box);
+  renderReportHead();
 
   Live.push("result");
+  if (perfect && session.celebrate) { session.celebrate = false; fireConfetti(); }
+}
 
-  // confetti belongs to a faultless run, not merely a finished one
-  if (perfect && session.celebrate) {
-    session.celebrate = false;
-    fireConfetti();
+/* What every day says first: the score out of a hundred, the minutes worked,
+   and which of the three doors were opened. Shared by today and by any day
+   picked out of the strip — a day is a day. */
+function daySummaryHTML(ds) {
+  const tally = dayTally(ds);
+  if (!tally.n) return "";
+  const mins = Math.max(1, Math.round(daySecs(ds) / 60));
+  const doors = DOORS.filter(d => tally.per[d.key].n)
+    .map(d => `<span class="day-door"><i>${t("door_icon")[d.key]}</i>${esc(t("home_" + d.key))}
+                 <b>${tally.per[d.key].c}/${tally.per[d.key].n}</b></span>`).join("");
+  return `<div class="day-score">
+            <span class="score-ring${tally.score >= 80 ? " good" : tally.score >= 50 ? " mid" : " low"}">
+              <b>${tally.score}</b><em>/100</em></span>
+            <span class="score-side">
+              <span class="day-pill">⏱ ${esc(t("day_minutes").replace("{n}", mins))}</span>
+              <span class="day-pill">✅ ${tally.c} / ${tally.n}</span>
+            </span>
+          </div>
+          <div class="day-doors">${doors}</div>`;
+}
+
+/* Everything that hangs under a day: the tafels as they stand, and — for the
+   parent — the day's colour, its note, the rateable sommen and the overview. */
+function dayExtrasHTML(ds) {
+  let out = "";
+  const strips = sprintStripsHTML(ds);
+  if (strips) out += `<div class="sprint-strip">${strips}</div>`;
+
+  // the tafelgrid belongs to BOTH of them: the child was promised it
+  const tsc = tafelScore();
+  if (ds === todayStr() && tsc.asked) {
+    const weak = tafelWeakHTML();
+    out += `<div class="sprint-strip">
+              <div class="sprint-line"><b>${esc(t("tafel_title"))}</b>
+                <span>${tsc.known}/${tsc.total}</span></div>
+              <div class="tafel-grid small">${tafelGridHTML()}</div>
+              <p class="tafel-weak${weak.good ? " good" : ""}">${esc(weak.text)}</p>
+            </div>`;
   }
+
+  const mark = (data.marks || {})[ds];
+  if (!Store.isParent()) {
+    if (mark && mark.note) out += `<p class="day-note">📝 ${esc(mark.note)}</p>`;
+    return out;
+  }
+
+  out += `<div class="parent-block">${dayEditorHTML(ds, mark)}`;
+  const rec = data.days[ds];
+  const qs = dayQuestionsHTML(ds, rec);
+  if (qs) out += `<details class="more"><summary>${esc(t("sommen"))}</summary>
+                    <p class="lessons-sub">${esc(t("rate_sub"))}</p>${qs}</details>`;
+  else if (rec && rec.tiles) out += `<p class="day-nosom">${esc(t("day_no_sommen"))}</p>`;
+  out += `<details class="more"><summary>${esc(t("stats"))}</summary>
+            <div id="stats-body"></div></details>
+          <div id="lessons" class="lessons"></div></div>`;
+  return out;
+}
+
+function wireDayExtras(ds, box) {
+  if (!Store.isParent()) return;
+  wireDayEditor(ds);
+  wireRateButtons(box);
+  box.querySelectorAll(".result-tile[data-open]").forEach(tile =>
+    tile.addEventListener("click", () => openSomByKey(box, tile.dataset.open)));
+  renderStats();
+  renderLessons();
 }
 
 /* Open one som straight from the report card. Still waiting to be answered →
@@ -1601,8 +1743,7 @@ function backToResult() {
   session.fromResult = false;
   session.viewOne = null;
   hideExplainBox();
-  renderResult();
-  show("screen-result");
+  openReportAt(todayStr());
 }
 
 function startRetry() {
@@ -1795,20 +1936,6 @@ function dayQuestionsHTML(ds, rec) {
   }).join("");
 }
 
-function renderSommen() {
-  const qs = todaysQuestions();
-  const list = $("sommen-list");
-  $("sommen-sub").textContent = qs.length
-    ? t("sommen_sub").replace("{n}", qs.length)
-    : t("sommen_none");
-  list.innerHTML = "";
-
-  list.innerHTML = dayQuestionsHTML(todayStr(), data.days[todayStr()]);
-  wireRateButtons(list);
-
-  renderLessons();
-}
-
 function adjLabel(adj) {
   return (adj < 0 ? t("tuned_easier") : t("tuned_harder")).replace("{n}", Math.abs(adj));
 }
@@ -1935,8 +2062,7 @@ function wireSomDetail(box) {
 /* whichever of the two parent screens is showing the sommen redraws itself,
    with the som that was open still open */
 function redrawSoms() {
-  if (isOn("screen-calendar")) renderCalendar();       // keeps the open day open
-  else if (isOn("screen-sommen")) renderSommen();
+  if (isOn("screen-result")) openReportAt(reportDay);   // keeps the open day open
 }
 
 async function rateSom(tplId, verdict) {
@@ -1998,66 +2124,16 @@ function dayColour(ds, rec, plan) {
   return (plan || dayPlan())[ds] || "";
 }
 
-function renderCalendar() {
-  if (!calMonth) calMonth = new Date();
-  const y = calMonth.getFullYear(), m = calMonth.getMonth();
-  $("cal-title").textContent = `${t("months")[m]} ${y}`;
-  const grid = $("cal-grid");
-  grid.innerHTML = "";
-  // The month runs straight through, 1 to the end, with no empty squares in
-  // front of the first. The weekday is written on each day itself, so it is
-  // still there to be read without pushing the numbers out of line.
-  const daysInMonth = new Date(y, m + 1, 0).getDate();
-  const today = todayStr();
-  const wd = t("weekdays");
-  const plan = dayPlan();
-  for (let d = 1; d <= daysInMonth; d++) {
-    const date = new Date(y, m, d);
-    const ds = todayStr(date);
-    const rec = data.days[ds];
-    const c = document.createElement("button");
-    c.className = "cal-cell";
-    const mark = (data.marks || {})[ds];
-    const colour = dayColour(ds, rec, plan);
-    if (colour) c.classList.add(colour);
-    if (ds === today) c.classList.add("today");
-    c.innerHTML = `<span class="wd">${wd[(date.getDay() + 6) % 7]}</span>` +
-                  `<span class="dnum">${d}</span>` +
-                  (mark ? `<span class="by-hand" aria-hidden="true"></span>` : "");
-    c.title = (rec && rec.solved > 0 ? `${d} · ${rec.firstCorrect}/${rec.solved}` : `${d}`) +
-              (mark && mark.note ? ` · ${mark.note}` : "");
-    c.addEventListener("click", () => showDay(ds));
-    grid.appendChild(c);
-  }
-  // a day that was open stays open when the month is redrawn
-  const box = $("cal-detail");
-  const open = box.dataset.day;
-  delete box.dataset.day;
-  if (open && open.slice(0, 7) === `${y}-${String(m + 1).padStart(2, "0")}`) showDay(open);
-  else hideDay();
-}
-
-function hideDay() {
-  const box = $("cal-detail");
-  box.classList.add("hidden");
-  box.innerHTML = "";
-  delete box.dataset.day;
-  document.querySelectorAll(".cal-cell.picked").forEach(c => c.classList.remove("picked"));
-}
-
-/* One day's report, right under the month: what was made, what went right and
-   what went wrong, and per soort som — the same reading the child gets on the
-   report card, kept for every day that was practised. */
+/* One day as the rapport tells it: everything that was done, what went right
+   and what went wrong, and — for the parent — the tools that belong to it.
+   Writes into the rapport's day region; today with a live opdracht is drawn by
+   renderResult() instead, because only that has the live questions. */
 function showDay(ds) {
-  const box = $("cal-detail");
-  if (box.dataset.day === ds) return hideDay();      // tapping it again closes it
+  const box = $("report-day");
+  reportDay = ds;
   const rec = data.days[ds];
   const [y, m, d] = ds.split("-").map(Number);
   const head = `${d} ${t("months")[m - 1]}`;
-
-  document.querySelectorAll(".cal-cell.picked").forEach(c => c.classList.remove("picked"));
-  const cells = [...document.querySelectorAll("#cal-grid .cal-cell")];
-  if (cells[d - 1]) cells[d - 1].classList.add("picked");
 
   const mark = (data.marks || {})[ds];
 
@@ -2094,7 +2170,7 @@ function showDay(ds) {
     const cls  = { o: "ok", f: "fix", e: "exp", n: "no", t: "todo" };
     const tip  = { o: "tile_done", f: "tile_fixed", e: "tile_explained",
                    n: "tile_wrong", t: "tile_todo" };
-    const canOpen = Store.isParent() && !!dayRowsSource(ds, rec);
+  const canOpen = Store.isParent() && !!dayRowsSource(ds, rec);
     const grids = rec.tiles.map((run, ri) => {
       const tiles = run.split("").map((ch, i) => {
         const { key, hinted } = tileState(ch);
@@ -2147,25 +2223,11 @@ function showDay(ds) {
        ${cats ? `<div class="day-cats">${cats}</div>` : ""}`;
   }
 
-  const strips = rec ? sprintStripsHTML(ds) : "";
-  if (strips) body += `<div class="sprint-strip">${strips}</div>`;
-
-  // a note the parent left stands above whatever the app worked out — but not
-  // twice, so when the editor is open the note is only in the box you type in
-  if (mark && mark.note && !Store.isParent()) {
-    body += `<p class="day-note">📝 ${esc(mark.note)}</p>`;
-  }
-  if (Store.isParent()) body += dayEditorHTML(ds, mark);
-
-  box.innerHTML = body;
+  box.innerHTML = body + dayExtrasHTML(ds);
   box.dataset.day = ds;
   box.classList.remove("hidden");
-  if (Store.isParent()) {
-    wireDayEditor(ds);
-    wireRateButtons(box);
-    box.querySelectorAll(".result-tile[data-open]").forEach(tile =>
-      tile.addEventListener("click", () => openSomByKey(box, tile.dataset.open)));
-  }
+  wireDayExtras(ds, box);
+  renderReportHead();
 }
 
 function esc(s) {
@@ -2194,7 +2256,7 @@ function dayEditorHTML(ds, mark) {
 }
 
 function wireDayEditor(ds) {
-  const box = $("cal-detail");
+  const box = $("report-day");
   let colour = ((data.marks || {})[ds] || {}).c || "";
   box.querySelectorAll(".mark-btn").forEach(b => {
     b.addEventListener("click", () => {
@@ -2217,7 +2279,7 @@ async function saveDayMark(ds, colour, note) {
     const fresh = await Cloud.setDayMark(u, p, ds, colour || null, note || null);
     data = fresh || data;
     Store.saveLocal(data);
-    renderCalendar();                       // the day takes its new colour
+    openReportAt(ds);                       // the day takes its new colour
     const ok = $("day-saved");
     if (ok) { ok.classList.remove("hidden"); setTimeout(() => ok.classList.add("hidden"), 1600); }
   } catch (e) {
@@ -2227,11 +2289,12 @@ async function saveDayMark(ds, colour, note) {
   }
 }
 
-/* ---------- stats ---------- */
+/* ---------- the overview, now a disclosure inside the rapport ---------- */
 function renderStats() {
-  let total = 0, correct = 0;
+  const box = $("stats-body");
+  if (!box) return;
+  let total = 0, correct = 0, daysPracticed = 0;
   const cats = {};
-  let daysPracticed = 0;
   for (const ds in data.days) {
     const day = data.days[ds];
     if (day.solved > 0) daysPracticed++;
@@ -2239,34 +2302,26 @@ function renderStats() {
     correct += day.firstCorrect;
     for (const c in day.cats) {
       const agg = cats[c] || { n: 0, c: 0 };
-      agg.n += day.cats[c].n;
-      agg.c += day.cats[c].c;
+      agg.n += day.cats[c].n; agg.c += day.cats[c].c;
       cats[c] = agg;
     }
   }
-  $("stat-total").textContent = total;
-  $("stat-acc").textContent = total ? Math.round((correct / total) * 100) + "%" : "—";
-  $("stat-days").textContent = daysPracticed;
-
-  const box = $("cat-bars");
-  box.innerHTML = "";
-  const order = [...CATS, "verrassing"];
-  order.forEach(cat => {
+  const bars = [...CATS, "verrassing", "klokkijken"].map(cat => {
     const agg = cats[cat];
-    if (!agg || !agg.n) return;
+    if (!agg || !agg.n) return "";
     const pct = Math.round((agg.c / agg.n) * 100);
     const cls = pct >= 80 ? "" : (pct >= 60 ? "mid" : "low");
-    // the level is one number for all the sommen together; it belongs in the
-    // line under this list, not beside every soort
-    const row = document.createElement("div");
-    row.className = "cat-bar-row";
-    row.innerHTML =
-      `<div class="cat-bar-label"><span>${t("cats")[cat]}</span><b>${pct}% · ${agg.c}/${agg.n}</b></div>
-       <div class="cat-bar-track"><div class="cat-bar-fill ${cls}" style="width:${pct}%"></div></div>`;
-    box.appendChild(row);
-  });
-
-  renderTafels();
+    return `<div class="cat-bar-row">
+              <div class="cat-bar-label"><span>${esc(t("cats")[cat] || cat)}</span><b>${pct}% · ${agg.c}/${agg.n}</b></div>
+              <div class="cat-bar-track"><div class="cat-bar-fill ${cls}" style="width:${pct}%"></div></div>
+            </div>`;
+  }).join("");
+  box.innerHTML =
+    `<div class="stat-grid">
+       <div class="stat"><b>${total}</b><span>${esc(t("total_solved"))}</span></div>
+       <div class="stat"><b>${total ? Math.round((correct / total) * 100) + "%" : "—"}</b><span>${esc(t("accuracy"))}</span></div>
+       <div class="stat"><b>${daysPracticed}</b><span>${esc(t("done_days"))}</span></div>
+     </div>${bars}`;
 }
 
 /* ---------- the tafels, as the child actually has them ----------
@@ -2332,24 +2387,9 @@ function tafelWeakHTML() {
     : { text: t("tafel_all_ok"), good: true };
 }
 
-function renderTafels() {
-  const box = $("tafel-grid");
-  if (!box) return;
-  box.innerHTML = tafelGridHTML();
-  const sc = tafelScore();
-  $("tafel-score").textContent = t("tafel_score")
-    .replace("{k}", sc.known).replace("{t}", sc.total);
-  const weak = tafelWeakHTML();
-  const line = $("tafel-weak");
-  line.textContent = weak.text;
-  line.classList.toggle("good", weak.good);
-}
 
-/* ---------- magic door (login) ---------- */
+/* ---------- login ---------- */
 function resetDoor() {
-  $("door-scene").classList.remove("open", "denied");
-  $("door-lock").classList.remove("unlocking", "deny");
-  $("sparkles").innerHTML = "";
   $("login-pass").value = "";
   $("login-error").classList.add("hidden");
   renderLoginFields();
@@ -2365,39 +2405,21 @@ function renderLoginFields() {
   if (!known) $("login-user").value = "";
 }
 
-function spawnSparkles() {
-  const box = $("sparkles");
-  box.innerHTML = "";
-  const colors = ["#fff3b0", "#ffd451", "#ffffff", "#ffe89a", "#ffbf47"];
-  for (let i = 0; i < 20; i++) {
-    const s = document.createElement("div");
-    s.className = "spark";
-    const ang = Math.random() * Math.PI * 2;
-    const dist = 55 + Math.random() * 80;
-    s.style.setProperty("--dx", Math.cos(ang) * dist + "px");
-    s.style.setProperty("--dy", Math.sin(ang) * dist + "px");
-    s.style.background = colors[i % colors.length];
-    s.style.animationDelay = Math.random() * 0.15 + "s";
-    box.appendChild(s);
-  }
-}
-
+/* The password was right: say so for a beat, then go. The 1.75 seconds of
+   door animation that used to sit here bought nothing — the child has already
+   told us they know the password. */
 function openDoor(done) {
-  const scene = $("door-scene"), lock = $("door-lock");
   $("btn-login").disabled = true;
-  lock.classList.add("unlocking");
-  setTimeout(() => { scene.classList.add("open"); spawnSparkles(); }, 450);
-  setTimeout(() => { $("btn-login").disabled = false; done(); }, 1750);
+  setTimeout(() => { $("btn-login").disabled = false; done(); }, 180);
 }
 
 function denyDoor(msgKey) {
-  const scene = $("door-scene"), lock = $("door-lock");
   const err = $("login-error");
   err.textContent = t(msgKey || "login_err");
   err.classList.remove("hidden");
-  scene.classList.add("denied");
-  lock.classList.add("deny");
-  setTimeout(() => { scene.classList.remove("denied"); lock.classList.remove("deny"); }, 550);
+  const wrap = document.querySelector(".login-wrap");
+  wrap.classList.add("denied");
+  setTimeout(() => wrap.classList.remove("denied"), 420);
 }
 
 async function tryLogin() {
@@ -2502,8 +2524,6 @@ document.addEventListener("DOMContentLoaded", () => {
   $("sprint-pause").addEventListener("click", pauseSprint);
   $("sprint-resume").addEventListener("click", resumeSprint);
   $("btn-watch").addEventListener("click", () => openMirror());
-  $("btn-calendar").addEventListener("click", () => { calMonth = new Date(); renderCalendar(); show("screen-calendar"); });
-  $("btn-stats").addEventListener("click", () => { renderStats(); show("screen-stats"); });
   $("btn-logout-top").addEventListener("click", () => {
     // walking out mid-task throws the answers away, so ask first
     if (session && (isOn("screen-task") || isOn("screen-pause")) && !confirm(t("quit_confirm"))) return;
@@ -2526,16 +2546,11 @@ document.addEventListener("DOMContentLoaded", () => {
   $("answers").addEventListener("pointermove", () => $("answers").classList.remove("fresh"));
 
   // result
-  $("btn-retry").addEventListener("click", startRetry);
   $("btn-report").addEventListener("click", openReport);
+  $("report-back").addEventListener("click", goHome);
   $("btn-gotit").addEventListener("click", backToResult);
   $("btn-hint").addEventListener("click", toggleHint);
-  $("btn-sommen").addEventListener("click", () => { renderSommen(); show("screen-sommen"); });
-  $("sommen-back").addEventListener("click", goHome);
 
-  // calendar nav
-  $("cal-prev").addEventListener("click", () => { calMonth.setMonth(calMonth.getMonth() - 1); renderCalendar(); });
-  $("cal-next").addEventListener("click", () => { calMonth.setMonth(calMonth.getMonth() + 1); renderCalendar(); });
 
   document.addEventListener("visibilitychange", () => {
     // leaving the screen mid-task: bank it so the next device gets the same som
@@ -2567,7 +2582,5 @@ async function refreshFromCloud() {
   if (!merged) return;
   data = merged;
   if (isOn("screen-home")) renderHome();
-  else if (isOn("screen-calendar")) renderCalendar();
-  else if (isOn("screen-stats")) renderStats();
-  else if (isOn("screen-sommen")) renderSommen();
+  else if (isOn("screen-result")) openReportAt(reportDay);
 }
