@@ -611,6 +611,48 @@ const TEMPLATES = [
      Soms kaal, want een som zonder verhaaltje is een ander soort werk: er valt
      niets te begrijpen, alleen netjes op volgorde rekenen. */
   {
+    /* A story with three numbers and two steps in it, told the way the later
+       werkbladen tell them: a sentence of setting, a sentence of change, and
+       the question at the end. Deliberately wordier than the school's own —
+       the reading is half the som. */
+    id: "twee-schoolreis", cat: "tweestap", school: true,
+    objects: [OBJ.koekjes, OBJ.appels, OBJ.snoepjes],
+    variants: [
+      { nl: "Groep 5 gaat op schoolreis met {a} kinderen en {b} begeleiders. Onderweg stapt bij de volgende halte nog een groep van {c} kinderen in. Hoeveel personen zitten er dan in de bus?",
+        en: "Groep 5 goes on a school trip with {a} children and {b} adults. At the next stop another group of {c} children gets on. How many people are in the bus then?",
+        tr: "5. sınıf gezisine {a} çocuk ve {b} görevli gidiyor. Sonraki durakta {c} çocukluk bir grup daha biniyor. O zaman otobüste kaç kişi olur?" },
+      { nl: "De conciërge zet {a} stoelen klaar in de aula en haalt er daarna {b} weg omdat ze kapot zijn. Vlak voor de voorstelling zet hij er nog {c} bij. Hoeveel stoelen staan er dan?",
+        en: "The caretaker puts out {a} chairs in the hall, then takes {b} away because they are broken. Just before the show he adds {c} more. How many chairs are there then?",
+        tr: "Hademe salona {a} sandalye diziyor, sonra kırık oldukları için {b} tanesini kaldırıyor. Gösteriden hemen önce {c} tane daha koyuyor. O zaman kaç sandalye olur?" }
+    ],
+    gen(level, v) {
+      const a = lvRange(level, 60, 240, 1.5), b = ri(4, 18), c = lvRange(level, 15, 60, 1.4);
+      const ans = v === 1 ? a - b + c : a + b + c;
+      return { vars: { a, b, c }, answer: ans,
+               wrongs: [a + b - c, ans + c, ans - c, a + c] };
+    }
+  },
+  {
+    /* Voorraad, bestelling, per doos: the warehouse words, and a multiply
+       that has to happen before the add. */
+    id: "twee-voorraad-bestelling", cat: "tweestap", school: true,
+    objects: [OBJ.boeken, OBJ.balpennen, OBJ.gummen],
+    variants: [
+      { nl: "In het magazijn liggen nog {a} {obj}. De leverancier brengt {b} dozen met elk {c} {obj}. Hoeveel {obj} liggen er dan in het magazijn?",
+        en: "There are {a} {obj} left in the warehouse. The supplier brings {b} boxes of {c} {obj} each. How many {obj} are in the warehouse then?",
+        tr: "Depoda {a} {obj} kaldı. Tedarikçi her birinde {c} {obj} olan {b} kutu getiriyor. Depoda kaç {obj} olur?" },
+      { nl: "De kantine bestelt {b} kratten met {c} flesjes per krat. Er stonden al {a} flesjes in de koeling. Hoeveel flesjes heeft de kantine dan in totaal?",
+        en: "The canteen orders {b} crates of {c} bottles each. There were already {a} bottles in the fridge. How many bottles does the canteen have in total?",
+        tr: "Kantin her birinde {c} şişe olan {b} kasa sipariş ediyor. Dolapta zaten {a} şişe vardı. Kantinde toplam kaç şişe olur?" }
+    ],
+    gen(level) {
+      const a = lvRange(level, 25, 140, 1.5), b = ri(3, 9), c = pickArr([6, 8, 10, 12, 15, 20, 24]);
+      const ans = a + b * c;
+      return { vars: { a, b, c }, answer: ans,
+               wrongs: [a + b + c, ans - c, ans + c, a * b + c] };
+    }
+  },
+  {
     id: "kaal-ketting", cat: "tweestap",
     variants: [
       { nl: "Hoeveel is {a} + {b} + {c} − {d}?",
@@ -880,6 +922,112 @@ const TEMPLATES = [
       const wrongs = [ans + 1, ans - 1, ans + 0.5].map(fmt);
       return { vars: { a: a.toFixed(2).replace(".", ","), b: b.toFixed(2).replace(".", ","), c: c.toFixed(2).replace(".", ",") },
         textCorrect: fmt(ans), textWrongs: wrongs };
+    }
+  },
+  {
+    /* 10,25 euro, precies uitbetaald — welke munten? The werkblad draws the
+       coins and has the child write how many of each; here the four sensible
+       ways to pay are offered and only one of them comes out exactly. */
+    id: "verr-munten", cat: "verrassing", school: true,
+    variants: [
+      { nl: "Tante Noor geeft {name} € {bedrag} voor het rapport. Ze wil het gepast betalen. Welke munten geeft ze?",
+        en: "Aunt Noor gives {name} € {bedrag} for the report card. She wants to pay it exactly. Which coins does she give?",
+        tr: "Noor teyze karne için {name_e} € {bedrag} veriyor. Tam ödemek istiyor. Hangi paraları verir?" },
+      { nl: "{name} betaalt bij de kiosk € {bedrag} gepast. {Hij} heeft alleen munten. Welke munten legt {hij} neer?",
+        en: "{name} pays € {bedrag} at the kiosk, exactly. {He} only has coins. Which coins does {he} put down?",
+        tr: "{name} büfede tam olarak € {bedrag} ödüyor. Yanında sadece bozuk para var. Hangi paraları koyar?" }
+    ],
+    gen(level) {
+      // an amount in whole euros and a few cents, payable from 2 / 1 / 0,50 / 0,20 / 0,10 / 0,05
+      const euro = lvRange(level, 3, 14, 1.3);
+      const cents = pickArr([5, 10, 15, 20, 25, 45, 50, 75, 95]);
+      const say = (n) => n.toFixed(2).replace(".", ",");
+      const parts = (e, c) => {
+        const out = [];
+        let rest = e;
+        const twos = Math.floor(rest / 2); if (twos) out.push(twos + "× € 2"); rest -= twos * 2;
+        if (rest) out.push(rest + "× € 1");
+        let cc = c;
+        for (const [v, label] of [[50, "50 cent"], [20, "20 cent"], [10, "10 cent"], [5, "5 cent"]]) {
+          const k = Math.floor(cc / v); if (k) out.push(k + "× " + label); cc -= k * v;
+        }
+        return out.join(" + ");
+      };
+      const right = parts(euro, cents);
+      // every wrong way to pay is a real slip: a coin too many, a coin too
+      // few, a euro too many. Drawn from a pool so there are always three.
+      const pool = [cents + 10, cents + 5, cents - 5, cents - 10, cents + 20]
+        .filter(c => c >= 5 && c < 100).map(c => parts(euro, c))
+        .concat([parts(euro + 1, cents), parts(Math.max(1, euro - 1), cents)]);
+      const wrongs = [];
+      for (const w of pool) {
+        if (wrongs.length >= 3) break;
+        if (w !== right && !wrongs.includes(w)) wrongs.push(w);
+      }
+      return { vars: { bedrag: say(euro + cents / 100) }, textCorrect: right, textWrongs: wrongs };
+    }
+  },
+  {
+    /* "Wie raadt het dichtst bij 362?" — the verschil is the whole question,
+       and the four guesses are deliberately close on both sides. */
+    id: "verr-dichtstbij", cat: "verrassing", school: true,
+    variants: [
+      { nl: "Vier kinderen raden hoeveel geld er in de collectebus zit. Er zit € {a} in. Wie zit er het dichtst bij?",
+        en: "Four children guess how much money is in the collection tin. There is € {a} in it. Who is closest?",
+        tr: "Dört çocuk kumbarada ne kadar para olduğunu tahmin ediyor. İçinde € {a} var. Kim en yakın?" },
+      { nl: "In de pot zitten {a} knikkers. Vier kinderen schatten het aantal. Wie schat het dichtst bij?",
+        en: "There are {a} marbles in the jar. Four children guess. Who guesses closest?",
+        tr: "Kavanozda {a} misket var. Dört çocuk tahmin ediyor. Kimin tahmini en yakın?" }
+    ],
+    gen(level) {
+      const a = lvRange(level, 120, 480, 1.6);
+      const offs = [1, 2, 3, 4, 6, 7].sort(() => Math.random() - 0.5);
+      const near = offs[0];
+      const guesses = [a + (Math.random() < 0.5 ? -near : near),
+                       a - offs[1] - near - 1, a + offs[2] + near + 2, a + offs[3] + near + 5];
+      const names = NAMES.slice().sort(() => Math.random() - 0.5).slice(0, 4).map(n => n.n);
+      const label = (i) => `${names[i]}: ${guesses[i]}`;
+      return { vars: { a }, textCorrect: label(0), textWrongs: [label(1), label(2), label(3)] };
+    }
+  },
+  {
+    /* 944 + 27, 354 → 400: the two carries the werkblad leans on, now with
+       three-digit numbers that cross a hundred. */
+    id: "opt-over-honderd", cat: "optellen", school: true,
+    variants: [
+      { nl: "In de parkeergarage staan {a} auto's. Het laatste half uur komen er {b} auto's bij. Hoeveel auto's staan er dan?",
+        en: "There are {a} cars in the car park. In the last half hour {b} more arrive. How many cars are there then?",
+        tr: "Otoparkta {a} araba var. Son yarım saatte {b} araba daha geliyor. Toplam kaç araba olur?" },
+      { nl: "Het museum ontving vanmorgen {a} bezoekers. 's Middags komen er nog {b} binnen. Hoeveel bezoekers zijn het er samen?",
+        en: "The museum had {a} visitors this morning. In the afternoon {b} more come in. How many visitors altogether?",
+        tr: "Müze bu sabah {a} ziyaretçi ağırladı. Öğleden sonra {b} kişi daha geliyor. Toplam kaç ziyaretçi?" }
+    ],
+    gen(level) {
+      // the units carry AND the tens roll over a hundred
+      const base = lvRange(level, 3, 9, 1) * 100;
+      const a = base + ri(4, 9) * 10 + ri(4, 9);
+      const b = ri(1, 4) * 10 + (10 - (a % 10) + ri(0, 4));
+      return { vars: { a, b }, answer: a + b,
+               wrongs: [a + b - 100, a + b + 10, a + b - 10, a + b - 1] };
+    }
+  },
+  {
+    /* 400 − 354: counting up to the round number, which is the school's own
+       favourite way of asking a subtraction. */
+    id: "aft-naar-rond", cat: "aftrekken", school: true,
+    variants: [
+      { nl: "De bakker moet op oudjaarsdag {a} oliebollen bakken. Hij heeft er nu {b}. Hoeveel oliebollen moet hij nog bakken?",
+        en: "The baker has to bake {a} doughnuts for New Year's Eve. He has {b} so far. How many more does he have to bake?",
+        tr: "Fırıncı yılbaşı için {a} lokma yapmalı. Şu an {b} tane var. Daha kaç tane yapması gerekir?" },
+      { nl: "De sponsorloop moet € {a} opbrengen. Er is al € {b} opgehaald. Hoeveel euro moet er nog bij?",
+        en: "The sponsored run has to raise € {a}. € {b} has come in already. How many euros still have to come?",
+        tr: "Koşu etkinliğinin € {a} toplaması gerekiyor. Şimdiye € {b} toplandı. Daha kaç euro lazım?" }
+    ],
+    gen(level) {
+      const a = lvRange(level, 2, 9, 1) * 100;             // the round target
+      const b = a - (ri(1, 9) * 10 + ri(1, 9));            // just short of it
+      return { vars: { a, b }, answer: a - b,
+               wrongs: [a - b + 10, a - b - 10, a - b + 1, 100 - (a - b)] };
     }
   },
   {

@@ -140,7 +140,6 @@ function setLang(lang) {
   if (!$("screen-task").classList.contains("hidden") && session) renderQuestion();
   if (!$("screen-home").classList.contains("hidden")) renderHome();
   if (!$("screen-result").classList.contains("hidden") && session) renderResult();
-  if (!$("screen-games").classList.contains("hidden")) renderGames();
   if (!$("screen-calendar").classList.contains("hidden")) renderCalendar();
   if (!$("screen-stats").classList.contains("hidden")) renderStats();
   if (!$("screen-sommen").classList.contains("hidden")) renderSommen();
@@ -160,8 +159,73 @@ function setLang(lang) {
    day the child then works anyway is green on its own merits, and the credit
    simply rolls on to the day after. */
 function tasksOf(rec)   { return rec && rec.tiles ? rec.tiles.length : 0; }
+
+/* How many rounds of one soort were done on a day. A day from before the
+   klok round existed has no `kinds` at all: everything it holds was sommen. */
+function roundsOf(ds, kind) {
+  const rec = data.days[ds];
+  const n = tasksOf(rec);
+  if (!n) return 0;
+  const kinds = rec.kinds || [];
+  let c = 0;
+  for (let i = 0; i < n; i++) if ((kinds[i] || "sommen") === kind) c++;
+  return c;
+}
+function sommenOf(ds)   { return roundsOf(ds, "sommen"); }
+function kloksOf(ds)    { return roundsOf(ds, "klok"); }
 function sprintsOf(ds)  { return sprintRounds(ds).length; }
-function pakketsOf(ds)  { return Math.min(tasksOf(data.days[ds]), sprintsOf(ds)); }
+
+/* One pakket is one of each: the tafels, the sommen and the klok. */
+function pakketsOf(ds)  { return Math.min(sommenOf(ds), kloksOf(ds), sprintsOf(ds)); }
+
+/* ---------- what a day adds up to ----------
+
+   Every round writes its seconds under its own door, so a day can say how
+   long was actually worked rather than how long the last opdracht took. And
+   from the tiles and the tafelrondes comes the one number a parent asks for
+   first: how much of it was right, out of a hundred.
+
+   A fout put right by the child's own hand counts as good here, exactly as
+   it does everywhere the child can see — see scoreNow. */
+function addDaySecs(day, kind, secs) {
+  if (!secs) return;
+  day.secs = day.secs || {};
+  day.secs[kind] = (day.secs[kind] || 0) + secs;
+}
+
+function daySecs(ds) {
+  const rec = data.days[ds];
+  if (!rec) return 0;
+  if (rec.secs) return Object.values(rec.secs).reduce((a, b) => a + b, 0);
+  // a day from before the clocks were kept per door: the opdrachten only
+  return (rec.times || []).reduce((a, b) => a + b, 0);
+}
+
+/* Right and asked, counted over everything a day holds. */
+function dayTally(ds) {
+  const rec = data.days[ds] || {};
+  const per = { tafels: { c: 0, n: 0 }, sommen: { c: 0, n: 0 }, klok: { c: 0, n: 0 } };
+  (rec.tiles || []).forEach((run, i) => {
+    const kind = (rec.kinds || [])[i] || "sommen";
+    for (const ch of run) {
+      const key = ch.toLowerCase();
+      if (key === "t") continue;                 // never reached: not asked
+      per[kind].n++;
+      if (key === "o" || key === "f") per[kind].c++;
+    }
+  });
+  sprintRounds(ds).forEach(r => { per.tafels.n += r.n || 0; per.tafels.c += r.right || 0; });
+  const n = per.tafels.n + per.sommen.n + per.klok.n;
+  const c = per.tafels.c + per.sommen.c + per.klok.c;
+  return { per, n, c, score: n ? Math.round(100 * c / n) : null };
+}
+
+/* The three doors of a day, in the order the home screen shows them. */
+const DOORS = [
+  { key: "tafels", count: ds => sprintsOf(ds) },
+  { key: "sommen", count: ds => sommenOf(ds) },
+  { key: "klok",   count: ds => kloksOf(ds) }
+];
 
 function shiftDay(ds, n) {
   const [y, m, d] = ds.split("-").map(Number);
@@ -194,30 +258,6 @@ function dayPlan() {
 
 function dayDone(plan, ds) { return plan[ds] === "done" || plan[ds] === "bonus"; }
 
-function currentStreak() {
-  const plan = dayPlan();
-  let streak = 0;
-  let ds = todayStr();
-  if (!dayDone(plan, ds)) ds = shiftDay(ds, -1);     // today counts once it is done
-  while (dayDone(plan, ds)) { streak++; ds = shiftDay(ds, -1); }
-  return streak;
-}
-
-function bestStreak() {
-  const plan = dayPlan();
-  const dates = Object.keys(plan).filter(k => dayDone(plan, k)).sort();
-  let best = 0, run = 0, prev = null;
-  for (const ds of dates) {
-    if (prev) {
-      const diff = (new Date(ds) - new Date(prev)) / 86400000;
-      run = diff === 1 ? run + 1 : 1;
-    } else run = 1;
-    best = Math.max(best, run);
-    prev = ds;
-  }
-  return best;
-}
-
 /* ---------- home ----------
    Two different homes from the same markup: the child only ever sees the one
    button that matters, the parent gets the watching tools instead. */
@@ -241,71 +281,47 @@ function renderHome() {
     $("continue-at").textContent = pastEnd ? "" : (open.idx + 1) + "/" + open.queue.length;
   }
 
-  // the two halves of the day, and how many times each has been done
-  const nTasks = tasksOf(day), nSprints = sprintsOf(todayStr());
-  const pakkets = Math.min(nTasks, nSprints);
-  const badge = n => n === 0 ? "" : (n === 1 ? "✓" : `✓ ×${n}`);
-  $("start-done").textContent = badge(nTasks);
-  $("sprint-done").textContent = badge(nSprints);
-  $("btn-start").classList.toggle("done", nTasks > 0);
-  $("btn-sprint").classList.toggle("done", nSprints > 0);
+  // the three doors of the day, and how many times each has been through
+  const ds = todayStr();
+  const n = { tafels: sprintsOf(ds), sommen: sommenOf(ds), klok: kloksOf(ds) };
+  const pakkets = Math.min(n.tafels, n.sommen, n.klok);
+  const badge = k => k === 0 ? "" : (k === 1 ? "✓" : `✓ ×${k}`);
+  $("sprint-done").textContent = badge(n.tafels);
+  $("start-done").textContent = badge(n.sommen);
+  $("klok-done").textContent = badge(n.klok);
+  $("btn-sprint").classList.toggle("done", n.tafels > 0);
+  $("btn-start").classList.toggle("done", n.sommen > 0);
+  $("btn-klok").classList.toggle("done", n.klok > 0);
 
+  const todo = DOORS.filter(d => n[d.key] === 0);
   let status = t("today_todo");
   if (open) status = pastEnd
     ? t("finish_rest").replace("{n}", left)
     : t("today_resume").replace("{n}", open.idx + 1).replace("{t}", open.queue.length);
   else if (pakkets >= 2) status = t("today_extra").replace("{n}", pakkets - 1);
   else if (pakkets === 1) status = t("today_done");
-  else if (nTasks || nSprints) status = t(nTasks ? "today_half_sommen" : "today_half_tafels");
+  else if (todo.length < DOORS.length)
+    status = t("today_left").replace("{w}", todo.map(d => t("home_" + d.key)).join(" + "));
   if (parent) {
     status = liveBusy ? Store.watches().toUpperCase() + " " + t("live_busy")
                       : Store.watches().toUpperCase() + " " + t("live_idle");
   }
   $("home-status").textContent = status;
 
-  // the child practises; the parent watches and reviews
+  // the child practises; the parent watches and reviews — but the kalender
+  // belongs to both of them, so the child can see their own week too
   $("btn-start").classList.toggle("hidden", parent || !!open);
-  $("btn-sprint").classList.toggle("hidden", parent || sprintOff);
+  $("btn-klok").classList.toggle("hidden", parent || !!open);
+  $("btn-sprint").classList.toggle("hidden", parent || sprintOff || !!open);
   $("btn-watch").classList.toggle("hidden", !parent);
-  $("nav-row").classList.toggle("hidden", !parent);
+  $("nav-row").classList.toggle("hidden", false);
+  $("btn-stats").classList.toggle("hidden", !parent);
+  $("btn-sommen").classList.toggle("hidden", !parent);
   // the day's report card stays reachable — the fouten to verbeter and the
   // door to the spelletjes live there
   $("btn-report").classList.toggle("hidden",
     parent || !!open || !(data.report && data.report.date === todayStr()));
 
-  renderLadder(parent);
-  // spelen hoort bij het rapport van een afgeronde opdracht, niet hier
-}
-
-/* Where the child stands, all of it in one block under the start button:
-   five vakjes for the five foutloze dagen a niveau costs, then the niveau
-   itself and the reeks, then in words what the vakjes are for.
-
-   It used to be scattered — the reeks on its own line at the top, the niveau
-   as a badge in the bar that could only be read by hovering, which on a
-   tablet means never. One place, three lines, nothing to hunt for. */
-function renderLadder(parent) {
-  const box = $("streak-ticks");
-  if (parent) { box.classList.add("hidden"); return; }
-  const st = Levels.overall(data);
-  const maxed = st.level >= Levels.MAX;
-  const done = Math.min(st.streak, Levels.DAYS_NEEDED);
-  const ticks = Array.from({ length: Levels.DAYS_NEEDED }, (_, i) =>
-    `<span class="tick${i < done ? " on" : ""}${i === done - 1 ? " fresh" : ""}">✓</span>`).join("");
-  const goal = maxed
-    ? t("level_max")
-    : (st.toGo === 1 ? t("level_togo_one") : t("level_togo").replace("{n}", st.toGo)) +
-      ` → ${t("level")} ${st.level + 1}`;
-  const days = currentStreak();
-
-  box.innerHTML =
-    `${maxed ? "" : `<div class="ticks">${ticks}</div>`}
-     <div class="standing">
-       <span class="chip lv${maxed ? " maxed" : ""}"><i>⭐</i><b>${t("level")} ${st.level}</b></span>
-       <span class="chip reeks"><i>🔥</i><b>${days}</b><em>${t("streak_days")}</em></span>
-     </div>
-     <p class="ladder-goal">${goal}</p>`;
-  box.classList.remove("hidden");
 }
 
 /* ---------- task flow ---------- */
@@ -374,7 +390,7 @@ function startSprint(then) {
   let qs = Sprint.build(data, today);
   if (qs.length < Sprint.N) qs = Sprint.build(data, []);
   if (!qs.length) { sprintOff = true; return then(); }
-  sprint = { qs, i: 0, tiles: "", facts: [], then, tick: null, locked: true };
+  sprint = { qs, i: 0, tiles: "", facts: [], then, tick: null, locked: true, t0: Date.now() };
   Live.startHeartbeat();
   // a beat to look up before the first clock starts
   $("sprint-progress").textContent = `1 / ${qs.length}`;
@@ -586,9 +602,11 @@ function finishSprint() {
   const ds = todayStr();
   const right = sprint.tiles.split("").filter(c => c === "o").length;
   const day = data.days[ds] || { solved: 0, firstCorrect: 0, done100: false, cats: {} };
+  const secs = Math.max(0, Math.round((Date.now() - (sprint.t0 || Date.now())) / 1000));
   day.sprints = sprintRounds(ds).slice();
-  day.sprints.push({ n: sprint.qs.length, right, tiles: sprint.tiles, facts: sprint.facts });
+  day.sprints.push({ n: sprint.qs.length, right, tiles: sprint.tiles, facts: sprint.facts, secs });
   delete day.sprint; delete day.sprintEnd;        // the two old slots, folded in
+  addDaySecs(day, "tafels", secs);
   data.days[ds] = day;
   Store.save(data);
 
@@ -625,12 +643,18 @@ function sprintStripsHTML(ds) {
     sprintStripHTML(sp, rounds.length > 1 ? `${t("sprint_title")} ${i + 1}` : t("sprint_title"))).join("");
 }
 
-function startTask() {
-  const built = Engine.buildTask(TASK_N, data);
+/* The day has three doors, and two of them come through here: ten
+   redactiesommen, or ten clock faces. Same runner, same report card, same
+   second chance — only the bank the ten are drawn from differs. */
+function startTask(kind) {
+  kind = kind === "klok" ? "klok" : "sommen";
+  const built = kind === "klok" ? Engine.buildFaceTask(TASK_N, data)
+                                : Engine.buildTask(TASK_N, data);
   session = {
     questions: built,
     pool: [],
     idx: 0,
+    kind,
     firstPass: true,
     round: 1,                   // 1 = eerste poging, 2+ = verbeterrondes
     queue: null,
@@ -687,6 +711,7 @@ function snapshotActive() {
   return {
     at: Date.now(),
     date: todayStr(),
+    kind: session.kind || "sommen",
     idx: session.idx,
     queue: session.queue,
     firstPass: session.firstPass,
@@ -697,8 +722,6 @@ function snapshotActive() {
     banked: !!session.banked,          // whether the score has already been booked
     hintsUsed: session.hintsUsed || 0,
     score: session.score || null,
-    levelUp: session.levelUp || null,
-    rewardMin: session.rewardMin || 0,
     questions: session.questions.map(snapQ),
     pool: (session.pool || []).map(snapQ)   // the sommen still held in reserve
   };
@@ -786,6 +809,7 @@ function resumeActive() {
   session = {
     questions: a.questions,
     pool: a.pool || [],
+    kind: a.kind || "sommen",
     queue: a.queue,
     idx: pastEnd ? a.queue.length : Math.min(a.idx, a.queue.length - 1),
     firstPass: a.firstPass,
@@ -794,8 +818,6 @@ function resumeActive() {
     banked: !!a.banked,
     hintsUsed: a.hintsUsed || 0,
     score: a.score,
-    levelUp: a.levelUp || null,
-    rewardMin: a.rewardMin || 0,
     pausedSec: null,
     t0: Date.now() - (a.elapsed || 0) * 1000                // the clock carries on
   };
@@ -843,8 +865,14 @@ function resumeTask() {
   show("screen-task");
 }
 
+function tplOf(q) { return TEMPLATES.find(tp => tp.id === q.tplId); }
+
 function renderQuestion() {
   const q = currentQ();
+  // the countdown's callback can land after the opdracht it belonged to is
+  // gone — a second tap, a back arrow, a sign-out. Nothing to draw, so go home
+  // rather than throw into an empty screen.
+  if (!q) return goHome();
   // it has been seen now, so it is asked and will never come round again — and
   // the sommen of an opdracht that is broken off before reaching them stay
   // unasked, waiting, instead of being spent
@@ -857,9 +885,18 @@ function renderQuestion() {
   $("progress-text").textContent = `${at + 1} / ${of}`;
   $("progress-bar").style.width = `${(at / of) * 100}%`;
   $("question-text").textContent = Engine.text(q, LANG);
+  // a clock question IS its dial, so it is drawn rather than described
+  const face = $("question-clock");
+  if (q.vars && q.vars._h !== undefined && tplOf(q) && tplOf(q).face) {
+    face.innerHTML = Klok.faceSVG(q.vars._h, q.vars._m);
+    face.classList.remove("hidden");
+  } else {
+    face.innerHTML = "";
+    face.classList.add("hidden");
+  }
   // a som shaped like the ones on the school's werkblad wears the school's
   // little logo, so the child knows: this one you will meet in class too
-  const tplNow = TEMPLATES.find(tp => tp.id === q.tplId);
+  const tplNow = tplOf(q);
   $("school-badge").classList.toggle("hidden", !(tplNow && tplNow.school));
   $("school-badge").title = t("school_badge");
   const box = $("answers");
@@ -974,11 +1011,9 @@ function answer(i, btn) {
     q.failed = true;
     // the day's shock absorber: this soort gets a notch easier, and the next
     // sommen come from the same soort so the footing comes back right away
-    Dial.wrong(data, q.cat);
     comfortSwap(q.cat);
   } else {
     q.solved = true;
-    Dial.right(data, q.cat);   // two right in a row wind the notch back up
   }
 
   renderTaskMarks();
@@ -1081,26 +1116,9 @@ function secondChance(i, btn) {
 function persistCorrection() {
   if (session.banked) {
     writeTiles();                  // the day's report card follows the correction
-    settleTask();                  // a fout put right can raise both niveau and time
-    maybeGrantFloor();
+    settleTask();
     writeReport();
   } else saveActive();
-}
-
-/* The floor under a hard day. Four or more fout earns no speeltijd from the
-   tiers — but a child who finished the whole opdracht AND went over every
-   fout on the report card has done the real work, and gets three minutes for
-   it. Once per opdracht, remembered in the report so it survives a reload. */
-function maybeGrantFloor() {
-  if (session.floorGiven) return;
-  const qs = session.questions;
-  if (!qs.every(finished)) return;
-  if (qs.filter(q => q.failed).length < 4) return;         // the tiers paid already
-  if (qs.some(q => q.failed && !q.fixed && !q.explained)) return;
-  if ((session.rewardMin || 0) > 0) return;    // the tiers already paid
-  session.floorGiven = true;
-  session.rewardMin = 3;
-  Reward.grantFloor(data);
 }
 
 /* One 💡 per five sommen, earned as the opdracht goes on rather than handed
@@ -1275,9 +1293,10 @@ function recordFirstPass() {
   const day = data.days[ds] || { solved: 0, firstCorrect: 0, done100: false, cats: {} };
   const nCorrect = session.questions.filter(q => q.correctFirst).length;
 
-  // time log: how long the whole opdracht took
+  // time log: how long the whole opdracht took, and under which soort
   day.timeSec = secs;
   day.times = (day.times || []).concat(secs);
+  addDaySecs(day, session.kind || "sommen", secs);
   const nSkipped = session.questions.filter(q => q.skipped).length;
   data.days[ds] = day;
   console.log(`[Oefensommen] ${ds}: ${session.questions.length} sommen in ${fmtTime(secs)} — ${nCorrect} goed (1e keer), ${nSkipped} overgeslagen`);
@@ -1331,9 +1350,12 @@ function writeTiles() {
   if (!day) return;
   day.tiles = day.tiles || [];
   day.tpls = day.tpls || [];
+  day.kinds = day.kinds || [];
   if (session.tileSlot == null) { day.tiles.push(""); session.tileSlot = day.tiles.length - 1; }
   day.tiles[session.tileSlot] = tilesOf(session.questions);
   day.tpls[session.tileSlot] = session.questions.map(q => q.tplId);
+  day.kinds[session.tileSlot] = session.kind || "sommen";
+  day.secs = day.secs || {};               // seconds worked, per soort opdracht
   day.fixed = day.tiles.join("").toLowerCase().split("").filter(c => c === "f").length;
 
   // let the older question lists go; the tiles themselves stay forever
@@ -1343,32 +1365,20 @@ function writeTiles() {
   return scoreNow(session.questions);
 }
 
-/* Everything that can only be judged once the opdracht is really done with:
-   the niveau and the speeltijd. Held back until every fout has been gone over,
-   because a fout put right counts as good — and that verdict is not in until
-   the child has had their second look. Idempotent: it only ever tops up. */
+/* The score of a whole opdracht, as the child is told it: a fout put right
+   on the second chance counts as good. Held back until every fout has been
+   gone over, because that verdict is not in until the child has had their
+   second look. Idempotent. */
 function settleTask() {
   const qs = session.questions;
   if (!qs.every(finished)) return;
   if (qs.some(q => q.failed && !q.fixed && !q.explained)) return;   // still to review
-
   const sc = scoreNow(qs);
   session.score = { correct: sc.correct, total: sc.total, first: sc.first, fixed: sc.fixed };
-
-  if (!session.levelJudged) {
-    session.levelJudged = true;
-    session.levelUp = Levels.record(data, sc);
-  }
-  const deserved = Reward.deserved(sc.correct, sc.total);
-  const given = session.rewardMin || 0;
-  if (deserved > given) {
-    session.rewardMin = deserved;
-    Reward.top(data, deserved - given);
-  }
 }
 
 function markDone100() {
-  if (session.rewarded) return;      // one opdracht earns its speeltijd once
+  if (session.rewarded) return;      // one opdracht is written down once
   session.rewarded = true;
   const ds = todayStr();
   const day = data.days[ds] || { solved: 0, firstCorrect: 0, done100: false, cats: {} };
@@ -1389,12 +1399,12 @@ function markDone100() {
 function writeReport() {
   data.report = {
     date: todayStr(),
+    kind: session.kind || "sommen",
     score: session.score || null,
     lastSec: session.lastSec != null ? session.lastSec : null,
     floor: !!session.floorGiven,
     tileSlot: session.tileSlot == null ? null : session.tileSlot,
     levelJudged: !!session.levelJudged,
-    rewardMin: session.rewardMin || 0,
     questions: session.questions.map(snapQ)
   };
   Store.save(data);
@@ -1409,13 +1419,10 @@ function openReport() {
     queue: r.questions.map((_, i) => i),
     idx: r.questions.length,
     firstPass: false,
-    banked: true, rewarded: true,          // the day is already booked and paid
-    floorGiven: !!r.floor,
+    banked: true, rewarded: true,          // the day is already counted
     tileSlot: r.tileSlot == null ? null : r.tileSlot,
-    levelJudged: !!r.levelJudged,
-    rewardMin: r.rewardMin || 0,
     score: r.score, lastSec: r.lastSec,
-    levelUp: null, rewardMin: 0
+    kind: r.kind || "sommen"
   };
   Live.startHeartbeat();
   renderResult();
@@ -1499,34 +1506,14 @@ function renderResult() {
   $("btn-retry").textContent = left ? t("finish_rest").replace("{n}", left) : "";
   $("btn-retry").classList.toggle("hidden", !left);
 
-  // de beloning: de melding alleen de ronde waarin hij verdiend is, de knop
-  // zolang er vandaag nog speeltijd over is
-  const earned = session.rewardMin || 0;
-  // a level gained is worth saying out loud
-  const ups = $("result-levelups");
-  ups.innerHTML = "";
-  if (session.levelUp) {
-    const p = document.createElement("p");
-    p.className = "levelup-line";
-    p.textContent = "⭐ " + t("level_up").replace("{n}", session.levelUp);
-    ups.appendChild(p);
-  }
 
-  const rewardEl = $("result-reward");
-  rewardEl.textContent = earned > 0 ? t("reward_earned").replace("{m}", earned) : "";
-  rewardEl.classList.toggle("hidden", earned <= 0);
-
-  // The game waits for two things: the opdracht finished, and every fout gone
-  // over — a second try, or the uitleg read. Mistakes are not a wall, they are
-  // the doorstep: look at them properly and the spelletjes open.
+  // A fout is not a wall, it is the doorstep: the answer lives behind the red
+  // vakje and nowhere else, so the child is told to go and look.
   const unreviewed = qs.filter(q => q.failed && !q.fixed && !q.explained).length;
-  const playLeftSec = Reward.remaining(data);
-  $("btn-play-result").classList.toggle("hidden", !(allDone && !unreviewed && playLeftSec > 0));
-  $("result-play-left").textContent = playLeftSec > 0 ? fmtTime(playLeftSec) : "";
 
   const hint = $("result-hint");
   if (allDone && unreviewed > 0) {
-    hint.textContent = playLeftSec > 0 ? t("fix_first") : t("fix_first_noplay");
+    hint.textContent = t("fix_first_noplay");
     hint.classList.remove("hidden");
   } else {
     hint.classList.add("hidden");
@@ -1660,6 +1647,9 @@ function somDetailHTML(tplId, q) {
   let body = "";
 
   if (shown) {
+    if (tpl.face && shown.vars && shown.vars._h !== undefined) {
+      body += `<div class="det-clock">${Klok.faceSVG(shown.vars._h, shown.vars._m, 150)}</div>`;
+    }
     if (!real) body += `<p class="det-label">${esc(t("q_sample"))}</p>
                         <p class="det-q">${esc(Engine.text(shown, LANG))}</p>`;
     body += `<div class="det-opts">` + shown.options.map((o, j) => {
@@ -1735,8 +1725,9 @@ function dayQuestionsHTML(ds, rec) {
   }
   if (!rec || !rec.tpls || !rec.tpls.length) return "";
   return rec.tpls.map((run, ri) => {
-    const head = rec.tpls.length > 1
-      ? `<p class="day-run">${t("day_run").replace("{n}", ri + 1)}</p>` : "";
+    const kind = (rec.kinds || [])[ri] || "sommen";
+    const head = `<p class="day-run">${t("door_icon")[kind]} ${esc(t("home_" + kind))}` +
+                 (rec.tpls.length > 1 ? ` · ${t("day_run").replace("{n}", ri + 1)}` : "") + `</p>`;
     return head + run.map((id, i) => {
       const tpl = TEMPLATES.find(x => x.id === id);
       const { key, hinted } = tileState(((rec.tiles || [])[ri] || "")[i] || "n");
@@ -2015,6 +2006,29 @@ function showDay(ds) {
   if (cells[d - 1]) cells[d - 1].classList.add("picked");
 
   const mark = (data.marks || {})[ds];
+
+  /* The head of every day that was worked: how long, how much of it was right,
+     and which of the three doors were opened. The same block for the child
+     and for the parent — a day is a day. */
+  const tally = dayTally(ds);
+  const secs = daySecs(ds);
+  const summary = () => {
+    if (!tally.n) return "";
+    const mins = Math.max(1, Math.round(secs / 60));
+    const doors = DOORS.filter(d => tally.per[d.key].n)
+      .map(d => `<span class="day-door"><i>${t("door_icon")[d.key]}</i>${esc(t("home_" + d.key))}
+                   <b>${tally.per[d.key].c}/${tally.per[d.key].n}</b></span>`).join("");
+    return `<div class="day-score">
+              <span class="score-ring${tally.score >= 80 ? " good" : tally.score >= 50 ? " mid" : " low"}">
+                <b>${tally.score}</b><em>/100</em></span>
+              <span class="score-side">
+                <span class="day-pill">⏱ ${t("day_minutes").replace("{n}", mins)}</span>
+                <span class="day-pill">✅ ${tally.c} / ${tally.n}</span>
+              </span>
+            </div>
+            <div class="day-doors">${doors}</div>`;
+  };
+
   let body;
   if (rec && rec.tiles && rec.tiles.length) {
     // the same report card the child saw, kept for the parent — and here the
@@ -2037,13 +2051,15 @@ function showDay(ds) {
                `<span class="num">${i + 1}</span><span class="mark">${icon[key] || "❌"}</span>` +
                (hinted ? `<span class="tile-hint">💡</span>` : "") + `</${tag}>`;
       }).join("");
-      const head = rec.tiles.length > 1
-        ? `<p class="day-run">${t("day_run").replace("{n}", ri + 1)}</p>` : "";
+      const kind = (rec.kinds || [])[ri] || "sommen";
+      const head = `<p class="day-run">${t("door_icon")[kind]} ${esc(t("home_" + kind))}` +
+                   (rec.tiles.length > 1 ? ` · ${t("day_run").replace("{n}", ri + 1)}` : "") + `</p>`;
       return head + `<div class="result-grid">${tiles}</div>`;
     }).join("");
     const fixed = rec.fixed || 0;
     body =
       `<div class="day-head"><b>${head}</b>${time}</div>
+       ${summary()}
        ${grids}
        <div class="day-counts">
          <span class="day-pill ok">✅ ${rec.firstCorrect} ${t("day_first_try")}</span>
@@ -2055,10 +2071,12 @@ function showDay(ds) {
     if (qs) body += `<div class="day-sommen"><h3>${esc(t("sommen"))}</h3>
                      <p class="lessons-sub">${esc(t("rate_sub"))}</p>${qs}</div>`;
     else if (Store.isParent()) body += `<p class="day-nosom">${esc(t("day_no_sommen"))}</p>`;
-  } else if (!rec || !rec.solved) {
+  } else if (!rec || (!rec.solved && !tally.n)) {
     const bonus = dayPlan()[ds] === "bonus";
     body = `<div class="day-head"><b>${head}</b></div>
             <p class="day-none">${t(bonus ? "day_bonus" : "day_nothing")}</p>`;
+  } else if (!rec.solved) {
+    body = `<div class="day-head"><b>${head}</b></div>${summary()}`;
   } else {                        // a day from before the report cards were kept
     const wrong = rec.solved - rec.firstCorrect;
     const time = rec.timeSec ? `<span class="day-pill">⏱ ${fmtTime(rec.timeSec)}</span>` : "";
@@ -2175,8 +2193,6 @@ function renderStats() {
   $("stat-total").textContent = total;
   $("stat-acc").textContent = total ? Math.round((correct / total) * 100) + "%" : "—";
   $("stat-days").textContent = daysPracticed;
-  $("stat-best").textContent = bestStreak();
-  $("stat-level").textContent = Levels.overall(data).level;
 
   const box = $("cat-bars");
   box.innerHTML = "";
@@ -2377,96 +2393,9 @@ function openMirror(state, age) {
   show("screen-mirror");
 }
 
-/* ---------- speeltijd ----------
-   Het spelletje draait in een eigen pagina in de kaart (games/<id>/index.html),
-   dus het kan nooit bij de sommen of de voortgang. De klok hoort hier, niet in
-   het spel: de tijd loopt door of het nu goed of slecht gaat, en hij wordt elke
-   tien seconden weggeschreven — een dichtgeklapte tablet levert geen gratis
-   minuten op. */
-let playInt = null, playT0 = 0, playLeft = 0, playing = null;
-
-function openGames() {
-  renderGames();
-  show("screen-games");
-  Live.push("games");                 // the parent sees the playing too
-  Live.startHeartbeat();
-}
-
-function renderGames() {
-  const left = Reward.remaining(data);
-  $("games-left").textContent = "🎮 " + fmtTime(left);
-  $("games-sub").textContent = left > 0 ? t("games_pick") : t("games_none");
-
-  const grid = $("games-grid");
-  grid.innerHTML = "";
-  GAMES.forEach(g => {
-    const tile = document.createElement("button");
-    tile.className = "game-tile";
-    tile.disabled = left <= 0;
-    tile.innerHTML = `<span class="emoji">${g.emoji}</span><span class="name">${t(g.key)}</span>`;
-    tile.addEventListener("click", () => startPlay(g));
-    grid.appendChild(tile);
-  });
-}
-
-function startPlay(game) {
-  playLeft = Reward.remaining(data);
-  if (playLeft <= 0) return;
-  playT0 = Date.now();
-  $("play-title").textContent = game.emoji + " " + t(game.key);
-  $("play-frame").style.aspectRatio = game.frame || "1 / 1.2";
-  $("play-frame").src = `games/${game.id}/index.html?lang=${LANG}`;
-  $("play-left").textContent = "🎮 " + fmtTime(playLeft);
-  clearInterval(playInt);
-  playInt = setInterval(tickPlay, 1000);
-  show("screen-play");
-  playing = game;
-  Live.push("play");
-}
-
-function tickPlay() {
-  const spent = Math.floor((Date.now() - playT0) / 1000);
-  const left = Math.max(0, playLeft - spent);
-  $("play-left").textContent = "🎮 " + fmtTime(left);
-  if (left <= 0) timeIsUp();
-  else if (spent >= 10) bookPlayTime();
-}
-
-/* The minutes are gone: shut the game and say so, rather than leaving it
-   running with a clock on zero. */
-function timeIsUp() {
-  bookPlayTime();
-  leavePlay();
-}
-
-/* write the seconds played into the day record (and so into the cloud) */
-function bookPlayTime() {
-  if (!playInt) return;
-  const spent = Math.floor((Date.now() - playT0) / 1000);
-  if (spent <= 0) return;
-  playT0 += spent * 1000;
-  playLeft = Math.max(0, playLeft - spent);
-  Reward.spend(data, spent);
-  Store.save(data);
-}
-
-function stopPlay() {
-  bookPlayTime();
-  clearInterval(playInt);
-  playInt = null;
-  $("play-frame").src = "about:blank";
-}
-
-function leavePlay() {
-  stopPlay();
-  renderGames();
-  show("screen-games");
-}
-
 /* ---------- wiring ---------- */
 function goHome() {
   stopTimer();
-  stopPlay();
   Live.stopHeartbeat();
   if (Store.isParent() && isOn("screen-mirror")) leftMirror = true;
   // the child always works in Dutch, whatever the parent last picked here
@@ -2512,7 +2441,8 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   // home
-  $("btn-start").addEventListener("click", startTask);
+  $("btn-start").addEventListener("click", () => startTask("sommen"));
+  $("btn-klok").addEventListener("click", () => startTask("klok"));
   $("btn-sprint").addEventListener("click", () => startSprint(goHome));
   $("sprint-pause").addEventListener("click", pauseSprint);
   $("sprint-resume").addEventListener("click", resumeSprint);
@@ -2549,31 +2479,19 @@ document.addEventListener("DOMContentLoaded", () => {
   $("btn-sommen").addEventListener("click", () => { renderSommen(); show("screen-sommen"); });
   $("sommen-back").addEventListener("click", goHome);
 
-  // speeltijd
-  $("btn-play-result").addEventListener("click", openGames);
-  // back out of the games to the report card, so the remaining minutes stay
-  // reachable; only leaving that screen ends the play session for today
-  $("games-back").addEventListener("click", () => {
-    if (session) { renderResult(); show("screen-result"); } else goHome();
-  });
-  $("play-back").addEventListener("click", leavePlay);
-
   // calendar nav
   $("cal-prev").addEventListener("click", () => { calMonth.setMonth(calMonth.getMonth() - 1); renderCalendar(); });
   $("cal-next").addEventListener("click", () => { calMonth.setMonth(calMonth.getMonth() + 1); renderCalendar(); });
 
   document.addEventListener("visibilitychange", () => {
     // leaving the screen mid-task: bank it so the next device gets the same som
-    if (document.hidden) { if (session) saveActive(); bookPlayTime(); Store.pushNow(data); return; }
+    if (document.hidden) { if (session) saveActive(); Store.pushNow(data); return; }
     // signed out from another tab on this device
     if (!Store.isLoggedIn()) { if (!isOn("screen-login")) goLogin(); return; }
-    // a backgrounded tab stops ticking, so the time may have run out unnoticed
-    if (isOn("screen-play") && Reward.remaining(data) <= 0) { timeIsUp(); return; }
     refreshFromCloud();
   });
   window.addEventListener("pagehide", () => {
     if (session) saveActive();
-    bookPlayTime();
     Store.pushNow(data);
   });
 

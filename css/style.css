@@ -1312,3 +1312,43 @@ input:focus { border-color: var(--accent); }
   display: block; width: 34px; height: auto; margin: -4px 0 10px auto; opacity: .9;
 }
 .school-badge.row { display: inline-block; width: 22px; margin: 0; vertical-align: middle; }
+
+/* ---------- the clock, drawn ---------- */
+.question-clock { display: flex; justify-content: center; margin: 2px 0 18px; }
+/* with a dial above it the prompt is one short line, so it does not need the
+   reserve a three-line redactiesom does */
+.question-clock:not(.hidden) + .question { min-height: 0; margin-bottom: 18px; text-align: center; }
+.klok-face { width: 210px; height: 210px; max-width: 70vw; }
+.klok-rim { fill: var(--card); stroke: var(--ink); stroke-width: 2; }
+.klok-ticks line { stroke: var(--ink); }
+.klok-num { font-size: 15px; font-weight: 800; fill: var(--ink); font-family: inherit; }
+.klok-hand { stroke: var(--ink); stroke-linecap: round; }
+.klok-hand.hour { stroke-width: 5; }
+.klok-hand.minute { stroke-width: 3; }
+.klok-pin { fill: var(--card); stroke: var(--ink); stroke-width: 2; }
+@media (max-width: 520px) { .klok-face { width: 170px; height: 170px; } }
+
+/* ---------- a day, as the kalender tells it ---------- */
+.day-score { display: flex; align-items: center; gap: 14px; margin: 14px 0 10px; }
+.score-ring {
+  display: flex; align-items: baseline; gap: 1px;
+  border-radius: 14px; padding: 8px 14px; background: var(--bg);
+  font-variant-numeric: tabular-nums;
+}
+.score-ring b { font-size: 1.5rem; font-weight: 800; line-height: 1; }
+.score-ring em { font-style: normal; font-size: .7rem; color: var(--muted); }
+.score-ring.good { background: var(--green-soft); color: var(--green); }
+.score-ring.mid  { background: #fdf0d5; color: #8a6a11; }
+.score-ring.low  { background: var(--red-soft); color: var(--red); }
+.score-side { display: flex; flex-wrap: wrap; gap: 6px; }
+.day-doors { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 4px; }
+.day-door {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: .78rem; font-weight: 700; color: var(--muted);
+  background: var(--bg); border-radius: 999px; padding: 5px 11px;
+}
+.day-door i { font-style: normal; }
+.day-door b { color: var(--ink); font-variant-numeric: tabular-nums; }
+.day-run { font-size: .78rem; font-weight: 800; color: var(--muted); margin: 14px 0 -4px; }
+.det-clock { display: flex; justify-content: center; margin: 4px 0 10px; }
+.det-clock .klok-face { width: 140px; height: 140px; }

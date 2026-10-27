@@ -33,11 +33,6 @@ const Live = {
   snapshot(screen, extra) {
     const s = Object.assign({ screen: screen, at: Date.now() }, extra || {});
     if (session && session.questions) s.marks = this.marksOf(session.questions);
-    if (screen === "games" || screen === "play") {
-      s.left = Reward.remaining(data);
-      if (screen === "play" && playing) s.game = playing.key;   // which spelletje
-      return s;
-    }
     if (screen === "sprint" && sprint) {
       const q = sprint.qs[sprint.i];
       s.n = sprint.i + 1; s.total = sprint.qs.length;
@@ -196,18 +191,6 @@ const Live = {
       el("mirror-body").innerHTML =
         `<div class="mirror-idle"><div class="big-emoji">⏸️</div><p>${
           t("live_question").replace("{n}", state.n || "?").replace("{t}", state.total || "?")}</p></div>`;
-      return;
-    }
-
-    if (state.screen === "games" || state.screen === "play") {
-      const name = state.game ? t(state.game) : "";
-      el("mirror-status").textContent = state.screen === "play"
-        ? t("live_playing").replace("{game}", name)
-        : t("live_games");
-      el("mirror-time").textContent = state.left != null ? "🎮 " + fmtTime(state.left) : "";
-      el("mirror-body").innerHTML =
-        `<div class="mirror-idle"><div class="big-emoji">🎮</div>${
-          name ? `<p>${name}</p>` : ""}</div>`;
       return;
     }
 

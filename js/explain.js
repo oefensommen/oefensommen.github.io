@@ -374,6 +374,44 @@ const EXPLAIN = {
     en: "Add the three amounts: € {a} + € {b} + € {c}. First the whole euros, then the cents. Together that is {ans}.",
     tr: "Üç tutarı topla: € {a} + € {b} + € {c}. Önce tam euroları, sonra sentleri topla. Toplam {ans} eder."
   },
+  "twee-schoolreis": [
+    { v: v => ({ s1: v.a + v.b }),
+      nl: "Eerst wie er al in zit: {a} + {b} = {s1}. Daarna komt de groep van {c} erbij: {s1} + {c} = {ans}.",
+      en: "First who is already on board: {a} + {b} = {s1}. Then the group of {c} joins: {s1} + {c} = {ans}.",
+      tr: "Önce zaten içinde olanlar: {a} + {b} = {s1}. Sonra {c} kişilik grup biniyor: {s1} + {c} = {ans}." },
+    { v: v => ({ s1: v.a - v.b }),
+      nl: "Eerst gaan de kapotte eraf: {a} − {b} = {s1}. Daarna komen er {c} bij: {s1} + {c} = {ans}.",
+      en: "First the broken ones go: {a} − {b} = {s1}. Then {c} are added: {s1} + {c} = {ans}.",
+      tr: "Önce kırıklar çıkıyor: {a} − {b} = {s1}. Sonra {c} tane ekleniyor: {s1} + {c} = {ans}." } ],
+  "twee-voorraad-bestelling": {
+    v: v => ({ maal: v.b * v.c }),
+    nl: "Eerst de bestelling: {b} × {c} = {maal}. Die komen bij wat er al lag: {a} + {maal} = {ans}.",
+    en: "The order first: {b} × {c} = {maal}. Those come on top of what was already there: {a} + {maal} = {ans}.",
+    tr: "Önce sipariş: {b} × {c} = {maal}. Bunlar mevcudun üstüne biner: {a} + {maal} = {ans}."
+  },
+  "verr-munten": {
+    nl: "Gepast betalen betekent: geen cent te veel en geen cent te weinig. Begin bij de grootste munt die past en kijk daarna wat er nog overblijft, tot je op € {bedrag} uitkomt.",
+    en: "Paying exactly means: not a cent too much, not a cent too little. Start with the biggest coin that fits and keep looking at what is left, until you land on € {bedrag}.",
+    tr: "Tam ödemek demek: ne bir kuruş fazla, ne bir kuruş eksik. Sığan en büyük parayla başla, sonra kalana bak — € {bedrag} olana kadar."
+  },
+  "verr-dichtstbij": {
+    nl: "Het gaat om het verschil met {a}, niet om wie het hoogst raadt. Reken van elk kind uit hoeveel het scheelt; het kleinste verschil wint.",
+    en: "It is about the difference from {a}, not who guessed highest. Work out how far each child is off; the smallest difference wins.",
+    tr: "Önemli olan {a} ile fark, kimin daha yüksek tahmin ettiği değil. Her çocuğun kaç fark ettiğini bul; en küçük fark kazanır."
+  },
+  "opt-over-honderd": {
+    v: v => ({ h: v.a - v.a % 100, rest: v.a % 100 }),
+    nl: "Splits het grote getal: {h} en {rest}. Tel eerst {rest} + {b} op — dat gaat over het honderdtal heen — en zet {h} er daarna weer voor: {ans}.",
+    en: "Split the big number: {h} and {rest}. Add {rest} + {b} first — that crosses the hundred — and put {h} back in front: {ans}.",
+    tr: "Büyük sayıyı ayır: {h} ve {rest}. Önce {rest} + {b} topla — bu yüzlüğü geçiyor — sonra başına {h} ekle: {ans}."
+  },
+  "aft-naar-rond": {
+    v: v => ({ tien: v.b + (10 - v.b % 10) % 10, naarTien: (10 - v.b % 10) % 10,
+               rest: v.a - (v.b + (10 - v.b % 10) % 10) }),
+    nl: "Tel omhoog in plaats van af te trekken: van {b} naar {tien} is {naarTien} erbij, en van {tien} naar {a} nog {rest}. Samen {ans}.",
+    en: "Count up instead of taking away: from {b} to {tien} is {naarTien}, and from {tien} to {a} another {rest}. Together {ans}.",
+    tr: "Çıkarmak yerine yukarı say: {b} → {tien} {naarTien} eder, {tien} → {a} ise {rest} daha. Toplam {ans}."
+  },
   "verr-welkesom": [
     { nl: "De zieke kinderen zijn thuis, dus die gaan van de klas af. Eraf is min: de som is {ans}.",
       en: "The sick children are at home, so they come off the class. Off means minus: the sum is {ans}.",
@@ -658,6 +696,30 @@ const HINTS = {
     nl: "Drie bedragen met komma's. Tel eerst alleen de hele euro's bij elkaar, dan alleen de centen — zo raak je de komma niet kwijt.",
     en: "Three amounts with decimals. Add the whole euros first, then the cents on their own — that way you never lose the comma.",
     tr: "Virgüllü üç tutar. Önce sadece tam euroları topla, sonra sadece sentleri — böylece virgülü kaybetmezsin." },
+  "twee-schoolreis": {
+    nl: "Er gebeuren twee dingen na elkaar. Lees de zinnen in volgorde en reken ze ook in die volgorde uit — niet alle drie de getallen in één keer.",
+    en: "Two things happen one after the other. Read the sentences in order and work them out in that order — not all three numbers at once.",
+    tr: "Arka arkaya iki şey oluyor. Cümleleri sırayla oku ve sırayla hesapla — üç sayıyı birden değil." },
+  "twee-voorraad-bestelling": {
+    nl: "Dozen met evenveel stuks: dat is eerst keer. Pas als je weet hoeveel er geleverd worden, tel je ze bij de voorraad op.",
+    en: "Boxes with the same number in each: that is a times first. Only once you know how many arrive do you add them to the stock.",
+    tr: "Her birinde eşit sayı olan kutular: önce çarpma. Kaç tane geldiğini bulduktan sonra mevcuda eklersin." },
+  "verr-munten": {
+    nl: "Gepast betekent precies. Kijk eerst naar de hele euro's en pas daarna naar de centen — en let op welke munten er helemaal niet bestaan.",
+    en: "Exactly means exactly. Look at the whole euros first and only then at the cents — and watch for coins that do not exist.",
+    tr: "Tam, tam demek. Önce tam euroya, sonra sentlere bak — ve olmayan paralara dikkat et." },
+  "verr-dichtstbij": {
+    nl: "Niet het grootste of het kleinste getal wint, maar het getal met het kleinste verschil. Reken dus per kind uit hoeveel het ernaast zit.",
+    en: "Neither the biggest nor the smallest number wins — the one with the smallest difference does. So work out how far each is off.",
+    tr: "En büyük ya da en küçük sayı kazanmaz; farkı en küçük olan kazanır. Yani her birinin ne kadar şaştığını hesapla." },
+  "opt-over-honderd": {
+    nl: "Er komt iets bij, dus optellen. De eenheden gaan over de tien én de tientallen over de honderd — doe het in stukken, niet in één keer.",
+    en: "Something is added, so adding. The units cross ten and the tens cross a hundred — do it in pieces, not in one go.",
+    tr: "Bir şey ekleniyor, yani toplama. Birlikler onu, onluklar yüzü geçiyor — tek seferde değil, parça parça yap." },
+  "aft-naar-rond": {
+    nl: "Het doel is een rond getal. Dat maakt optellen makkelijker dan aftrekken: spring eerst naar het volgende honderdtal en tel vanaf daar verder.",
+    en: "The target is a round number. That makes counting up easier than taking away: jump to the next hundred first and carry on from there.",
+    tr: "Hedef yuvarlak bir sayı. Bu yüzden çıkarmak yerine yukarı saymak kolay: önce bir sonraki yüzlüğe sıçra, oradan devam et." },
   "verr-welkesom": [
     { nl: "Hier hoef je niets uit te rekenen — je moet de juiste som kiezen. Vraag jezelf af of het er meer of minder worden, dan weet je het teken al.",
       en: "You do not have to calculate here — you have to choose the right sum. Ask yourself whether it becomes more or fewer, and you know the sign.",

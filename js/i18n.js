@@ -12,12 +12,14 @@ const I18N = {
     login_err: "Dat klopt niet. Probeer het nog eens!",
     hello: "Hoi {name}!",
     streak_days: "dagen op rij",
-    today_todo: "Tien sommen en een rondje tafels — dan is de dag af!",
-    today_half_sommen: "De sommen zijn af. Nu nog de tafels!",
-    today_half_tafels: "De tafels zijn af. Nu nog de sommen!",
+    today_todo: "Tafels, sommen en klokkijken — dan is de dag af!",
     today_extra: "Vandaag is af én je hebt vooruit gewerkt: morgen is al groen! 🌟",
-    home_sommen: "Sommen",
+    home_klok: "Klokkijken",
     home_tafels: "Tafels",
+    home_sommen: "Redactiesommen",
+    today_left: "Nog te doen: {w}",
+    day_minutes: "{n} min geoefend",
+    door_icon: { tafels: "⚡", sommen: "🧮", klok: "🕐" },
     legend_bonus: "vooruit gewerkt",
     day_bonus: "Vooruit gewerkt: deze dag is de dag ervoor al verdiend. 🌟",
     today_partial: "Goed bezig — maak de opdracht af.",
@@ -161,7 +163,7 @@ const I18N = {
     level_up: "Niveau {n} gehaald!",
     months: ["Januari","Februari","Maart","April","Mei","Juni","Juli","Augustus","September","Oktober","November","December"],
     weekdays: ["Ma","Di","Wo","Do","Vr","Za","Zo"],
-    cats: { optellen: "Optellen", aftrekken: "Aftrekken", vermenigvuldigen: "Vermenigvuldigen", delen: "Delen", tweestap: "Meerdere bewerkingen", klok: "Klokkijken", verrassing: "Verrassing" }
+    cats: { klokkijken: "Klokkijken", optellen: "Optellen", aftrekken: "Aftrekken", vermenigvuldigen: "Vermenigvuldigen", delen: "Delen", tweestap: "Meerdere bewerkingen", klok: "Klokkijken", verrassing: "Verrassing" }
   },
   en: {
     login_title: "Welcome!",
@@ -175,12 +177,14 @@ const I18N = {
     login_err: "That's not right. Try again!",
     hello: "Hi {name}!",
     streak_days: "days in a row",
-    today_todo: "Ten questions and a round of tables — then the day is done!",
-    today_half_sommen: "The questions are done. Now the tables!",
-    today_half_tafels: "The tables are done. Now the questions!",
+    today_todo: "Tables, word problems and the clock — then the day is done!",
     today_extra: "Today is done AND you worked ahead: tomorrow is already green! 🌟",
-    home_sommen: "Questions",
+    home_klok: "Telling the time",
     home_tafels: "Tables",
+    home_sommen: "Word problems",
+    today_left: "Still to do: {w}",
+    day_minutes: "{n} min practised",
+    door_icon: { tafels: "⚡", sommen: "🧮", klok: "🕐" },
     legend_bonus: "worked ahead",
     day_bonus: "Worked ahead: this day was earned the day before. 🌟",
     today_partial: "Good going — finish the task.",
@@ -324,7 +328,7 @@ const I18N = {
     level_up: "Level {n} reached!",
     months: ["January","February","March","April","May","June","July","August","September","October","November","December"],
     weekdays: ["Mo","Tu","We","Th","Fr","Sa","Su"],
-    cats: { optellen: "Addition", aftrekken: "Subtraction", vermenigvuldigen: "Multiplication", delen: "Division", tweestap: "Several steps", klok: "Telling time", verrassing: "Surprise" }
+    cats: { klokkijken: "Telling the time", optellen: "Addition", aftrekken: "Subtraction", vermenigvuldigen: "Multiplication", delen: "Division", tweestap: "Several steps", klok: "Telling time", verrassing: "Surprise" }
   },
   tr: {
     login_title: "Hoş geldin!",
@@ -338,12 +342,14 @@ const I18N = {
     login_err: "Olmadı. Bir daha dene!",
     hello: "Merhaba {name}!",
     streak_days: "gün üst üste",
-    today_todo: "On soru ve bir tur çarpım — sonra gün tamam!",
-    today_half_sommen: "Sorular bitti. Şimdi çarpım tablosu!",
-    today_half_tafels: "Çarpım tablosu bitti. Şimdi sorular!",
+    today_todo: "Çarpım, problemler ve saat — sonra gün tamam!",
     today_extra: "Bugün tamam, üstüne fazladan çalıştın: yarın şimdiden yeşil! 🌟",
-    home_sommen: "Sorular",
+    home_klok: "Saat okuma",
     home_tafels: "Çarpım",
+    home_sommen: "Problemler",
+    today_left: "Kalan: {w}",
+    day_minutes: "{n} dk çalıştı",
+    door_icon: { tafels: "⚡", sommen: "🧮", klok: "🕐" },
     legend_bonus: "önden çalışıldı",
     day_bonus: "Önden çalışıldı: bu gün bir gün önce kazanıldı. 🌟",
     today_partial: "İyi gidiyorsun — görevi tamamla.",
@@ -487,7 +493,7 @@ const I18N = {
     level_up: "Seviye {n}!",
     months: ["Ocak","Şubat","Mart","Nisan","Mayıs","Haziran","Temmuz","Ağustos","Eylül","Ekim","Kasım","Aralık"],
     weekdays: ["Pt","Sa","Ça","Pe","Cu","Ct","Pz"],
-    cats: { optellen: "Toplama", aftrekken: "Çıkarma", vermenigvuldigen: "Çarpma", delen: "Bölme", tweestap: "Çok işlemli", klok: "Saat", verrassing: "Sürpriz" }
+    cats: { klokkijken: "Saat okuma", optellen: "Toplama", aftrekken: "Çıkarma", vermenigvuldigen: "Çarpma", delen: "Bölme", tweestap: "Çok işlemli", klok: "Saat", verrassing: "Sürpriz" }
   }
 };
 

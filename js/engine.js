@@ -364,14 +364,45 @@ const Engine = {
     return this.shuffle(questions);
   },
 
-  /* The level a given template is built at: the day's dial for its soort, plus
-     whatever the parent said about this particular som. Clamped to the scale,
-     comfort bands included. */
+  /* How hard a som is built. There is no ladder any more: groep 5 midden is
+     groep 5 midden every day, and the only hand on it is the parent's verdict
+     on that particular soort som. BASE sits high on purpose — the school's own
+     werkbladen are the floor here, not the ceiling. */
+  BASE: 4,
+
   levelFor(tpl, data) {
-    return Math.max(-1, Math.min(5, Dial.eff(data, tpl.cat) + Tuning.of(data, tpl.id)));
+    return Math.max(0, Math.min(5, this.BASE + Tuning.of(data, tpl.id)));
   },
 
-  /* One fresh som of a category at the dial's current level — used to slip a
+  /* A whole round of clock faces. Its own builder, because these templates
+     sit outside the categories the sommen are mixed from: a klok round is
+     ten dials and nothing else. */
+  buildFaceTask(n, data) {
+    const pool = TEMPLATES.filter(tp => tp.face && Rules.allows(data, tp));
+    const use = pool.length ? pool : TEMPLATES.filter(tp => tp.face);
+    // only this round's own draws are avoided: a time may come back tomorrow
+    const seen = new Set();
+    const taken = new Set();
+    const out = [];
+    for (let i = 0; i < n; i++) {
+      const tpl = use[i % use.length];
+      let q = this.freshFrom(tpl, this.levelFor(tpl, data), seen, taken);
+      if (!q) {                         // nothing new at this level: allow a repeat
+        for (let k = 0; k < 200; k++) {
+          q = this.makeQuestion(tpl, this.levelFor(tpl, data));
+          if (!taken.has(this.sig(q))) break;
+        }
+        taken.add(this.sig(q));
+      }
+      out.push(q);
+    }
+    const today = todayStr();
+    use.forEach(tp => { data.recentTpl[tp.id] = today; });
+    Store.save(data);
+    return this.shuffle(out);
+  },
+
+  /* One fresh som of a category at the working level — used to slip a
      couple of winnable sommen in right after a fout. avoid = the sigs already
      in this opdracht, so the swap cannot create a duplicate. */
   oneFrom(cat, data, avoid) {
@@ -387,9 +418,9 @@ const Engine = {
     return null;
   },
 
-  /* The same som slot, dealt again at the dial's current level. Used when the
-     reserve sommen finally come into play: they were built at the morning's
-     level, and the afternoon may call for a gentler one. */
+  /* The same som slot, dealt again at the working level. Used when the
+     reserve sommen finally come into play: they were built before the parent's
+     verdict may have moved that soort som. */
   refresh(q, data, avoid) {
     const tpl = TEMPLATES.find(tp => tp.id === q.tplId);
     if (!tpl) return q;
@@ -409,6 +440,11 @@ const Engine = {
   /* This som has now been in front of the child, so it is asked and will never
      come round again. Returns true when it was not already written down. */
   remember(data, q) {
+    // A dial is not spoilt by coming round again — reading 9:45 a second time
+    // is practice, not a repeat — so clock faces are never written into the
+    // seen list, and the list stays what it is for: the stories.
+    const tpl = TEMPLATES.find(tp => tp.id === q.tplId);
+    if (tpl && tpl.face) return false;
     const s = this.sig(q);
     if (!data.seen) data.seen = [];
     if (data.seen.indexOf(s) !== -1) return false;
