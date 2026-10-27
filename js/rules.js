@@ -90,7 +90,10 @@ const Rules = {
     const probe = { rules: JSON.parse(JSON.stringify(data.rules || {})) };
     probe.rules[kind] = probe.rules[kind] || {};
     probe.rules[kind][key] = { at: 0 };
-    return CATS.filter(c => this.allowedIn(probe, c).length === 0);
+    // what THIS switch empties, not what was already empty before it — the
+    // warning used to name soorten the parent had switched off weeks ago
+    return RULE_CATS.filter(c => this.allowedIn(probe, c).length === 0 &&
+                                 this.allowedIn(data, c).length > 0);
   },
 
   /* Everything the parent has switched off, for the overview */

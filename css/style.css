@@ -72,9 +72,12 @@ body {
   width: 100%;
   margin: 0 auto;
 }
+/* the back control stays inside the topbar's own padding: pulled further left
+   it sits in Safari's swipe-back edge, where a tap meant for it takes the
+   whole page back instead */
 .brand {
   display: flex; align-items: center; justify-content: center;
-  width: var(--tap); height: var(--tap); margin-left: calc(var(--s2) * -1);
+  width: var(--tap); height: var(--tap);
   background: none; border: none; padding: 0; cursor: pointer;
   font-family: inherit; color: var(--ink);
   transition: opacity .15s, transform .08s;
@@ -97,12 +100,15 @@ body {
 .timer-btn {
   width: var(--tap); height: var(--tap); border-radius: 50%;
   border: none; background: var(--bg); color: var(--muted);
-  font-size: .7rem; line-height: 1; cursor: pointer;
+  font-size: var(--t-md); line-height: 1; cursor: pointer;
   display: flex; align-items: center; justify-content: center;
   transition: background .15s, color .15s, transform .08s;
 }
-.timer-pause:active { transform: scale(0.92); }
-.timer-pause.hidden { display: none; }
+.timer-btn:active { transform: scale(0.92); }
+.timer-btn.hidden { display: none; }
+/* ⏭ abandons the som that is on screen, so it does not sit shoulder to
+   shoulder with the one that only stops the clock */
+.timer-btn + .timer-btn { margin-left: var(--s2); }
 
 /* one flag, and a menu behind it for whoever is allowed to switch */
 .langpick { position: relative; }
@@ -117,14 +123,18 @@ body {
 .lang-menu {
   position: absolute; right: 0; top: calc(100% + 6px); z-index: 40;
   background: var(--card); border: 1px solid var(--line);
-  border-radius: 12px; padding: 5px;
+  border-radius: 12px; padding: var(--s1);
   box-shadow: 0 8px 24px rgba(29, 36, 51, .12);
   min-width: 168px;
+  display: grid; gap: var(--s1);
 }
+/* a language is picked with a thumb on a tablet, so each one is a full target
+   rather than a line of a menu */
 .lang-opt {
-  display: block; width: 100%; text-align: left;
+  display: flex; align-items: center; width: 100%; text-align: left;
   background: none; border: none; border-radius: 8px;
-  padding: 9px 10px; font-size: .95rem; font-family: inherit;
+  min-height: var(--tap); padding: 0 var(--s3);
+  font-size: .95rem; font-family: inherit;
   color: var(--ink); cursor: pointer; white-space: nowrap;
 }
 .lang-opt.active { background: var(--accent-soft); color: var(--accent); font-weight: 700; }
@@ -139,21 +149,9 @@ body {
 .icon-btn:active { transform: scale(0.94); }
 .icon-btn svg { display: block; }
 
-.pause-card { padding-top: 34px; padding-bottom: 34px; }
+/* the pause card takes the card's own padding, so stopping and starting the
+   clock does not move it up and down the screen */
 .pause-facts { display: flex; gap: 10px; justify-content: center; margin-bottom: 20px; }
-
-.flags { display: flex; gap: 4px; }
-.flag {
-  font-size: 1.35rem;
-  background: none;
-  border: 2px solid transparent;
-  border-radius: 10px;
-  padding: 3px 6px;
-  cursor: pointer;
-  opacity: 0.45;
-  transition: opacity .15s, border-color .15s;
-}
-.flag.active { opacity: 1; border-color: var(--accent); background: var(--accent-soft); }
 
 /* Layout */
 #app {
@@ -230,13 +228,6 @@ input:focus { border-color: var(--accent); }
 .btn.big { width: 100%; margin: var(--s2) auto 0; display: flex; }
 .btn.primary { background: var(--accent); color: #fff; }
 .btn.ghost { background: var(--accent-soft); color: var(--accent); }
-.link-btn {
-  display: inline-flex; align-items: center; justify-content: center;
-  min-width: var(--tap); min-height: var(--tap);
-  background: none; border: none; color: var(--muted);
-  font-size: 1.25rem; cursor: pointer; padding: 0; font-family: inherit;
-  border-radius: var(--r-sm);
-}
 
 .error { color: var(--red); margin-bottom: 10px; font-weight: 600; }
 
@@ -254,6 +245,9 @@ input:focus { border-color: var(--accent); }
   75% { transform: translateX(7px); }
 }
 #screen-login input { margin-top: 4px; }
+/* the button and the box the password goes in are one pair, so they stand on
+   the same two edges rather than the button being wider than its own field */
+#screen-login .btn.big { max-width: 320px; }
 
 /* ---------- Home — three doors and one line that says how today went ------- */
 .home-card { display: grid; gap: var(--s3); }
@@ -285,9 +279,13 @@ input:focus { border-color: var(--accent); }
 }
 .door-tile:active { transform: scale(.98); }
 .door-tile.done { background: var(--green); }
-.door-tile.resume { background: var(--accent); }
+/* begun and not finished: amber says that everywhere else here, and the deep
+   amber is the one that carries white text */
+.door-tile.resume { background: var(--amber-ink); }
 .door-icon { font-size: 1.75rem; line-height: 1; }
-.door-name { font-size: var(--t-sm); font-weight: 800; text-align: center; line-height: 1.2; }
+/* the name is white on a saturated tile, so it is set large enough to be read
+   at that contrast — and by a slow reader */
+.door-name { font-size: var(--t-md); font-weight: 800; text-align: center; line-height: 1.2; }
 .door-badge {
   font-size: var(--t-xs); font-weight: 700; opacity: .95;
   font-variant-numeric: tabular-nums; min-height: 1em;
@@ -296,7 +294,7 @@ input:focus { border-color: var(--accent); }
 /* a child reads two words on a tile; on a narrow phone three tiles still fit */
 @media (max-width: 420px) {
   .door-tile { min-height: 104px; }
-  .door-name { font-size: var(--t-xs); }
+  .door-name { font-size: var(--t-sm); }
 }
 
 /* Task */
@@ -309,7 +307,7 @@ input:focus { border-color: var(--accent); }
   transition: width .3s ease;
 }
 .progress-text {
-  font-weight: 700; color: var(--muted); font-size: .78rem;
+  font-weight: 700; color: var(--muted); font-size: var(--t-sm);
   font-variant-numeric: tabular-nums; min-width: 46px; text-align: right;
 }
 /* The question, and the school's mark beside it rather than under it. No
@@ -374,13 +372,13 @@ input:focus { border-color: var(--accent); }
   0%, 100% { box-shadow: 0 0 0 0 rgba(229, 72, 77, 0); }
   50%      { box-shadow: 0 0 0 4px rgba(229, 72, 77, .18); }
 }
-/* put right on the second go: a tick like the rest, on a green of its own so
-   the parent can still tell it apart at a glance */
-.result-tile.fix { background: #eaf7f0; border: 1px solid #b9e3cd; }
-.result-tile.ok2 { background: #eaf7f0; border: 1px solid #b9e3cd; }
-/* wrong, and the uitleg was read */
-.result-tile.exp { background: var(--red-soft); border: 1px solid #f0b9bb; }
-.mark-cell.fix, .mark-cell.exp { background: var(--red-soft); }
+/* put right on the second go: a tick like the rest, but on the teal that
+   already means "earned another way", because two greens a shade apart are
+   two greens nobody can tell apart from an arm's length */
+.result-tile.fix, .result-tile.ok2 { background: var(--teal-soft); border-color: var(--teal); }
+/* wrong, and the uitleg was read: it is dealt with, so it stops wearing the
+   red that on this screen means "still to put right" */
+.result-tile.exp { background: var(--bg); border-color: var(--line); }
 .result-tile.todo { background: #fff4e0; border: 1px dashed #e8b45c; }
 /* every som can be opened again from the report */
 .result-tile {
@@ -390,19 +388,16 @@ input:focus { border-color: var(--accent); }
 }
 .result-tile:active { transform: scale(0.95); }
 .result-tile { position: relative; }
-.result-tile .num { font-size: 0.8rem; font-weight: 700; color: var(--muted); }
+.result-tile .num { font-size: var(--t-sm); font-weight: 700; color: var(--muted); }
 .result-tile .mark { font-size: 1.25rem; line-height: 1; }
 /* the lamp sits in the corner of the som it was used on */
 .tile-hint {
   position: absolute; top: 2px; right: 3px;
-  font-size: .62rem; line-height: 1; opacity: .85;
+  font-size: var(--t-xs); line-height: 1; opacity: .85;
 }
 @media (max-width: 420px) {
   .result-grid { grid-template-columns: repeat(5, 1fr); gap: 7px; }
 }
-
-
-.btn-row .btn { flex: 1 1 0; min-width: 150px; max-width: 260px; }
 
 /* Celebration confetti */
 #confetti {
@@ -425,21 +420,6 @@ input:focus { border-color: var(--accent); }
   100% { transform: scale(1) rotate(0deg); }
 }
 
-/* Calendar */
-.cal-head .link-btn { font-size: 1.3rem; }
-.cal-cell.picked { outline: 2.5px solid var(--ink); outline-offset: 1px; }
-.cal-cell.today.picked { outline-color: var(--accent); }
-/* the weekday sits on the day itself now that the month runs straight through */
-.cal-cell .wd { font-size: 0.58rem; font-weight: 700; opacity: .55; line-height: 1; }
-.cal-cell.done { background: var(--green); color: #fff; }
-.cal-cell.partial { background: var(--amber); color: #fff; }
-.cal-cell.miss { background: var(--red); color: #fff; }
-/* a corner fold marks a day the parent coloured by hand */
-.cal-cell { position: relative; overflow: hidden; }
-.cal-cell:not(.done):not(.partial):not(.miss) .by-hand {
-  border-right-color: var(--muted);
-}
-.cal-cell.today { outline: 2.5px solid var(--accent); outline-offset: 1px; }
 /* one day's report, opened by tapping the day */
 .day-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
 .day-head b { font-size: 1.05rem; }
@@ -458,11 +438,6 @@ input:focus { border-color: var(--accent); }
 }
 .day-cat b { color: var(--ink); }
 .day-none { color: var(--muted); font-size: 0.9rem; margin-top: 6px; }
-.dot { display: inline-block; width: 11px; height: 11px; border-radius: 4px; margin-right: 4px; }
-.dot.done { background: var(--green); }
-.dot.partial { background: var(--amber); }
-.dot.miss { background: var(--red); }
-.dot.empty { background: var(--line); }
 
 /* the parent's say over a day */
 .day-note {
@@ -471,17 +446,20 @@ input:focus { border-color: var(--accent); }
   font-size: .87rem; color: var(--ink); text-align: left;
 }
 .day-edit { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line); }
-.mark-row { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
+.mark-row { display: flex; gap: var(--s2); flex-wrap: wrap; justify-content: center; }
+/* what a parent taps here is written to the cloud and stays there, so it is a
+   full-size target standing on its own, not a chip in a row of chips */
 .mark-btn {
   border: 1.5px solid var(--line); background: var(--card);
-  border-radius: 999px; padding: 6px 12px;
+  border-radius: 999px; min-height: var(--tap); padding: var(--s1) var(--s4);
   font-size: .8rem; font-weight: 700; font-family: inherit;
   color: var(--muted); cursor: pointer;
   transition: border-color .12s, color .12s, background .12s;
 }
-.mark-btn.done.on    { background: var(--green); border-color: var(--green); color: #fff; }
-.mark-btn.partial.on { background: var(--amber); border-color: var(--amber); color: #fff; }
-.mark-btn.miss.on    { background: var(--red);   border-color: var(--red);   color: #fff; }
+/* the deep variants: these are the only fills here that carry white text */
+.mark-btn.done.on    { background: var(--green-ink); border-color: var(--green-ink); color: #fff; }
+.mark-btn.partial.on { background: var(--amber-ink); border-color: var(--amber-ink); color: #fff; }
+.mark-btn.miss.on    { background: var(--red-ink);   border-color: var(--red-ink);   color: #fff; }
 .mark-btn.auto.on    { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
 .day-note-input {
   display: block; width: 100%; max-width: none; margin: 10px 0 0;
@@ -492,20 +470,22 @@ input:focus { border-color: var(--accent); }
 .day-saved { margin-left: 8px; color: var(--green); font-weight: 800; }
 
 
-/* the nudge to go and look at what went wrong */
+/* the nudge to go and look at what went wrong: it is the one instruction on
+   the card, so it is not also the quietest thing on it, and the grid it sits
+   in already spaces it */
 .review-hint {
-  margin: -12px 0 18px;
-  color: var(--muted);
-  font-size: .88rem;
+  margin: 0;
+  color: var(--ink);
+  font-size: var(--t-sm);
+  font-weight: 700;
 }
 
-/* per-category level pips in the parent's overview */
-.cat-level i.on { background: #e0a413; }
-
-/* ---------- Countdown ---------- */
+/* ---------- Countdown ----------
+   The height comes from screen--fit, the same frame the card screens use, so
+   ⏸ and ▶ do not snap the page to the top and back. */
 #screen-count {
   display: flex; flex-direction: column; align-items: center; justify-content: center;
-  min-height: 40dvh; gap: var(--s5);
+  gap: var(--s5);
 }
 #screen-count.hidden { display: none; }
 .count-stage { position: relative; width: 132px; height: 132px; }
@@ -593,7 +573,7 @@ input:focus { border-color: var(--accent); }
    the same panel for the child and for the parent watching */
 .mirror-split, .task-split {
   display: grid; grid-template-columns: minmax(0, 1fr) var(--rail);
-  gap: 18px; align-items: start;
+  gap: var(--s5); align-items: start;
 }
 .mirror-main, .task-main { min-width: 0; }
 .marks-panel { position: sticky; top: 8px; }
@@ -611,20 +591,20 @@ input:focus { border-color: var(--accent); }
   transition: background .2s, color .2s;
 }
 .mark-cell.ok   { background: var(--green-soft); color: var(--green-ink); }
-.mark-cell.fix  { background: #eaf7f0; color: var(--teal-ink); }
+.mark-cell.fix  { background: var(--teal-soft); color: var(--teal-ink); }
 .mark-cell.no   { background: var(--red-soft); color: var(--red-ink); }
 .mark-cell.skip { background: #fff4e0; color: var(--amber-ink); }
 .mark-cell.here { border-color: var(--accent); color: var(--accent); background: var(--card); }
 
-@media (max-width: 520px) {
-  .mark-list { grid-template-columns: 1fr; gap: var(--s1); }
-  .mark-cell { aspect-ratio: auto; height: 34px; border-radius: var(--r-xs); font-size: var(--t-xs); }
-}
-
-/* the task and mirror rails share the sprint's rail; only the split needs
-   saying here */
+/* All three rails narrow at one width, and the list of cells goes to a single
+   column at that same width: split them and a two-column list ends up inside a
+   40px rail, which is exactly what an iPad in Split View gives you. */
 @media (max-width: 600px) {
-  .mirror-split, .task-split { grid-template-columns: minmax(0, 1fr) 40px; gap: 10px; }
+  .mirror-split, .task-split, .sprint-body {
+    grid-template-columns: minmax(0, 1fr) 40px; gap: var(--s3);
+  }
+  .mark-list { grid-template-columns: 1fr; gap: var(--s1); }
+  .mark-cell { aspect-ratio: auto; height: 34px; border-radius: var(--r-xs); }
 }
 
 .mirror-q { font-size: 1.2rem; line-height: 1.55; margin-bottom: 20px; }
@@ -699,9 +679,6 @@ input:focus { border-color: var(--accent); }
 .cat-bar-fill.mid { background: var(--amber); }
 
 /* the day's sommen, under that day's report card in the kalender */
-.day-sommen { margin-top: 18px; border-top: 1px solid var(--line); padding-top: 6px; }
-.day-sommen h3 { margin-bottom: 2px; }
-.cal-detail .som-text { margin-bottom: 8px; }
 
 /* ---------- sommen: the parent rates today's questions ---------- */
 .som-row {
@@ -717,10 +694,12 @@ input:focus { border-color: var(--accent); }
 }
 .som-hint { font-size: .82rem; }
 .som-text { font-size: .95rem; line-height: 1.5; margin-bottom: 10px; }
-.som-rate { display: flex; gap: 7px; align-items: center; flex-wrap: wrap; }
+.som-rate { display: flex; gap: var(--s2); align-items: center; flex-wrap: wrap; }
+/* a rating travels to the cloud and changes what the child is given tomorrow,
+   so it is a target you mean to hit */
 .rate-btn {
   border: 1.5px solid var(--line); background: var(--card);
-  border-radius: 999px; padding: 6px 13px;
+  border-radius: 999px; min-height: var(--tap); padding: var(--s1) var(--s4);
   font-size: .8rem; font-weight: 700; font-family: inherit;
   color: var(--muted); cursor: pointer;
   transition: border-color .12s, background .12s, color .12s;
@@ -734,8 +713,8 @@ input:focus { border-color: var(--accent); }
 .lessons h3 { margin: 0 0 4px; color: var(--ink); }
 .lessons-sub { color: var(--muted); font-size: .86rem; margin-bottom: 12px; }
 .lesson {
-  display: flex; align-items: center; gap: 10px;
-  padding: 10px 12px; margin-bottom: 7px;
+  display: flex; align-items: center; gap: var(--s3);
+  padding: 10px 12px; margin-bottom: var(--s2);
   background: var(--bg); border-radius: 12px;
 }
 .lesson-what { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
@@ -750,9 +729,13 @@ input:focus { border-color: var(--accent); }
 }
 .lesson-adj.easier { background: #fdf0d5; color: var(--amber-ink); }
 .lesson-adj.harder { background: var(--accent-soft); color: var(--accent); }
+/* the way back out of every rating above it, so it is the last thing that
+   should be a 20px ✕ */
 .lesson-undo {
+  flex: none; display: flex; align-items: center; justify-content: center;
+  min-width: var(--tap); min-height: var(--tap);
   border: none; background: none; cursor: pointer; font-family: inherit;
-  color: var(--muted); font-size: 1rem; padding: 2px 4px; line-height: 1;
+  color: var(--muted); font-size: var(--t-md); padding: 0; line-height: 1;
 }
 
 /* how many 💡 are left, and what it looks like when there are none */
@@ -760,7 +743,7 @@ input:focus { border-color: var(--accent); }
 .hint-count {
   position: absolute; top: -2px; right: -2px;
   font-variant-numeric: tabular-nums;
-  background: var(--amber); color: #fff;
+  background: var(--amber-ink); color: #fff;
   border-radius: var(--r-pill); min-width: 18px; padding: 0 4px;
   font-size: var(--t-xs); line-height: 18px; text-align: center;
   font-weight: 800;
@@ -778,14 +761,16 @@ input:focus { border-color: var(--accent); }
   margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--line);
   font-size: .84rem; color: var(--muted); font-style: italic;
 }
-.cal-detail .result-grid { margin: 10px 0 14px; gap: 7px; }
-.cal-detail .result-tile { animation: none; cursor: default; }
 
 /* ---------- tafelsprint ----------
    One column of content, one rail of progress beside it, and a header that is
    a single line of text-height things: nothing on this screen is a shape for
    its own sake. */
-.sprint-card { margin: 0 auto; padding: 20px 22px 24px; }
+/* The card is a grid item in a centred screen. With auto margins it took its
+   width from whatever its longest line happened to be, so it grew and shrank
+   by ten pixels mid-question as the hint line came and went, under the finger
+   that was aiming at it. It takes the shell, like the task card beside it. */
+.sprint-card { width: 100%; padding: 20px 22px 24px; }
 
 .sprint-head { display: flex; align-items: center; gap: 10px; }
 .icon-ghost {
@@ -797,7 +782,7 @@ input:focus { border-color: var(--accent); }
 }
 .icon-ghost:active { transform: scale(.94); }
 .sprint-title {
-  font-size: .78rem; font-weight: 800; letter-spacing: .08em;
+  font-size: var(--t-sm); font-weight: 800; letter-spacing: .08em;
   text-transform: uppercase; color: var(--muted);
 }
 /* The seconds sit in a box wide enough for two digits, so dropping from 10 to
@@ -806,7 +791,7 @@ input:focus { border-color: var(--accent); }
    re-measured once a question — always at 10, which is what was noticed. */
 .sprint-secs {
   display: inline-block; min-width: 2.2ch; text-align: right;
-  font-size: var(--t-xs); font-weight: 700; color: var(--muted);
+  font-size: var(--t-sm); font-weight: 700; color: var(--muted);
   font-variant-numeric: tabular-nums;
 }
 .sprint-sep { color: var(--muted); opacity: .45; font-size: var(--t-xs); }
@@ -814,7 +799,7 @@ input:focus { border-color: var(--accent); }
 .sprint-secs.low, .sprint-secs.low + .sprint-unit { color: var(--red); opacity: 1; }
 .sprint-step {
   margin-left: auto;
-  font-size: .78rem; font-weight: 700; color: var(--muted);
+  font-size: var(--t-sm); font-weight: 700; color: var(--muted);
   font-variant-numeric: tabular-nums;
 }
 
@@ -828,9 +813,11 @@ input:focus { border-color: var(--accent); }
 .sprint-fill { height: 100%; width: 100%; background: var(--accent); border-radius: 999px; }
 .sprint-fill.low { background: var(--red); }
 
+/* the same marks rail as the task and the mirror, at the same width: it is one
+   component and it was rendering 35px cells here and 47px there */
 .sprint-body {
-  display: grid; grid-template-columns: minmax(0, 1fr) 76px;
-  gap: 22px; align-items: start; margin-top: 26px;
+  display: grid; grid-template-columns: minmax(0, 1fr) var(--rail);
+  gap: var(--s5); align-items: start; margin-top: 26px;
 }
 .sprint-main { min-width: 0; }
 .sprint-q {
@@ -852,10 +839,15 @@ input:focus { border-color: var(--accent); }
 .sprint-opt:active { transform: scale(.97); }
 .sprint-opt.right { background: var(--green-soft); border-color: var(--green); color: var(--green); }
 .sprint-opt.wrong { background: var(--red-soft); border-color: var(--red); color: var(--red); }
-/* beat two: there to be read, not yet to be tapped */
+/* Beat two is the beat whose whole job is reading, so the answers are at full
+   strength. What is locked is said by the box around them — flat, dashed, and
+   it does not give under a finger — not by fading the thing to be read. */
 .sprint-answers.shut .sprint-opt {
-  opacity: .45; color: var(--muted); cursor: default; transform: none;
+  color: var(--ink); background: var(--bg);
+  border-style: dashed; border-color: var(--line);
+  cursor: default;
 }
+.sprint-answers.shut .sprint-opt:active { transform: none; }
 /* beat one: not even there — the som has to be worked out, not weighed up.
    The space is kept, so nothing jumps when the answers arrive. */
 .sprint-answers.blind .sprint-opt { opacity: 0; visibility: hidden; }
@@ -879,10 +871,12 @@ input:focus { border-color: var(--accent); }
 .sprint-paused .paused-mark { font-size: 1.25rem; }
 .sprint-paused .btn { min-width: var(--tap); min-height: var(--tap); padding: 0 var(--s4); }
 
+/* a narrow window: the rail itself narrows with the other two splits further
+   up, so what is left here is how much air the sprint can still afford */
 @media (max-width: 520px) {
-  .sprint-card { padding: 18px 16px 20px; }
-  .sprint-body { grid-template-columns: minmax(0, 1fr) 40px; gap: 14px; margin-top: 20px; }
-  .sprint-q { font-size: 2.4rem; margin: 0 0 20px; }
+  .sprint-card { padding: 18px var(--s4) 20px; }
+  .sprint-body { margin-top: 20px; }
+  .sprint-q { font-size: 2.1rem; margin: 0 0 14px; }
   .sprint-opt { height: 60px; font-size: 1.35rem; }
 }
 
@@ -894,18 +888,12 @@ input:focus { border-color: var(--accent); }
 .sprint-line { display: flex; justify-content: space-between; font-size: .85rem; }
 .sprint-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 .sprint-chip {
-  font-size: .78rem; font-weight: 700; border-radius: 999px;
+  font-size: var(--t-sm); font-weight: 700; border-radius: 999px;
   padding: 4px 9px; background: var(--card); border: 1px solid var(--line);
 }
 .sprint-chip.o { background: var(--green-soft); border-color: #b9e3cd; }
 .sprint-chip.n { background: var(--red-soft); border-color: #f0b9bb; }
 .sprint-chip.t { background: #fff4e0; border-color: #e8b45c; }
-
-@media (max-width: 520px) {
-  .sprint-body { align-items: flex-start; gap: 10px; }
-  .sprint-q { font-size: 2.1rem; margin: 0 0 14px; }
-  .sprint-opt { font-size: 1.35rem; padding: 14px 4px; }
-}
 
 /* ---------- one som, opened out: what it was and what may be done with it ---------- */
 .som-head, .som-text { cursor: pointer; }
@@ -930,13 +918,16 @@ input:focus { border-color: var(--accent); }
   font-size: .87rem; line-height: 1.55; background: var(--bg);
   border-radius: 10px; padding: 10px 12px; margin-bottom: 12px;
 }
-.det-rules { margin-bottom: 12px; }
+.det-rules { margin-bottom: 12px; display: grid; gap: var(--s1); }
 .det-rules > b, .det-note > b { display: block; font-size: .8rem; margin-bottom: 6px; }
+/* switching a som off is permanent until it is switched back, so the whole
+   line is the target and the box in it is big enough to aim at */
 .det-rule {
-  display: flex; align-items: center; gap: 8px;
+  display: flex; align-items: center; gap: var(--s2);
+  min-height: var(--tap);
   font-size: .87rem; padding: 5px 0; cursor: pointer;
 }
-.det-rule input { width: 16px; height: 16px; accent-color: var(--red); }
+.det-rule input { flex: none; width: 22px; height: 22px; accent-color: var(--red); }
 .det-off {
   font-size: .68rem; font-weight: 800; text-transform: uppercase;
   color: var(--amber-ink); background: #fdf0d5; border-radius: 999px; padding: 2px 7px; font-style: normal;
@@ -952,10 +943,6 @@ input:focus { border-color: var(--accent); }
 .lesson-adj.off { background: #fdf0d5; color: var(--amber-ink); }
 .lesson.note .lesson-what span { font-style: italic; }
 
-/* a vakje in the kalender opens the som it stands for; when there is no som
-   left to open it is simply a picture */
-.cal-detail .result-tile { cursor: pointer; }
-.cal-detail .result-tile.flat { cursor: default; }
 .som-row.open { background: var(--bg); border-radius: 12px; padding: 12px; }
 .day-nosom { font-size: .85rem; color: var(--muted); margin-top: 14px; line-height: 1.5; }
 .sprint-strip .sprint-line + .sprint-chips + .sprint-line { margin-top: 12px; }
@@ -976,35 +963,24 @@ input:focus { border-color: var(--accent); }
 .tafel-cell.none { background: var(--bg); color: #c3c8d2; }
 .tafel-weak { font-size: .85rem; color: var(--muted); line-height: 1.5; }
 .tafel-weak.good { color: var(--green); }
-.tafel-legend .dot { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
-.dot.t-ok { background: var(--green-soft); }
-.dot.t-mid { background: #fdf0d5; }
-.dot.t-low { background: var(--red-soft); }
-.dot.t-none { background: var(--bg); border: 1px solid var(--line); }
 @media (max-width: 420px) {
   .tafel-cell { min-width: 22px; font-size: .62rem; padding: 6px 1px; }
 }
-.tafel-score { font-size: .9rem; font-weight: 700; margin-bottom: 6px; }
 /* on the report card the grid sits inside a strip, so it is a size smaller */
 .tafel-grid.small { margin: 8px 0 6px; }
 .tafel-grid.small .tafel-cell { min-width: 20px; font-size: .6rem; padding: 5px 1px; }
-#result-tafels .tafel-weak { font-size: .78rem; text-align: left; }
 
 /* a fout in the task list can be reopened for one more go — it asks quietly */
 .mark-cell.can-fix { cursor: pointer; animation: tile-nudge 1.6s ease-in-out infinite; }
 
-/* a day earned in advance: green, but its own green, so it can be told apart */
-.cal-cell.bonus { background: #2ab8a0; color: #fff; }
-.dot.bonus { background: #2ab8a0; }
-
-/* the two doors of the day, and the tick that says one is already open */
-
-
-/* the school's little logo on a som shaped like the werkblad's */
+/* The school's mark on a som shaped like the werkblad's. The wordmark is two
+   lines inside a 120-wide drawing: under about 48px "MONDO" falls below 11px
+   and the whole thing is a green smudge, which tells the child nothing. It
+   stays out of the reading line and stays quiet instead. */
 .school-badge {
-  flex: none; width: 22px; height: auto; margin-top: 2px; opacity: .9;
+  flex: none; order: -1; width: 40px; height: auto; margin-top: 3px; opacity: .75;
 }
-.school-badge.row { display: inline-block; width: 22px; margin: 0; vertical-align: middle; }
+.school-badge.row { display: inline-block; width: 34px; margin: 0; vertical-align: middle; }
 
 /* ---------- the clock, drawn ---------- */
 .question-clock { display: flex; justify-content: center; margin: 2px 0 18px; }
@@ -1030,7 +1006,7 @@ input:focus { border-color: var(--accent); }
   font-variant-numeric: tabular-nums;
 }
 .score-ring b { font-size: 1.5rem; font-weight: 800; line-height: 1; }
-.score-ring em { font-style: normal; font-size: .7rem; color: var(--muted); }
+.score-ring em { font-style: normal; font-size: var(--t-xs); color: var(--muted); }
 .score-ring.good { background: var(--green-soft); color: var(--green); }
 .score-ring.mid  { background: #fdf0d5; color: var(--amber-ink); }
 .score-ring.low  { background: var(--red-soft); color: var(--red); }
@@ -1038,12 +1014,12 @@ input:focus { border-color: var(--accent); }
 .day-doors { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 4px; }
 .day-door {
   display: inline-flex; align-items: center; gap: 6px;
-  font-size: .78rem; font-weight: 700; color: var(--muted);
+  font-size: var(--t-sm); font-weight: 700; color: var(--muted);
   background: var(--bg); border-radius: 999px; padding: 5px 11px;
 }
 .day-door i { font-style: normal; }
 .day-door b { color: var(--ink); font-variant-numeric: tabular-nums; }
-.day-run { font-size: .78rem; font-weight: 800; color: var(--muted); margin: 14px 0 -4px; }
+.day-run { font-size: var(--t-sm); font-weight: 800; color: var(--muted); margin: 14px 0 -4px; }
 .det-clock { display: flex; justify-content: center; margin: 4px 0 10px; }
 .det-clock .klok-face { width: 140px; height: 140px; }
 
@@ -1054,14 +1030,12 @@ input:focus { border-color: var(--accent); }
    hover affordance lives behind this guard; touch gets :active instead. */
 @media (hover: hover) and (pointer: fine) {
   .brand:hover { opacity: 0.6; }
-  .timer-pause:hover { background: var(--accent-soft); color: var(--accent); }
+  .timer-btn:hover { background: var(--accent-soft); color: var(--accent); }
   .flag-btn.switchable:hover, .flag-btn.open { border-color: var(--accent); background: var(--accent-soft); }
   .lang-opt:hover { background: var(--bg); }
   .icon-btn:hover { border-color: var(--accent); color: var(--accent); }
-  .flag:hover { opacity: 1; }
   .btn.primary:hover { background: #2f5ce0; }
   .btn.ghost:hover { background: #dbe6fd; }
-  .link-btn:hover { color: var(--ink); }
   .answers:not(.fresh) .answer:hover { border-color: var(--accent); }
   .result-tile:hover { box-shadow: 0 2px 8px rgba(29, 36, 51, .12); }
   .hint-btn:hover { background: #fdf3d0; }
@@ -1071,7 +1045,6 @@ input:focus { border-color: var(--accent); }
   .rate-btn.easy:hover { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
   .lesson-undo:hover { color: var(--red); }
   .icon-ghost:hover { background: var(--accent-soft); color: var(--accent); }
-  .cal-detail .result-tile:not(.flat):hover { box-shadow: 0 2px 8px rgba(29, 36, 51, .16); }
   .mark-cell.can-fix:hover { box-shadow: 0 2px 8px rgba(29, 36, 51, .16); }
 }
 
@@ -1102,8 +1075,11 @@ input:focus { border-color: var(--accent); }
   }
   .task-main { display: contents; }         /* question and answers become columns */
   .task-question-col { min-width: 0; }
-  .task-answer-col { min-width: 0; align-self: center; }
-  .sprint-body { gap: var(--s5); }
+  /* The uitleg opens inside this column. Centring it made its height carry the
+     layout, so the four answers slid up by half a box the moment the child got
+     something wrong — the padding does the optical centring instead, and the
+     buttons stay where the finger left them. */
+  .task-answer-col { min-width: 0; align-self: start; padding-top: var(--s5); }
   .home-doors { gap: var(--s4); }
   .door-tile { min-height: 150px; }
 }
@@ -1121,23 +1097,17 @@ input:focus { border-color: var(--accent); }
     transition-duration: .001ms !important;
   }
   .sprint-fill { transition-duration: inherit !important; }
+  /* both of the things that say "this is the one to tap" are a pulse, so both
+     of them need a still version — otherwise asking for less motion takes the
+     only cue away and leaves the child with ten identical vakjes */
   .mark-cell.can-fix { animation: none !important; outline: 2px solid var(--red); }
+  .result-tile.no { animation: none !important; outline: 2px solid var(--red); }
 }
 
 /* ---------- the rapport: head, day strip, day body ---------- */
 .report-card { display: grid; gap: var(--s3); }
 .report-head { display: flex; align-items: center; gap: var(--s3); }
 .report-title { font-size: var(--t-md); font-weight: 800; }
-.report-pill {
-  margin-left: auto; display: inline-flex; align-items: baseline; gap: 1px;
-  border-radius: var(--r-md); padding: var(--s1) var(--s3);
-  background: var(--bg); font-variant-numeric: tabular-nums;
-  font-size: var(--t-lg); font-weight: 800;
-}
-.report-pill em { font-style: normal; font-size: var(--t-xs); color: var(--muted); }
-.report-pill.good { background: var(--green-soft); color: var(--green-ink); }
-.report-pill.mid  { background: var(--amber-soft); color: var(--amber-ink); }
-.report-pill.low  { background: var(--red-soft); color: var(--red-ink); }
 
 /* a fortnight on one line: the month grid's wall of red is gone */
 .report-strip {
@@ -1212,3 +1182,30 @@ input:focus { border-color: var(--accent); }
 .mirror-clock { display: flex; justify-content: center; margin: var(--s2) 0 var(--s3); }
 .mirror-opt-face { display: flex; align-items: center; justify-content: center; padding: var(--s2); }
 .mirror-opt-face svg { width: 100%; max-width: 104px; height: auto; }
+
+/* A tap during the reading beat reaches the answer now instead of being
+   swallowed by `disabled`, so it can be told it was too early: one short
+   shake, the same one a wrong password gets. */
+.sprint-opt.nudge { animation: login-shake .4s; }
+
+/* The sprint's line under the answers carries a button twice in a round —
+   before the first tafel and after the last — so the word and the button sit
+   on one line with the line's own height kept. */
+.sprint-flash {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: center;
+  gap: var(--s2) var(--s3);
+}
+.sprint-flash .btn { padding: 0 var(--s4); min-height: var(--tap); }
+
+/* What the marks on a report card mean, said once under the grid and only
+   when one of the quieter two is up there. */
+.mark-legend {
+  margin: 0; font-size: var(--t-xs); color: var(--muted);
+  display: flex; flex-wrap: wrap; gap: var(--s1) var(--s3);
+}
+/* an emoji carries no side bearing, so the word hangs off it */
+.mark-legend i { font-style: normal; margin-right: .35em; }
+
+/* The lamp is not a disabled button any more — it answers, with the reason —
+   so it may not look dead. */
+.hint-btn.spent { opacity: .55; }

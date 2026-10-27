@@ -267,6 +267,10 @@ const Engine = {
   /* Render question text in the current language */
   text(q, lang) {
     const tpl = TEMPLATES.find(tp => tp.id === q.tplId);
+    // A round can be parked for days, and a soort som can be renamed or
+    // retired under it in the meantime. Every other reader of a stored som
+    // already tolerates that; this one is the last.
+    if (!tpl || !tpl.variants[q.variantIdx]) return t("som_gone");
     const s = tpl.variants[q.variantIdx][lang] || tpl.variants[q.variantIdx].nl;
     return this._render(s, q, lang, q.vars);
   },
@@ -339,16 +343,20 @@ const Engine = {
 
     for (let i = 0; i < nMain; i++) add(mainCat);
 
-    // Telling the clock is a known weak spot (CITO/DIA), so every task keeps a
-    // couple of clock questions even on days when it is not the main category.
-    const klokQuota = mainCat === "klok" ? 0 : Math.min(2, nMixed);
-    for (let i = 0; i < klokQuota; i++) add("klok");
-
-    // mixed: prefer recently-wrong templates, else random other categories
-    const otherCats = CATS.filter(c => c !== mainCat && c !== "klok");
-    for (let i = 0; i < nMixed - klokQuota; i++) {
+    // The rest of the opdracht: a soort that went wrong recently if there is
+    // one, otherwise any other soort. Two of these slots used to be reserved
+    // for the clock, from the days when the clock had nowhere else to be —
+    // it has a door of its own now, ten questions of it every day, so they
+    // have gone back to the stories.
+    const otherCats = CATS.filter(c => c !== mainCat);
+    for (let i = 0; i < nMixed; i++) {
+      // The repeat pool remembers every soort that went wrong, the clock
+      // included — and the clock has its own door now, so a dial fetched back
+      // here would land in the middle of the stories, which is the whole
+      // thing this round was moved away from.
       const wrongId = data.wrongTpl[i];
       const wrongTpl = wrongId && TEMPLATES.find(tp => tp.id === wrongId && tp.cat !== "verrassing" &&
+                                                       tp.cat !== "klok" && !tp.face &&
                                                        Rules.allows(data, tp));
       const q = wrongTpl && fromTpl(wrongTpl);
       if (q) {
@@ -383,18 +391,32 @@ const Engine = {
     return Math.max(0, Math.min(5, this.BASE + Tuning.of(data, tpl.id)));
   },
 
-  /* A whole round of clock faces. Its own builder, because these templates
-     sit outside the categories the sommen are mixed from: a klok round is
-     ten dials and nothing else. */
+  /* The clock door. Mostly dials, because reading one is what this door is
+     for — and a few of the clock stories behind it as well. Telling the time
+     and working with it are the same skill asked two ways, and they belong
+     together rather than scattered through the sommen, which is where the
+     stories used to sit.
+
+     The two halves are drawn differently on purpose. A dial is not spoilt by
+     coming round again — reading 9:45 a second time is practice — so only
+     this round's own draws are avoided. A story is spoilt, so it carries the
+     whole history with it, exactly as it did among the sommen. */
+  FACES_OF_TEN: 7,
+
   buildFaceTask(n, data) {
-    const pool = TEMPLATES.filter(tp => tp.face && Rules.allows(data, tp));
-    const use = pool.length ? pool : TEMPLATES.filter(tp => tp.face);
-    // only this round's own draws are avoided: a time may come back tomorrow
-    const seen = new Set();
+    const live = tp => Rules.allows(data, tp);
+    const isWord = tp => !tp.face && tp.cat === "klok";
+    const faces = TEMPLATES.filter(tp => tp.face);
+    const words = TEMPLATES.filter(isWord);
+    const useF = faces.filter(live).length ? faces.filter(live) : faces;
+    const useW = words.filter(live).length ? words.filter(live) : words;
+
+    const nWord = useW.length ? Math.max(0, Math.min(n, n - this.FACES_OF_TEN)) : 0;
+    const seenFace = new Set();
+    const seenWord = new Set(data.seen || []);
     const taken = new Set();
-    const out = [];
-    for (let i = 0; i < n; i++) {
-      const tpl = use[i % use.length];
+
+    const draw = (tpl, seen) => {
       let q = this.freshFrom(tpl, this.levelFor(tpl, data), seen, taken);
       if (!q) {                         // nothing new at this level: allow a repeat
         for (let k = 0; k < 200; k++) {
@@ -403,10 +425,16 @@ const Engine = {
         }
         taken.add(this.sig(q));
       }
-      out.push(q);
-    }
+      return q;
+    };
+
+    const out = [];
+    for (let i = 0; i < n - nWord; i++) out.push(draw(useF[i % useF.length], seenFace));
+    const order = this.shuffle(useW.slice());
+    for (let i = 0; i < nWord; i++) out.push(draw(order[i % order.length], seenWord));
+
     const today = todayStr();
-    use.forEach(tp => { data.recentTpl[tp.id] = today; });
+    useF.concat(nWord ? order : []).forEach(tp => { data.recentTpl[tp.id] = today; });
     Store.save(data);
     return this.shuffle(out);
   },

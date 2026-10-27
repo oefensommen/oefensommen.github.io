@@ -56,6 +56,16 @@ const Store = {
     return this.rev(local) > this.rev(cloud) ? local : cloud;
   },
 
+  /* Anything that arrives from the cloud is a bare jsonb blob, and on an
+     account that has never saved it is literally `{}` — which is what the
+     parent's RPCs hand back too, since they return the child's record as it
+     stands. Three fields are read without a guard all over the app (`days`,
+     `recentTpl`, `wrongTpl`), so a blob is never allowed to become `data`
+     without being dressed in the defaults first. */
+  dress(blob) {
+    return Object.assign(this._default(), blob || {});
+  },
+
   load() {
     try {
       const raw = localStorage.getItem(this.KEY);
@@ -116,7 +126,11 @@ const Store = {
   /* ---------- login ----------
      Returns "ok" | "bad" (wrong credentials) | "offline" */
   async login(user, pass) {
-    user = (user || "").trim();
+    // A tablet capitalises the first letter of a name field by itself, so the
+    // name typed on the very first unlock can come in as "Test". The database
+    // already lowercases what it is given; this is for the copy kept on the
+    // device, which is compared letter for letter when there is no network.
+    user = (user || "").trim().toLowerCase();
     if (!user || !pass) return "bad";
 
     const parentName = /-ouder$/i.test(user);

@@ -983,8 +983,15 @@ const TEMPLATES = [
       const a = lvRange(level, 120, 480, 1.6);
       const offs = [1, 2, 3, 4, 6, 7].sort(() => Math.random() - 0.5);
       const near = offs[0];
-      const guesses = [a + (Math.random() < 0.5 ? -near : near),
-                       a - offs[1] - near - 1, a + offs[2] + near + 2, a + offs[3] + near + 5];
+      // the three wrong guesses must differ from each other as well as from
+      // the right one — two children guessing the same number and only one of
+      // them marked wrong is the kind of thing a child notices and we do not
+      const guesses = [a + (Math.random() < 0.5 ? -near : near)];
+      [[1, 1], [2, 2], [3, 5]].forEach(([k, pad]) => {
+        let v = k === 1 ? a - offs[1] - near - 1 : a + offs[k] + near + pad;
+        while (guesses.indexOf(v) !== -1) v += k === 1 ? -1 : 1;
+        guesses.push(v);
+      });
       const names = NAMES.slice().sort(() => Math.random() - 0.5).slice(0, 4).map(n => n.n);
       const label = (i) => `${names[i]}: ${guesses[i]}`;
       return { vars: { a }, textCorrect: label(0), textWrongs: [label(1), label(2), label(3)] };
@@ -1111,4 +1118,18 @@ const TEMPLATES = [
   }
 ];
 
-const CATS = ["optellen", "aftrekken", "vermenigvuldigen", "delen", "tweestap", "klok"];
+/* The soorten a redactiesom is mixed from. Klokkijken used to be one of them,
+   and one day in seven it was the soort of the day — so the child met the
+   clock behind its own door and then met it again for most of the sommen,
+   and the stories they were meant to be reading never came up. The clock
+   stories moved to where the dials are; this list is the sommen alone. */
+const CATS = ["optellen", "aftrekken", "vermenigvuldigen", "delen", "tweestap"];
+
+/* Everything that still has to account for the clock as a soort: the parent's
+   overview of how each one is going, and the warning before one is switched
+   off. */
+const ALL_CATS = CATS.concat("klok");
+
+/* And every soort a rule can be written against, which is the two the doors
+   of their own do not share with the sommen. */
+const RULE_CATS = ALL_CATS.concat("verrassing", "klokkijken");

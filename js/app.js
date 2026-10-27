@@ -29,7 +29,9 @@ const SelfUpdate = {
       const live = (html.match(/app\.js\?v=(\d+)/) || [])[1];
       if (!live || live === this.mine) return;
       if (sessionStorage.getItem("os_selfupdate") === live) return;  // already tried this one
-      if (session) { this.pending = live; return; }   // never yank a som off the screen
+      // never yank a som off the screen — nor a tafel, which until the tenth
+      // one has nothing written down anywhere
+      if (session || sprint) { this.pending = live; return; }
       this.apply(live);
     } catch (e) { /* offline: keep running what we have */ }
   },
@@ -69,6 +71,7 @@ function tickTimer() {
   $("timer").textContent = fmtTime(elapsedSec());
 }
 function startTimer() {
+  if (!session) return;            // the round was put down while the 3·2·1 ran
   session.t0 = Date.now();
   $("timerbox").classList.remove("hidden");
   tickTimer();
@@ -166,9 +169,9 @@ function roundsOf(ds, kind) {
   const rec = data.days[ds];
   const n = tasksOf(rec);
   if (!n) return 0;
-  const kinds = rec.kinds || [];
+  const kinds = rec.kinds || [], open = rec.open || [];
   let c = 0;
-  for (let i = 0; i < n; i++) if ((kinds[i] || "sommen") === kind) c++;
+  for (let i = 0; i < n; i++) if ((kinds[i] || "sommen") === kind && !open[i]) c++;
   return c;
 }
 function sommenOf(ds)   { return roundsOf(ds, "sommen"); }
@@ -302,6 +305,7 @@ function renderHome() {
   // an unfinished round takes over ITS OWN door and leaves the other two
   // alone — see openRounds below
   const opens = parent ? {} : { sommen: activeTask("sommen"), klok: activeTask("klok") };
+  const halfSprint = parent ? null : activeSprint();
   const open = opens.sommen || opens.klok;
   // an opdracht that was worked through but still has soms put aside is not at
   // "som 11 of 10" — it is back at the report card with a few left to do
@@ -318,17 +322,22 @@ function renderHome() {
     const resume = !!half;
     b.classList.toggle("done", times > 0 && !resume);
     b.classList.toggle("resume", resume);
-    $(label).textContent = resume ? t("continue_task") : t("home_" + btn.replace("btn-", "")
+    // A door with work waiting used to say "Verder gaan" instead of its own
+    // name, so the one tile that mattered was the one that had stopped saying
+    // what kind of work it held. The name stays; the badge says where it is.
+    $(label).textContent = t("home_" + btn.replace("btn-", "")
       .replace("sprint", "tafels").replace("start", "sommen"));
     $(badgeEl).textContent = resume
-      ? (half.idx >= half.queue.length ? "" : (half.idx + 1) + "/" + half.queue.length)
+      ? (half.idx >= half.queue.length ? "▶" : "▶ " + (half.idx + 1) + "/" + half.queue.length)
       : badge(times);
   };
-  door("btn-sprint", "sprint-label", "sprint-done", n.tafels, null);
+  door("btn-sprint", "sprint-label", "sprint-done", n.tafels,
+       halfSprint && { idx: halfSprint.i, queue: halfSprint.qs });
   door("btn-start", "start-label", "start-done", n.sommen, opens.sommen);
   door("btn-klok", "klok-label", "klok-done", n.klok, opens.klok);
 
   const todo = DOORS.filter(d => n[d.key] === 0);
+  const tally = dayTally(ds);
   let status = t("today_todo");
   if (open) status = pastEnd
     ? t("finish_rest").replace("{n}", left)
@@ -341,16 +350,17 @@ function renderHome() {
     status = liveBusy ? Store.watches().toUpperCase() + " " + t("live_busy")
                       : Store.watches().toUpperCase() + " " + t("live_idle");
   }
-  // the chips and the tile badges already say how today went; this line is only
-  // worth its space when it says something they cannot
-  const saysMore = !!open || pakkets >= 2 || parent;
+  // Once the chips and the badges are there they say how today went better
+  // than a sentence does, so the line goes quiet. But on a fresh morning there
+  // are no chips and no badges, and that was exactly when it used to hide the
+  // one thing it had to say: that all three doors want opening.
+  const saysMore = !!open || parent || pakkets >= 2 || !tally.n || todo.length < DOORS.length;
   $("home-status").textContent = saysMore ? status : "";
   $("home-status").classList.toggle("hidden", !saysMore);
 
   /* How today is going, without a sentence to read: one line of icons with
      numbers behind them. Nothing here is new information — it is the same
      counts the tiles carry, said compactly enough to take in at a glance. */
-  const tally = dayTally(ds);
   const chips = [];
   for (const d of DOORS) {
     const per = tally.per[d.key];
@@ -359,7 +369,9 @@ function renderHome() {
   if (tally.n) {
     const mins = Math.max(1, Math.round(daySecs(ds) / 60));
     chips.push(`⏱ ${mins}m`);
-    chips.push(`<b>${tally.score}</b>`);
+    // out of a hundred, said the way the rapport says it — a bare number at
+    // the end of a row of counts reads like one more count
+    chips.push(`<b>${tally.score}<i aria-hidden="true">/100</i></b>`);
   }
   $("home-chips").innerHTML = chips.join('<i aria-hidden="true">·</i>');
   $("home-chips").classList.toggle("hidden", !chips.length);
@@ -439,14 +451,55 @@ function sprintRounds(ds) {
   return [d.sprint, d.sprintEnd].filter(Boolean);
 }
 
+/* The tafelronde that was left standing, or nothing. The sommen and the klok
+   have kept theirs in `data.actives` since the three doors were built; the
+   tafels used to write nothing down at all until the tenth was answered, so
+   a round broken off by a notification, a flat battery or simply the way back
+   took every tafel with it. */
+function activeSprint() {
+  recoverSprint();                      // a complete slot is booked, not dropped
+  const a = (data.actives || {}).tafels;
+  if (!a || !a.qs || !a.qs.length) return null;
+  if (a.date !== todayStr()) {
+    if (data.actives) delete data.actives.tafels;
+    Store.save(data);
+    return null;
+  }
+  return a;
+}
+
+function saveSprint() {
+  if (!sprint || sprint.finished) return;
+  data.actives = data.actives || {};
+  data.actives.tafels = {
+    at: Date.now(), date: todayStr(), kind: "tafels",
+    qs: sprint.qs, i: sprint.i, tiles: sprint.tiles, facts: sprint.facts,
+    secs: sprintSecs()
+  };
+  Store.save(data);
+}
+
+/* Seconds on this tafelronde, the ones before it was put down included */
+function sprintSecs() {
+  if (!sprint) return 0;
+  const live = Math.max(0, Math.round((Date.now() - (sprint.t0 || Date.now())) / 1000));
+  return (sprint.secsBefore || 0) + live;
+}
+
 function startSprint(then) {
+  if (opening) return;                 // see startTask: two doors, one burst
+  opening = true;
+  setTimeout(() => { opening = false; }, 250);
+  const open = activeSprint();
+  if (open) return resumeSprintRound(open, then);
   // a round never repeats a tafel already asked today, as long as there are
   // enough left — after that the table simply comes round again
   const today = [].concat(...sprintRounds().map(r => r.facts || []));
   let qs = Sprint.build(data, today);
   if (qs.length < Sprint.N) qs = Sprint.build(data, []);
   if (!qs.length) { sprintOff = true; return then(); }
-  sprint = { qs, i: 0, tiles: "", facts: [], then, tick: null, locked: true, t0: Date.now() };
+  sprint = { qs, i: 0, tiles: "", facts: [], then, tick: null, locked: true,
+             t0: Date.now(), secsBefore: 0 };
   Live.startHeartbeat();
   // a beat to look up before the first clock starts
   $("sprint-progress").textContent = `1 / ${qs.length}`;
@@ -454,14 +507,35 @@ function startSprint(then) {
   $("sprint-badge-label").textContent = t("sprint_title");
   $("sprint-answers").innerHTML = "";
   $("sprint-count").textContent = Sprint.SECS;
+  ["sprint-sep", "sprint-count", "sprint-unit"].forEach(id => $(id).classList.remove("hidden"));
   $("sprint-paused").classList.add("hidden");
   document.querySelector("#screen-sprint .sprint-body").classList.remove("hidden");
   $("sprint-marks").innerHTML = "";
-  $("sprint-flash").textContent = t("sprint_ready").replace("{n}", Sprint.N).replace("{s}", Sprint.SECS);
-  $("sprint-flash").className = "sprint-flash";
+  $("sprint-flash").className = "sprint-flash think";
+  $("sprint-flash").innerHTML =
+    `<span class="sprint-ready">${esc(t("sprint_ready").replace("{n}", Sprint.N)
+                                                       .replace("{s}", Sprint.SECS))}</span>
+     <button id="sprint-go" class="btn primary">${esc(t("sprint_go"))}</button>`;
+  // The line that says how this works used to be on screen for 1600ms and was
+  // then replaced by a ticking clock — seven words, gone before a child of
+  // eight has read them, and never shown again. Now the clock waits for a tap,
+  // which also means a ⚡ hit by accident costs one tap, not 200 seconds.
+  $("sprint-go").addEventListener("click", () => { if (sprint) renderSprint(); });
   show("screen-sprint");
   Live.push("sprint");
-  setTimeout(() => { if (sprint) renderSprint(); }, 1600);
+}
+
+/* Back into a tafelronde where it was left: the tafels already answered keep
+   their marks, and the clock starts again on the one that was on screen. */
+function resumeSprintRound(open, then) {
+  sprint = { qs: open.qs, i: open.i, tiles: open.tiles || "", facts: open.facts || [],
+             then, tick: null, locked: true, t0: Date.now(), secsBefore: open.secs || 0 };
+  Live.startHeartbeat();
+  $("sprint-badge-label").textContent = t("sprint_title");
+  $("sprint-paused").classList.add("hidden");
+  document.querySelector("#screen-sprint .sprint-body").classList.remove("hidden");
+  show("screen-sprint");
+  renderSprint();
 }
 
 /* A tafel is answered in three beats, and the clock runs through all of them.
@@ -492,13 +566,19 @@ function applySprintPhase(ph) {
   const box = $("sprint-answers"), flash = $("sprint-flash");
   box.classList.toggle("blind", ph === 0);
   box.classList.toggle("shut", ph < 2);
-  box.querySelectorAll(".sprint-opt").forEach(b => b.disabled = ph < 2);
+  // Not `disabled`: a disabled button in Safari fires nothing at all, so a
+  // tap during the reading beat produced no answer of any kind. The round
+  // already refuses the answer itself (see answerSprint) — this way the tap
+  // is at least felt.
+  box.querySelectorAll(".sprint-opt").forEach(b => {
+    b.setAttribute("aria-disabled", String(ph < 2));
+    if (ph === 2) b.classList.remove("nudge");   // the too-early shake is spent
+  });
   // an icon for the beat, the words small beneath it: 👀 look, 🤔 choose
   const beat = ph === 0 ? ["👀", t("sprint_blind")]
-             : ph === 1 ? ["🤔", t("sprint_think")] : null;
-  flash.innerHTML = beat
-    ? `<span class="beat-icon" aria-hidden="true">${beat[0]}</span> ${esc(beat[1])}`
-    : "";
+             : ph === 1 ? ["🤔", t("sprint_think")] : ["👉", t("sprint_now")];
+  flash.innerHTML =
+    `<span class="beat-icon" aria-hidden="true">${beat[0]}</span> ${esc(beat[1])}`;
   flash.className = "sprint-flash" + (ph < 2 ? " think" : "");
 }
 
@@ -508,6 +588,7 @@ function renderSprint() {
   sprint.phase = null;                        // so the first beat is always drawn
   $("sprint-progress").textContent = `${sprint.i + 1} / ${sprint.qs.length}`;
   $("sprint-question").textContent = `${q.a} × ${q.b}`;
+  ["sprint-sep", "sprint-count", "sprint-unit"].forEach(id => $(id).classList.remove("hidden"));
 
   const box = $("sprint-answers");
   box.innerHTML = "";
@@ -515,7 +596,7 @@ function renderSprint() {
     const b = document.createElement("button");
     b.className = "sprint-opt";
     b.textContent = v;
-    b.disabled = true;
+    b.setAttribute("aria-disabled", "true");
     b.addEventListener("click", () => answerSprint(i, b));
     box.appendChild(b);
   });
@@ -623,7 +704,16 @@ function resumeSprint() {
 }
 
 function answerSprint(i, btn) {
-  if (sprint.locked || sprint.paused != null) return;
+  if (sprint.locked || sprint.paused != null) {
+    // too early: say so. But a tap that lands on a tafel already answered is
+    // not too early, it is just late — and a shake there would read as "wrong"
+    if (!sprint.settled && sprint.paused == null) {
+      btn.classList.remove("nudge");
+      void btn.offsetWidth;                    // so a second tap shakes again
+      btn.classList.add("nudge");
+    }
+    return;
+  }
   sprint.locked = true;
   stopSprintClock();
   const q = sprint.qs[sprint.i];
@@ -656,6 +746,9 @@ function settleSprintQ(tile, msg, ok) {
   renderSprintMarks();
   sprint.facts.push(`${q.a}x${q.b}`);
   Sprint.remember(data, q, ok);
+  sprint.i++;                                 // so what is saved is where we go next
+  saveSprint();
+  sprint.i--;                                 // nextSprint moves it on for real
   const flash = $("sprint-flash");
   flash.textContent = msg;
   flash.className = "sprint-flash " + (ok ? "good" : "bad");
@@ -671,31 +764,64 @@ function nextSprint() {
   finishSprint();
 }
 
-function finishSprint() {
-  if (sprint.finished) return;                   // written down exactly once
-  sprint.finished = true;
+/* Write a finished tafelronde into the day. Its own function because a round
+   can reach its tenth tafel and still not be booked: there is about a second
+   between the last answer and the end of the round, and a tablet put to sleep
+   in that second used to leave ten answered tafels in the slot with nothing
+   willing to take them. */
+function bookSprintRound(qs, tiles, facts, secs) {
   const ds = todayStr();
-  const right = sprint.tiles.split("").filter(c => c === "o").length;
+  const right = tiles.split("").filter(c => c === "o").length;
   const day = data.days[ds] || { solved: 0, firstCorrect: 0, done100: false, cats: {} };
-  const secs = Math.max(0, Math.round((Date.now() - (sprint.t0 || Date.now())) / 1000));
+  if (data.actives) delete data.actives.tafels;
   day.sprints = sprintRounds(ds).slice();
-  day.sprints.push({ n: sprint.qs.length, right, tiles: sprint.tiles, facts: sprint.facts, secs });
+  day.sprints.push({ n: qs.length, right, tiles, facts, secs });
   delete day.sprint; delete day.sprintEnd;        // the two old slots, folded in
   addDaySecs(day, "tafels", secs);
   data.days[ds] = day;
   Store.save(data);
+  return right;
+}
+
+/* A round whose tenth tafel was answered but which never got as far as being
+   written down. Booked on the way past, so the day is right before anything
+   is drawn. */
+function recoverSprint() {
+  const a = (data.actives || {}).tafels;
+  if (!a || !a.qs || a.date !== todayStr() || a.i < a.qs.length) return;
+  bookSprintRound(a.qs, a.tiles || "", a.facts || [], a.secs || 0);
+}
+
+function finishSprint() {
+  if (sprint.finished) return;                   // written down exactly once
+  sprint.finished = true;
+  const right = bookSprintRound(sprint.qs, sprint.tiles, sprint.facts, sprintSecs());
 
   const all = right === sprint.qs.length;
   $("sprint-question").textContent = `${right}/${sprint.qs.length}`;
   $("sprint-answers").innerHTML = "";
   renderSprintMarks();
+  // Ten tafels under a clock, and the score used to be on screen for 1400ms
+  // before the child was put back on the home screen. The row of tafels is
+  // right there beside it; this waits until it has been looked at.
+  // nothing is being timed any more, so the header stops saying it is
+  ["sprint-sep", "sprint-count", "sprint-unit"].forEach(id => $(id).classList.add("hidden"));
+  const bar = $("sprint-bar");
+  bar.classList.remove("low");
+  bar.style.transition = "none";
+  bar.style.width = "100%";
   const flash = $("sprint-flash");
-  flash.textContent = all ? t("sprint_all") : t("sprint_done");
   flash.className = "sprint-flash " + (all ? "good" : "");
+  flash.innerHTML = `<span>${esc(all ? t("sprint_all") : t("sprint_done"))}</span>
+     <button id="sprint-done-btn" class="btn primary">${esc(t("sprint_close"))}</button>`;
   clearInterval(sprint.tick);
   sprint.tick = null;
   const then = sprint.then;
-  setTimeout(() => { if (sprint) clearInterval(sprint.tick); sprint = null; then(); }, 1400);
+  $("sprint-done-btn").addEventListener("click", () => {
+    if (sprint) clearInterval(sprint.tick);
+    sprint = null;
+    then();
+  });
 }
 
 /* one line of tafels, for the report card and for the parent's kalender */
@@ -718,11 +844,19 @@ function sprintStripsHTML(ds) {
     sprintStripHTML(sp, rounds.length > 1 ? `${t("sprint_title")} ${i + 1}` : t("sprint_title"))).join("");
 }
 
+let opening = false;              // a door is being opened right now
+
 /* The day has three doors, and two of them come through here: ten
    redactiesommen, or ten clock faces. Same runner, same report card, same
    second chance — only the bank the ten are drawn from differs. */
 function startTask(kind) {
   kind = kind === "klok" ? "klok" : "sommen";
+  // Two tiles sit side by side and both stay live until the countdown lands,
+  // so a quick pair of taps used to build two rounds and park the first one
+  // unopened — a door advertising work that was never on screen.
+  if (opening) return;
+  opening = true;
+  setTimeout(() => { opening = false; }, 250);
   if (activeTask(kind)) return resumeActive(kind);     // this door was left open
   const built = kind === "klok" ? Engine.buildFaceTask(TASK_N, data)
                                 : Engine.buildTask(TASK_N, data);
@@ -740,6 +874,9 @@ function startTask(kind) {
   saveActive();                   // resumable from the very first som
   Live.startHeartbeat();          // keep the parent's mirror alive while thinking
   runCountdown(() => {
+    // walking out during the countdown puts the round down; what is counted
+    // in then belongs to nothing
+    if (!session || session.kind !== kind || sprint) return;
     startTimer();
     renderQuestion();
     show("screen-task");
@@ -796,6 +933,7 @@ function snapshotActive() {
     paused: session.pausedSec != null,
     lastSec: session.lastSec || null,
     banked: !!session.banked,          // whether the score has already been booked
+    tileSlot: session.tileSlot == null ? null : session.tileSlot,
     hintsUsed: session.hintsUsed || 0,
     score: session.score || null,
     questions: session.questions.map(snapQ),
@@ -835,6 +973,11 @@ function bankSettled() {
 function saveActive(pushNow) {
   if (!session || !session.questions) return;
   bankSettled();                         // count it first, then write it down,
+  // The marks go into the day before the snapshot is taken, because that is
+  // where the round's slot in the day is handed out — a snapshot taken first
+  // carries no slot, and the round comes back from a reload believing it is
+  // a new one and writes itself into the day a second time.
+  if (session.questions.some(finished)) writeTiles(!session.questions.every(finished));
   const snap = snapshotActive();         // so the snapshot carries the flags
   if (!snap) return;
   // an opdracht with nothing left to answer is not something to carry on with —
@@ -924,6 +1067,7 @@ function resumeActive(kind) {
     round: a.round || 1,
     lastSec: a.lastSec,
     banked: !!a.banked,
+    tileSlot: a.tileSlot == null ? null : a.tileSlot,
     hintsUsed: a.hintsUsed || 0,
     score: a.score,
     pausedSec: null,
@@ -955,6 +1099,9 @@ function pauseTask() {
   session.pausedSec = elapsedSec();
   clearInterval(timerInt);
   timerInt = null;
+  // the card says the clock stands still, so the header may not go on showing
+  // one — a second behind the card's own number, at that
+  $("timerbox").classList.add("hidden");
   $("pause-at").textContent = `${session.idx + 1}/${session.queue.length}`;
   $("pause-time").textContent = "⏱ " + fmtTime(session.pausedSec);
   saveActive(true);                   // straight to the cloud: the tablet may be next
@@ -966,6 +1113,7 @@ function resumeTask() {
   if (!session) return goHome();
   session.t0 = Date.now() - (session.pausedSec || 0) * 1000;   // carry on, not from zero
   session.pausedSec = null;
+  $("timerbox").classList.remove("hidden");
   clearInterval(timerInt);
   timerInt = setInterval(tickTimer, 1000);
   tickTimer();
@@ -986,6 +1134,7 @@ function renderQuestion() {
   // unasked, waiting, instead of being spent
   if (Engine.remember(data, q)) Store.save(data);
   $("btn-skip").disabled = false;
+  $("btn-pause").disabled = false;
   $("btn-skip").classList.toggle("hidden", !!session.review || !!session.midRetry);   // nothing to skip when looking back
   // one som opened from the report card is "som 5 of 20", not "1 of 1"
   const at = session.viewOne != null ? session.viewOne : session.idx;
@@ -1122,6 +1271,7 @@ function answer(i, btn) {
 
   document.querySelectorAll(".answer").forEach(b => b.disabled = true);
   $("btn-skip").disabled = true;
+  $("btn-pause").disabled = true;      // the next som is already on its way in
 
   q.tries = 1;
   q.correctFirst = correct;
@@ -1240,7 +1390,8 @@ function secondChance(i, btn) {
    still is one, into the day's report card once the opdracht is done. */
 function persistCorrection() {
   if (session.banked) {
-    writeTiles();                  // the day's report card follows the correction
+    // `banked` means every som has been faced, so the round is not standing
+    writeTiles(false);
     settleTask();
     writeReport();
   } else saveActive();
@@ -1270,7 +1421,13 @@ function toggleHint() {
   const text = Engine.hint(q, LANG);
   if (!text) return;
   // already open on this som once: reading it again is free
-  if (!q.hinted && hintsLeft() <= 0) return;
+  if (!q.hinted && hintsLeft() <= 0) {
+    // A spent lamp used to be a disabled button: pressing it did nothing at
+    // all, and why it was grey was written in a `title` no tablet ever shows.
+    bubble.textContent = "💡 " + t("hint_none").replace("{n}", HINTS_PER);
+    bubble.classList.remove("hidden");
+    return;
+  }
 
   bubble.textContent = "💡 " + text;
   bubble.classList.remove("hidden");
@@ -1293,7 +1450,7 @@ function renderHintButton(q) {
   const usable = q.hinted || left > 0;
   btn.classList.remove("hidden");
   btn.classList.toggle("spent", !usable);
-  btn.disabled = !usable;
+  btn.setAttribute("aria-disabled", String(!usable));
   $("hint-count").textContent = q.hinted ? "" : String(left);
   // the lamp carries no word any more, so the word lives where a screen
   // reader and a long-press can still find it
@@ -1328,6 +1485,7 @@ function finished(q) {
 
 function skip() {
   const q = currentQ();
+  if (finished(q)) return;        // a settled som cannot be un-answered
   q.skipped = true;
   q.chosen = null;
   q.solved = false;           // it comes back until it is answered
@@ -1396,7 +1554,14 @@ function finishPass() {
     markDone100();          // this clears the active task — do not write it back
   } else {
     session.nextQueue = open;
+    // The round is not over, so nothing is booked yet — and the clock must
+    // not keep running while the child sits on the report card, or goes off
+    // and comes back at bedtime. Forty idle minutes used to be written down
+    // as forty minutes of practice.
+    if (session.pausedSec == null) session.pausedSec = elapsedSec();
+    writeTiles(true);       // the sommen already made count from now, not later
     saveActive();           // still soms to do, so it stays resumable
+    Store.save(data);
   }
 
   stopTimer();
@@ -1414,7 +1579,8 @@ function recordFirstPass() {
   session.banked = true;
 
   bankSettled();                       // whatever is not counted yet
-  const secs = session.lastSec != null ? session.lastSec : elapsedSec();
+  const secs = session.lastSec != null ? session.lastSec
+             : session.pausedSec != null ? session.pausedSec : elapsedSec();
   session.lastSec = secs;              // the moment the opdracht was completed
   const ds = todayStr();
   const day = data.days[ds] || { solved: 0, firstCorrect: 0, done100: false, cats: {} };
@@ -1472,16 +1638,23 @@ function tileState(ch) {
    would cost a great deal more. */
 const TPLS_KEEP_DAYS = 60;
 
-function writeTiles() {
+/* `open` means the round is still standing: its sommen are written down so
+   that the work shows in the rapport and in today's score, but the door it
+   came through has not been through yet. A round broken off with one som
+   skipped used to write nothing at all — nine right answers that the day
+   record, the chips, the doors and the parent's rapport all read as zero. */
+function writeTiles(open) {
   const day = data.days[todayStr()];
   if (!day) return;
   day.tiles = day.tiles || [];
   day.tpls = day.tpls || [];
   day.kinds = day.kinds || [];
+  day.open = day.open || [];
   if (session.tileSlot == null) { day.tiles.push(""); session.tileSlot = day.tiles.length - 1; }
   day.tiles[session.tileSlot] = tilesOf(session.questions);
   day.tpls[session.tileSlot] = session.questions.map(q => q.tplId);
   day.kinds[session.tileSlot] = session.kind || "sommen";
+  day.open[session.tileSlot] = !!open;
   day.secs = day.secs || {};               // seconds worked, per soort opdracht
   day.fixed = day.tiles.join("").toLowerCase().split("").filter(c => c === "f").length;
 
@@ -1524,8 +1697,36 @@ function markDone100() {
    app after the last som lost the way back to it — and with it the fouten
    still to be verbeterd and the door to the spelletjes. It rides the normal
    sync, so a correction made on the phone shows on the tablet. */
+/* One slot per door. There used to be exactly one, so finishing the klok
+   wrote over the sommen — and a fout the child had been told to go and put
+   right simply stopped being reachable from anywhere, without a word. */
+function reportsOf() {
+  data.reports = data.reports || {};
+  if (data.report && data.report.kind && !data.reports[data.report.kind]) {
+    data.reports[data.report.kind] = data.report;      // the single slot, moved in
+  }
+  delete data.report;
+  const ds = todayStr();
+  for (const k in data.reports) {
+    if (!data.reports[k] || data.reports[k].date !== ds) delete data.reports[k];
+  }
+  return data.reports;
+}
+
+/* The round of today still worth opening: one with a fout nobody has been
+   back to, otherwise simply the last one finished. */
+function liveReport() {
+  const all = Object.values(reportsOf())
+    .filter(r => r && r.date === todayStr() && r.questions && r.questions.length);
+  const open = all.filter(r => r.questions.some(q => q.failed && !q.fixed && !q.explained));
+  const pick = open.length ? open : all;
+  return pick.sort((a, b) => (b.at || 0) - (a.at || 0))[0] || null;
+}
+
 function writeReport() {
-  data.report = {
+  const kind = session.kind || "sommen";
+  reportsOf()[kind] = {
+    at: Date.now(),
     date: todayStr(),
     kind: session.kind || "sommen",
     score: session.score || null,
@@ -1548,8 +1749,8 @@ function writeReport() {
    before the child ever saw it. The parent reads the stored day instead, which
    is where their own tools live anyway. */
 function openReport() {
-  const r = data.report;
-  if (Store.isParent() || !r || r.date !== todayStr() || !r.questions || !r.questions.length) {
+  const r = liveReport();
+  if (Store.isParent() || !r) {
     return openReportAt(todayStr());
   }
   session = {
@@ -1583,21 +1784,12 @@ const STRIP_DAYS = 14;
 function openReportAt(ds) {
   reportDay = ds || todayStr();
   const live = reportDay === todayStr() && session && session.questions;
-  renderReportHead();
   renderReportStrip();
   if (live) renderResult(); else showDay(reportDay);
   show("screen-result");
 }
 
 let reportDay = null;
-
-function renderReportHead() {
-  const sc = dayTally(reportDay).score;
-  const pill = $("report-score");
-  pill.innerHTML = sc == null ? "" : `${sc}<em>/100</em>`;
-  pill.className = "report-pill" + (sc == null ? " hidden"
-    : sc >= 80 ? " good" : sc >= 50 ? " mid" : " low");
-}
 
 /* The last fortnight as one line of days: weekday, number, and a dot for how
    the day went. Today sits at the end, where the eye lands, and is selected
@@ -1636,10 +1828,13 @@ function renderResult() {
   // the tiles of the round just worked: these are the LIVE questions, so a red
   // one can still be opened for its second chance
   const tiles = qs.map((q, i) => {
-    const state = (q.correctFirst || q.fixed) ? "ok"
+    // A som put right on the second go carries the same ✅ — it is good, and
+    // the child should see it as good — on a green of its own, which is what
+    // the kalender has always done and what this card used to flatten away.
+    const state = q.correctFirst ? "ok" : q.fixed ? "fix"
       : q.solved ? "ok2" : q.failed ? (q.explained ? "exp" : "no") : "todo";
-    const icon = { ok: "✅", ok2: "✅", exp: "❌", no: "❌", todo: "⏭" }[state];
-    const tip = t({ ok: q.fixed ? "tile_fixed" : "tile_done", ok2: "tile_second",
+    const icon = { ok: "✅", fix: "✅", ok2: "✅", exp: "📖", no: "❌", todo: "⏭" }[state];
+    const tip = t({ ok: "tile_done", fix: "tile_fixed", ok2: "tile_second",
                     exp: "tile_explained", no: "tile_wrong", todo: "tile_todo" }[state]) +
                 (q.hinted ? " · 💡" : "");
     return `<button class="result-tile ${state}" data-q="${i}" title="${esc(tip)}">
@@ -1650,6 +1845,7 @@ function renderResult() {
 
   const left = qs.filter(q => !finished(q)).length;
   const unreviewed = qs.filter(q => q.failed && !q.fixed && !q.explained).length;
+  const marks = legendFor(tiles);
   const praise = perfect ? `🎉 ${esc(partyMessage(LANG))}`
     : allDone ? `💪 ${esc(t("result_score").replace("{c}", sc.correct).replace("{t}", qs.length))}`
     : `⏭ ${esc(t("finish_rest").replace("{n}", left))}`;
@@ -1662,6 +1858,7 @@ function renderResult() {
      <div class="result-grid">${tiles}</div>` +
     (left && !Store.isParent() ? `<button id="btn-retry" class="btn primary">${esc(t("retry_btn"))}</button>` : "") +
     (allDone && unreviewed ? `<p class="review-hint">${esc(t("fix_first_noplay"))}</p>` : "") +
+    marks +
     dayExtrasHTML(ds);
 
   if (!Store.isParent()) {
@@ -1671,7 +1868,6 @@ function renderResult() {
     if (retry) retry.addEventListener("click", startRetry);
   }
   wireDayExtras(ds, box);
-  renderReportHead();
 
   Live.push("result");
   if (perfect && session.celebrate) { session.celebrate = false; fireConfetti(); }
@@ -1786,6 +1982,11 @@ function backToResult() {
 }
 
 function startRetry() {
+  if (!session.nextQueue || !session.nextQueue.length) return;
+  if (session.pausedSec != null) {                  // the clock picks up again
+    session.t0 = Date.now() - session.pausedSec * 1000;
+    session.pausedSec = null;
+  }
   session.queue = session.nextQueue;
   session.nextQueue = null;
   session.idx = 0;
@@ -1794,6 +1995,7 @@ function startRetry() {
   session.fromResult = false;
   session.round = (session.round || 1) + 1;
   saveActive();                    // the correction round is resumable too
+  ensureTimer(true);
   renderQuestion();
   show("screen-task");
 }
@@ -1806,17 +2008,6 @@ function startRetry() {
    easy, and each verdict shifts that SOORT som — not just this one — a step
    for good. What has been marked collects at the bottom: the lessons learned,
    with a way to take any of them back. */
-function todaysQuestions() {
-  const r = data.report;
-  if (r && r.date === todayStr() && r.questions && r.questions.length) return r.questions;
-  for (const a of Object.values(allActives())) {
-    if (a && a.date === todayStr() && a.questions) {
-      const asked = a.questions.filter(q => q.chosen != null || finished(q));
-      if (asked.length) return asked;
-    }
-  }
-  return [];
-}
 
 /* One som as the parent sees it: how it went, what it was, and the two words
    that tune it. `q` may be a whole question (today, with its real numbers) or
@@ -1824,7 +2015,7 @@ function todaysQuestions() {
    was kept). */
 function somRowHTML(i, opts) {
   const { state, hinted, cat, text, tplId, key, qIdx } = opts;
-  const icon = { o: "✅", f: "✅", e: "❌", n: "❌", t: "⏭" }[state] || "❌";
+  const icon = { o: "✅", f: "✅", e: "📖", n: "❌", t: "⏭" }[state] || "❌";
   const adj = Tuning.of(data, tplId);
   const tpl = TEMPLATES.find(x => x.id === tplId);
   const off = tpl && !Rules.allows(data, tpl);
@@ -1934,30 +2125,66 @@ function somDetailHTML(tplId, q) {
    comes from the template ids kept with that day, so the phrasing is shown
    with … where the numbers were. Either way the verdict lands on the soort
    som, which is what tuning acts on. */
+/* Today's rounds with the numbers the child actually saw, one entry per run
+   of the day — or nothing, if they cannot all be told apart.
+
+   There is one report slot per soort, so two sommen rounds in one day cannot
+   both be matched to their run and the whole day falls back to the phrasing
+   with … where the numbers were. One round of each, which is what a day is,
+   lines up exactly. This used to give up the moment a day had a second run at
+   all, so on every completed day — three doors, three runs — the parent could
+   no longer see a single real som. */
+function todayRuns(ds, rec) {
+  if (ds !== todayStr() || !rec || !rec.tiles || !rec.tiles.length) return null;
+  const kinds = rec.tiles.map((_, i) => (rec.kinds || [])[i] || "sommen");
+  if (new Set(kinds).size !== kinds.length) return null;      // the same door twice
+  const reports = reportsOf(), open = allActives();
+  const runs = [];
+  for (let ri = 0; ri < kinds.length; ri++) {
+    // a round that is finished kept its report; one still standing is in the
+    // slot its door left it in, and the parent can read that just as well
+    const r = reports[kinds[ri]] || open[kinds[ri]];
+    if (!r || r.date !== ds || !r.questions || !r.questions.length) return null;
+    if (r.questions.length !== rec.tiles[ri].length) return null;
+    runs.push({ kind: kinds[ri], questions: r.questions });
+  }
+  return runs.length ? runs : null;
+}
+
 function dayRowsSource(ds, rec) {
-  const runs = (rec && rec.tiles) ? rec.tiles.length : 0;
-  if (ds === todayStr() && runs <= 1 && todaysQuestions().length) return "today";
+  if (todayRuns(ds, rec)) return "today";
   if (rec && rec.tpls && rec.tpls.length) return "tpls";
   return null;                       // a day from before the sommen were kept
 }
 
 /* Which row on this day's list belongs to tile number i of run ri — so that
-   tapping a vakje on the report card lands on the som it stands for. */
+   tapping a vakje on the report card lands on the som it stands for. One
+   shape for both sources, so nothing has to know which one it came from. */
 function somKeyFor(ds, rec, ri, i) {
-  return dayRowsSource(ds, rec) === "today" ? `${ds}|${i}` : `${ds}|${ri}|${i}`;
+  return `${ds}|${ri}|${i}`;
+}
+
+/* Every som of today, in the order the rows are drawn, so a row's number is
+   its place in this list. */
+function todayRunQuestions(ds, rec) {
+  const runs = todayRuns(ds, rec);
+  return runs ? [].concat(...runs.map(r => r.questions)) : [];
 }
 
 function dayQuestionsHTML(ds, rec) {
-  if (dayRowsSource(ds, rec) === "today") {
-    const qs = todaysQuestions();
-    if (qs.length) {
-      return qs.map((q, i) => somRowHTML(i, {
+  const runs = todayRuns(ds, rec);
+  if (runs) {
+    let flat = 0;
+    return runs.map((run, ri) => {
+      const head = `<p class="day-run">${t("door_icon")[run.kind]} ${esc(t("home_" + run.kind))}` +
+                   (runs.length > 1 ? ` · ${t("day_run").replace("{n}", ri + 1)}` : "") + `</p>`;
+      return head + run.questions.map((q, i) => somRowHTML(i, {
         state: q.correctFirst ? "o" : q.fixed ? "f" : q.explained ? "e" : q.failed ? "n" : "t",
         hinted: !!q.hinted, cat: t("cats")[q.cat] || q.cat,
         text: Engine.text(q, LANG), tplId: q.tplId,
-        key: ds + "|" + i, qIdx: i
+        key: somKeyFor(ds, rec, ri, i), qIdx: flat++
       })).join("");
-    }
+    }).join("");
   }
   if (!rec || !rec.tpls || !rec.tpls.length) return "";
   return rec.tpls.map((run, ri) => {
@@ -1971,7 +2198,7 @@ function dayQuestionsHTML(ds, rec) {
         state: key, hinted,
         cat: tpl ? (t("cats")[tpl.cat] || tpl.cat) : id,
         text: tpl ? sampleText(tpl) : id, tplId: id,
-        key: ds + "|" + ri + "|" + i
+        key: somKeyFor(ds, rec, ri, i)
       });
     }).join("");
   }).join("");
@@ -2067,7 +2294,8 @@ function fillSomRow(row, on) {
   row.classList.toggle("open", !!on);
   box.classList.toggle("hidden", !on);
   if (!on) { box.innerHTML = ""; return; }
-  const q = row.dataset.q != null ? todaysQuestions()[+row.dataset.q] : null;
+  const q = row.dataset.q != null
+    ? todayRunQuestions(reportDay, data.days[reportDay])[+row.dataset.q] : null;
   box.innerHTML = somDetailHTML(row.dataset.tpl, q);
   wireSomDetail(box);
 }
@@ -2111,7 +2339,7 @@ async function rateSom(tplId, verdict) {
   if (!u || !p || !Store.isParent()) return;
   try {
     const fresh = await Cloud.setTuning(u, p, tplId, verdict);
-    if (fresh) { data = fresh; Store.saveLocal(data); }
+    if (fresh) { data = Store.dress(fresh); Store.saveLocal(data); }
     redrawSoms();
   } catch (e) { /* offline: leave the screen as it was */ }
 }
@@ -2131,7 +2359,7 @@ async function setRule(kind, key, blocked) {
   }
   try {
     const fresh = await Cloud.setRule(u, p, kind, key, blocked);
-    if (fresh) { data = fresh; Store.saveLocal(data); }
+    if (fresh) { data = Store.dress(fresh); Store.saveLocal(data); }
   } catch (e) { /* offline: the switch springs back on the redraw */ }
   redrawSoms();
 }
@@ -2141,7 +2369,7 @@ async function saveNote(tplId, text) {
   if (!u || !p || !Store.isParent()) return;
   try {
     const fresh = await Cloud.addNote(u, p, tplId, text);
-    if (fresh) { data = fresh; Store.saveLocal(data); }
+    if (fresh) { data = Store.dress(fresh); Store.saveLocal(data); }
   } catch (e) { /* offline: the note is not lost, it is simply not saved */ }
   redrawSoms();
 }
@@ -2207,7 +2435,7 @@ function showDay(ds) {
     // right straight away from one that was put right afterwards
     const wrong = rec.solved - rec.firstCorrect;
     const time = rec.timeSec ? `<span class="day-pill">⏱ ${fmtTime(rec.timeSec)}</span>` : "";
-    const icon = { o: "✅", f: "✅", e: "❌", n: "❌", t: "⏭" };
+    const icon = { o: "✅", f: "✅", e: "📖", n: "❌", t: "⏭" };
     const cls  = { o: "ok", f: "fix", e: "exp", n: "no", t: "todo" };
     const tip  = { o: "tile_done", f: "tile_fixed", e: "tile_explained",
                    n: "tile_wrong", t: "tile_todo" };
@@ -2223,8 +2451,11 @@ function showDay(ds) {
                (hinted ? `<span class="tile-hint">💡</span>` : "") + `</${tag}>`;
       }).join("");
       const kind = (rec.kinds || [])[ri] || "sommen";
+      // a round still standing shows its ⏭ for the sommen it has not reached
+      // yet, which is not the same thing as a som that was passed over
       const head = `<p class="day-run">${t("door_icon")[kind]} ${esc(t("home_" + kind))}` +
-                   (rec.tiles.length > 1 ? ` · ${t("day_run").replace("{n}", ri + 1)}` : "") + `</p>`;
+                   (rec.tiles.length > 1 ? ` · ${t("day_run").replace("{n}", ri + 1)}` : "") +
+                   ((rec.open || [])[ri] ? ` · ${esc(t("day_open"))}` : "") + `</p>`;
       return head + `<div class="result-grid">${tiles}</div>`;
     }).join("");
     const fixed = rec.fixed || 0;
@@ -2238,10 +2469,10 @@ function showDay(ds) {
          <span class="day-pill no">❌ ${wrong - fixed} ${t("day_wrong")}</span>
        </div>
        <p class="day-aschild">${t("day_as_child").replace("{c}", rec.firstCorrect + fixed).replace("{t}", rec.solved)}</p>`;
-    const qs = Store.isParent() ? dayQuestionsHTML(ds, rec) : "";
-    if (qs) body += `<div class="day-sommen"><h3>${esc(t("sommen"))}</h3>
-                     <p class="lessons-sub">${esc(t("rate_sub"))}</p>${qs}</div>`;
-    else if (Store.isParent()) body += `<p class="day-nosom">${esc(t("day_no_sommen"))}</p>`;
+    // The rateable list lives in the parent's own block below, behind its
+    // disclosure. It used to be drawn here as well, so a parent scrolled past
+    // ten rateable sommen and then found the same ten again — two lists with
+    // the same keys, and a tap on a vakje landing on whichever came first.
   } else if (!rec || (!rec.solved && !tally.n)) {
     const bonus = dayPlan()[ds] === "bonus";
     body = `<div class="day-head"><b>${head}</b></div>
@@ -2268,7 +2499,6 @@ function showDay(ds) {
   box.dataset.day = ds;
   box.classList.remove("hidden");
   wireDayExtras(ds, box);
-  renderReportHead();
 }
 
 function esc(s) {
@@ -2318,7 +2548,7 @@ async function saveDayMark(ds, colour, note) {
   btn.disabled = true;
   try {
     const fresh = await Cloud.setDayMark(u, p, ds, colour || null, note || null);
-    data = fresh || data;
+    data = fresh ? Store.dress(fresh) : data;
     Store.saveLocal(data);
     openReportAt(ds);                       // the day takes its new colour
     const ok = $("day-saved");
@@ -2347,7 +2577,7 @@ function renderStats() {
       cats[c] = agg;
     }
   }
-  const bars = [...CATS, "verrassing", "klokkijken"].map(cat => {
+  const bars = [...ALL_CATS, "verrassing", "klokkijken"].map(cat => {
     const agg = cats[cat];
     if (!agg || !agg.n) return "";
     const pct = Math.round((agg.c / agg.n) * 100);
@@ -2428,6 +2658,21 @@ function tafelWeakHTML() {
     : { text: t("tafel_all_ok"), good: true };
 }
 
+
+/* What the marks on a report card mean, said once under the grid — and only
+   for the marks that are actually up there. Every one of them used to live in
+   a `title`, which on a tablet is a place nothing is ever read from. */
+function legendFor(html) {
+  const has = icon => html.indexOf(">" + icon + "<") !== -1;
+  // ✅ and ❌ explain themselves. The line is only worth its space when one of
+  // the other two is up there, and then it explains all four at once.
+  if (!has("📖") && !has("⏭")) return "";
+  const says = [["✅", "mark_ok"], ["❌", "mark_no"],
+                ["📖", "mark_exp"], ["⏭", "mark_todo"]]
+    .filter(([icon]) => has(icon))
+    .map(([icon, key]) => `<i aria-hidden="true">${icon}</i>${esc(t(key))}`);
+  return `<p class="mark-legend">${says.join(" · ")}</p>`;
+}
 
 /* ---------- login ---------- */
 function resetDoor() {
@@ -2512,6 +2757,7 @@ function openMirror(state, age) {
 
 /* ---------- wiring ---------- */
 function goHome() {
+  opening = false;                 // back and in again is not a double tap
   stopTimer();
   stopSprint();
   Live.stopHeartbeat();
@@ -2527,6 +2773,8 @@ function goHome() {
 
 function goLogin() {
   stopTimer();
+  stopSprint();
+  Live.stopHeartbeat();
   Live.stopWatching();
   liveBusy = false;
   session = null;
@@ -2547,14 +2795,15 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // login (magic door)
   $("btn-login").addEventListener("click", tryLogin);
-  $("login-pass").addEventListener("keydown", e => {
-    if (e.key === "Enter") tryLogin();
-  });
+  ["login-pass", "login-user"].forEach(id =>
+    $(id).addEventListener("keydown", e => { if (e.key === "Enter") tryLogin(); }));
 
   // the logo is the way back everywhere
   $("btn-brand").addEventListener("click", () => {
     if (!Store.isLoggedIn()) return goLogin();
-    if (session && isOn("screen-task") && !confirm(t("quit_confirm"))) return;
+    // the same road out as the ‹ on the card, so the two exits from one
+    // screen cannot leave the opdracht in two different states
+    if (session && (isOn("screen-task") || isOn("screen-pause"))) return leaveTask();
     goHome();
   });
 
@@ -2573,13 +2822,20 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   // task
-  $("btn-quit").addEventListener("click", () => {
+  // Stopping puts the opdracht down; it does not throw it away. It used to
+  // delete it outright, which left the child with sommen half made, no way
+  // back to them and no "Verder gaan" — the opdracht had simply vanished.
+  // That is also why there is no longer anything to ask about: the dialog
+  // guarded a loss that cannot happen any more, in a system alert whose two
+  // buttons name neither outcome.
+  const leaveTask = () => {
     if (session && session.fromResult) return backToResult();   // came from the report
-    // Stopping puts the opdracht down; it does not throw it away. It used to
-    // delete it outright, which left the child with sommen half made, no way
-    // back to them and no "Verder gaan" — the opdracht had simply vanished.
-    if (confirm(t("quit_confirm"))) { saveActive(true); goHome(); }
-  });
+    saveActive(true);
+    goHome();
+  };
+  $("btn-quit").addEventListener("click", leaveTask);
+  $("sprint-quit").addEventListener("click", goHome);   // goHome stops the clock
+  $("mirror-back").addEventListener("click", goHome);
   $("btn-skip").addEventListener("click", skip);
   $("btn-pause").addEventListener("click", pauseTask);
   $("btn-resume").addEventListener("click", resumeTask);
@@ -2593,9 +2849,22 @@ document.addEventListener("DOMContentLoaded", () => {
   $("btn-hint").addEventListener("click", toggleHint);
 
 
+  // Safari on iOS is not reliable about visibilitychange when the tab is
+  // being torn down; pagehide is the one it always sends.
+  window.addEventListener("pagehide", () => {
+    if (session) saveActive();
+    if (sprint) saveSprint();
+    Store.pushNow(data);
+  });
+
   document.addEventListener("visibilitychange", () => {
     // leaving the screen mid-task: bank it so the next device gets the same som
-    if (document.hidden) { if (session) saveActive(); Store.pushNow(data); return; }
+    if (document.hidden) {
+      if (session) saveActive();
+      if (sprint) saveSprint();
+      Store.pushNow(data);
+      return;
+    }
     // signed out from another tab on this device
     if (!Store.isLoggedIn()) { if (!isOn("screen-login")) goLogin(); return; }
     refreshFromCloud();
@@ -2621,7 +2890,7 @@ function isOn(id) { return !$(id).classList.contains("hidden"); }
 async function refreshFromCloud() {
   const merged = await Store.pull();
   if (!merged) return;
-  data = merged;
+  data = Store.dress(merged);
   if (isOn("screen-home")) renderHome();
   else if (isOn("screen-result")) openReportAt(reportDay);
 }
