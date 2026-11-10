@@ -543,7 +543,7 @@ function resumeSprintRound(open, then) {
    The first second there is nothing on screen but the som: no answers
    to weigh up, so the only way forward is to work it out. The next second the
    answers appear but may not be touched — time to find your own answer among
-   them, and to notice when it is not there. The last three are for answering.
+   them, and to notice when it is not there. The last two are for answering.
 
    Without the first two beats a child with two answers in front of them is
    right half the time by guessing, and the tafel never has to be known. */
