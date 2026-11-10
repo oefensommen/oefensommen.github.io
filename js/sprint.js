@@ -12,9 +12,9 @@
 
 const Sprint = {
   N: 10,            // ten facts a round — the tafel half of a day's pakket
-  SECS: 7,          // seven seconds a tafel, spent in three: two to work it
+  SECS: 5,          // five seconds a tafel, spent in three: one to work it
                     // out with nothing to look at, one to read the answers
-                    // without touching them, four to answer
+                    // without touching them, three to answer
   OPTS: 4,          // four answers, and the wrong ones are neighbours in the
                     // table — near enough that only knowing it settles it
   MIN: 6, MAX: 10,  // only the hard tafels: 6 to 10, both factors. Anything

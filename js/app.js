@@ -540,15 +540,15 @@ function resumeSprintRound(open, then) {
 
 /* A tafel is answered in three beats, and the clock runs through all of them.
 
-   The first two seconds there is nothing on screen but the som: no answers
+   The first second there is nothing on screen but the som: no answers
    to weigh up, so the only way forward is to work it out. The next second the
    answers appear but may not be touched — time to find your own answer among
-   them, and to notice when it is not there. The last four are for answering.
+   them, and to notice when it is not there. The last three are for answering.
 
    Without the first two beats a child with two answers in front of them is
    right half the time by guessing, and the tafel never has to be known. */
-const SPRINT_BLIND = 2;     // seconds with the som alone
-const SPRINT_READ = 3;      // seconds before the answers open (blind included)
+const SPRINT_BLIND = 1;     // seconds with the som alone
+const SPRINT_READ = 2;      // seconds before the answers open (blind included)
 
 function sprintPhase(left) {
   const total = Sprint.SECS * 1000;
