@@ -1084,6 +1084,83 @@ input:focus { border-color: var(--accent); }
   .door-tile { min-height: 150px; }
 }
 
+/* ---------- the kampioensronde ----------
+   A night sky and gold, so the child can see at a glance that this is not the
+   round they just did: a trophy, a starfield, and answers that are there from
+   the first moment. The colours are the page's own variables, turned over for
+   this one card, so nothing inside has to know. */
+body.champ {
+  background: radial-gradient(ellipse at 50% -10%, #25449f 0%, #0d1b4f 55%, #050b25 100%) fixed;
+}
+#screen-sprint.champ .sprint-card {
+  --ink: #ffffff; --muted: #b9c6f2; --card: rgba(255, 255, 255, .10);
+  --bg: rgba(255, 255, 255, .09); --line: rgba(245, 197, 66, .55);
+  --accent: #f5c542; --accent-soft: rgba(245, 197, 66, .18);
+  position: relative; overflow: hidden; color: var(--ink);
+  background:
+    radial-gradient(circle, rgba(255, 255, 255, .55) 0 1px, transparent 1.6px) 0 0 / 46px 46px,
+    radial-gradient(circle, rgba(245, 197, 66, .45) 0 1px, transparent 1.6px) 23px 23px / 46px 46px,
+    linear-gradient(160deg, #1a3584 0%, #0b1a4d 100%);
+  border: 1.5px solid #f5c542;
+  box-shadow: 0 0 0 4px rgba(245, 197, 66, .15), 0 18px 50px rgba(5, 11, 37, .55);
+}
+#screen-sprint.champ .sprint-card::after {
+  content: "🏆"; position: absolute; right: -14px; bottom: -26px;
+  font-size: 9rem; line-height: 1; opacity: .09; pointer-events: none;
+}
+#screen-sprint.champ .sprint-card > * { position: relative; z-index: 1; }
+#screen-sprint.champ .sprint-title { color: #f5c542; letter-spacing: .04em; text-transform: uppercase; }
+#screen-sprint.champ .sprint-q { text-shadow: 0 2px 18px rgba(245, 197, 66, .45); }
+#screen-sprint.champ .sprint-opt {
+  background: rgba(255, 255, 255, .10); border-color: rgba(245, 197, 66, .7); color: #fff;
+}
+#screen-sprint.champ .sprint-opt.right { background: #1f9d57; border-color: #7ee2a8; color: #fff; }
+#screen-sprint.champ .sprint-opt.wrong { background: #c93a40; border-color: #ff9a9e; color: #fff; }
+#screen-sprint.champ .sprint-flash.good { color: #7ee2a8; }
+#screen-sprint.champ .sprint-flash.bad  { color: #ff9a9e; }
+#screen-sprint.champ .sprint-track { background: rgba(255, 255, 255, .15); }
+#screen-sprint.champ .btn.primary { background: #f5c542; color: #1a2250; font-weight: 800; }
+
+/* the cup is won: fireworks over the whole page */
+.champ-win {
+  position: fixed; inset: 0; z-index: 60; overflow: hidden;
+  display: flex; align-items: center; justify-content: center; padding: var(--s4);
+  background: radial-gradient(ellipse at 50% 30%, #28479f 0%, #0b1848 60%, #040920 100%);
+}
+.champ-win.hidden { display: none; }
+#champ-fw { position: absolute; inset: 0; width: 100%; height: 100%; }
+.champ-float { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.champ-float span {
+  position: absolute; bottom: -8vh; opacity: 0;
+  animation: champ-rise 5s ease-in forwards;
+}
+@keyframes champ-rise {
+  0%   { transform: translateY(0) rotate(0deg); opacity: 0; }
+  12%  { opacity: 1; }
+  100% { transform: translateY(-115vh) rotate(25deg); opacity: .9; }
+}
+.champ-win-card {
+  position: relative; z-index: 1; text-align: center; max-width: 520px;
+  padding: 28px 26px 30px; border-radius: 28px;
+  background: rgba(8, 17, 60, .55); border: 2px solid #f5c542;
+  box-shadow: 0 0 60px rgba(245, 197, 66, .35);
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+}
+.champ-trophy { font-size: 6.5rem; line-height: 1; animation: champ-bounce 1.6s ease-in-out infinite; }
+@keyframes champ-bounce {
+  0%, 100% { transform: translateY(0) scale(1) rotate(-4deg); }
+  50%      { transform: translateY(-14px) scale(1.08) rotate(4deg); }
+}
+.champ-win-title {
+  margin: 6px 0 4px; font-size: clamp(2.4rem, 9vw, 4rem); font-weight: 900; letter-spacing: .06em;
+  background: linear-gradient(180deg, #fff6c7 0%, #f5c542 55%, #e08a00 100%);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  filter: drop-shadow(0 3px 0 rgba(0, 0, 0, .35));
+}
+.champ-win-sub { margin: 0 0 8px; font-size: 1.35rem; font-weight: 800; color: #fff; }
+.champ-win-score { margin: 0 0 20px; font-size: 1rem; font-weight: 600; color: #b9c6f2; }
+.champ-win .btn.primary { background: #f5c542; color: #1a2250; font-weight: 800; min-width: 160px; }
+
 /* the beat icon under the sprint answers */
 .beat-icon { font-size: 1.1rem; vertical-align: -2px; }
 
