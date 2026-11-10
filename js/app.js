@@ -540,15 +540,15 @@ function resumeSprintRound(open, then) {
 
 /* A tafel is answered in three beats, and the clock runs through all of them.
 
-   The first five seconds there is nothing on screen but the som: no answers
-   to weigh up, so the only way forward is to work it out. The next five the
+   The first two seconds there is nothing on screen but the som: no answers
+   to weigh up, so the only way forward is to work it out. The next second the
    answers appear but may not be touched — time to find your own answer among
-   them, and to notice when it is not there. The last ten are for answering.
+   them, and to notice when it is not there. The last four are for answering.
 
    Without the first two beats a child with two answers in front of them is
    right half the time by guessing, and the tafel never has to be known. */
-const SPRINT_BLIND = 5;     // seconds with the som alone
-const SPRINT_READ = 10;     // seconds before the answers open (blind included)
+const SPRINT_BLIND = 2;     // seconds with the som alone
+const SPRINT_READ = 3;      // seconds before the answers open (blind included)
 
 function sprintPhase(left) {
   const total = Sprint.SECS * 1000;
@@ -2629,8 +2629,8 @@ function tafelGridHTML() {
   return html;
 }
 
-/* How the tafels stand overall: how many of the 45 are answered on the clock
-   and stay answered. Counted over every pair from 2 to 10 once — 6 × 8 and
+/* How the tafels stand overall: how many of the 15 are answered on the clock
+   and stay answered. Counted over every pair from 6 to 10 once — 6 × 8 and
    8 × 6 are one tafel, not two. */
 function tafelScore() {
   const tally = data.tafel || {};
@@ -2650,6 +2650,7 @@ function tafelWeakHTML() {
   const tally = data.tafel || {};
   const weak = Object.keys(tally)
     .filter(k => (tally[k].w || 0) > 0)
+    .filter(k => k.split("x").every(n => +n >= Sprint.MIN && +n <= Sprint.MAX))
     .sort((x, y) => tally[y].w - tally[x].w)
     .slice(0, 8)
     .map(k => k.replace("x", "×"));

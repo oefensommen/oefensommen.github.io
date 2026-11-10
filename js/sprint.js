@@ -12,12 +12,13 @@
 
 const Sprint = {
   N: 10,            // ten facts a round — the tafel half of a day's pakket
-  SECS: 20,         // twenty seconds a tafel, spent in three: five to work it
-                    // out with nothing to look at, five to read the answers
-                    // without touching them, ten to answer
-  OPTS: 2,          // two answers, and the wrong one is a neighbour in the
+  SECS: 7,          // seven seconds a tafel, spent in three: two to work it
+                    // out with nothing to look at, one to read the answers
+                    // without touching them, four to answer
+  OPTS: 4,          // four answers, and the wrong ones are neighbours in the
                     // table — near enough that only knowing it settles it
-  MIN: 2, MAX: 10,  // the tafels of groep 5 — 1 and beyond 10 are not sport
+  MIN: 6, MAX: 10,  // only the hard tafels: 6 to 10, both factors. Anything
+                    // with a 1 to 5 in it is too easy and is never asked.
 
   key(a, b) { return Math.min(a, b) + "x" + Math.max(a, b); },
 
