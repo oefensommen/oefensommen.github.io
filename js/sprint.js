@@ -1,33 +1,35 @@
-/* Tafelsprint — the five tafels that open the day.
+/* Tafelsprint — the tafels that open the day, and the cups above them.
 
    This is not one of the twenty sommen and it is not meant to be. There is no
-   thinking time, no hint and no second go: five seconds, three answers, tap.
-   Knowing 6 × 8 is 48 is something you either have by heart or you do not, and
-   the only way to get it by heart is to be asked it under a clock, every day,
-   until the answer arrives before the sum does.
+   thinking time, no hint and no second go: a som and four answers arrive
+   together and a clock is already running. Knowing 6 × 8 is 48 is something
+   you either have by heart or you do not, and the only way to get it by heart
+   is to be asked it under a clock, every day, until the answer arrives before
+   the sum does.
+
+   Ten out of ten opens the next round, each one faster than the last:
+   the sprint (4 s a tafel), the kampioensronde (3 s), the superfinale (2,5 s).
 
    What went wrong yesterday comes round sooner: every fact keeps a small tally
    and the ones that were missed are weighted up, so the sprint quietly circles
    the tafels this particular child does not have yet. */
 
 const Sprint = {
-  N: 20,            // twenty facts a round — the tafel half of a day's pakket
-  SECS: 4,          // four seconds a tafel, spent in three: one to work it
-                    // out with nothing to look at, one to read the answers
-                    // without touching them, two to answer
+  N: 10,            // ten facts a round — the tafel half of a day's pakket
+  SECS: 4,          // four seconds a tafel, the som and its answers together
   OPTS: 4,          // four answers, and the wrong ones are neighbours in the
                     // table — near enough that only knowing it settles it
-  PASS: 0.9,        // 90% right opens the kampioensronde, and 90% there wins it
-  CHAMP_SECS: 3,    // the kampioensronde: three seconds, question and answers
-                    // together, tappable from the first moment
+  CHAMP_SECS: 3,    // the kampioensronde: ten out of ten in the sprint opens it
+  SUPER_SECS: 2.5,  // the superfinale: ten out of ten there opens this one
+  PASS: 1,          // all ten right — in every round — to go on to the next
   MIN: 6, MAX: 10,  // only the hard tafels: 6 to 10, both factors. Anything
                     // with a 1 to 5 in it is too easy and is never asked.
 
   key(a, b) { return Math.min(a, b) + "x" + Math.max(a, b); },
 
   /* the whole round, built up front so the clock never waits on anything.
-     Only 15 facts sit between 6 and 10, so a round of twenty asks both ways
-     round (6 × 8 and 8 × 6) — 25 different questions, twenty of them drawn —
+     Only 15 facts sit between 6 and 10, so a round asks both ways
+     round (6 × 8 and 8 × 6) — 25 different questions, ten of them drawn —
      and never the same question twice in a round. The same fact twice in a row
      is avoided as long as anything else is left. */
   build(data, avoid) {
@@ -48,8 +50,12 @@ const Sprint = {
     return out;
   },
 
-  /* how many right it takes, out of n */
+  /* seconds a tafel gets: 0 the sprint, 1 the kampioensronde, 2 the superfinale */
+  secsFor(level) { return [this.SECS, this.CHAMP_SECS, this.SUPER_SECS][level || 0]; },
+
+  /* how many right it takes, out of n, and whether that was enough */
   need(n) { return Math.ceil(this.PASS * n - 1e-9); },
+  passed(right, n) { return n > 0 && right >= this.need(n); },
 
   /* A weighted draw: a fact that was missed comes up several times in the hat,
      a fact never asked once more than the rest, everything else once. */

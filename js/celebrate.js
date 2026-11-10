@@ -68,14 +68,19 @@ function fireConfetti() {
 
 
 /* Fireworks for the kampioen: bursts of dots, stars and hearts on a canvas,
-   trophies and medals drifting up behind them. Started when the cup is won and
-   stopped when the child taps Verder — nothing keeps running after that. */
+   trophies and medals drifting up behind them. Started when a cup is won and
+   stopped when the child taps Verder — nothing keeps running after that.
+   { mega: true } is the superfinale: several bursts at once, bigger ones,
+   rings, a finale volley every few seconds and a rain of gold glitter. */
 const Fireworks = (() => {
-  const COLORS = ["#ffd54a", "#ff6b6b", "#4dd0e1", "#b388ff", "#69f0ae", "#ff8a65", "#ffffff"];
+  const COLORS = ["#ffd54a", "#ff6b6b", "#4dd0e1", "#b388ff", "#69f0ae", "#ff8a65", "#ffffff", "#ff5ea8"];
   const FLOATERS = ["🏆", "⭐", "🥇", "🎉", "👑", "✨", "🎆"];
-  let raf = 0, cvs = null, ctx = null, parts = [], last = 0, nextBurst = 0, floatBox = null, floatTimer = 0;
+  const FLOATERS_MEGA = ["👑", "🏆", "🌟", "🥇", "🎆", "🎇", "💫", "🔥", "🎉", "⭐"];
+  let raf = 0, cvs = null, ctx = null, parts = [], last = 0, nextBurst = 0, nextFinale = 0,
+      floatBox = null, floatTimer = 0, mega = false;
 
   const calm = () => window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const rnd = (a, b) => a + Math.random() * (b - a);
 
   function size() {
     const r = window.devicePixelRatio || 1;
@@ -87,18 +92,27 @@ const Fireworks = (() => {
   function burst(x, y) {
     const color = COLORS[Math.floor(Math.random() * COLORS.length)];
     const shape = ["dot", "star", "heart"][Math.floor(Math.random() * 3)];
-    const n = calm() ? 24 : 56 + Math.floor(Math.random() * 30);
+    const ring = mega && Math.random() < 0.35;          // a perfect circle, all one speed
+    const n = calm() ? 24 : mega ? 90 + Math.floor(Math.random() * 50) : 56 + Math.floor(Math.random() * 30);
     for (let i = 0; i < n; i++) {
-      const a = (Math.PI * 2 * i) / n + Math.random() * 0.2;
-      const v = 1.6 + Math.random() * 4.4;
+      const a = (Math.PI * 2 * i) / n + (ring ? 0 : Math.random() * 0.2);
+      const v = ring ? (mega ? 5 : 3.5) : (1.6 + Math.random() * (mega ? 6 : 4.4));
       parts.push({
         x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v,
-        life: 1, decay: 0.009 + Math.random() * 0.009,
+        life: 1, decay: 0.008 + Math.random() * 0.008,
         color: Math.random() < 0.25 ? "#ffd54a" : color,
-        size: 2.2 + Math.random() * 2.6,
-        shape: Math.random() < 0.45 ? shape : "dot"
+        size: (2.2 + Math.random() * 2.6) * (mega ? 1.35 : 1),
+        shape: Math.random() < 0.5 ? shape : "dot", g: 0.05
       });
     }
+  }
+
+  function glitter() {
+    parts.push({
+      x: rnd(0, innerWidth), y: -6, vx: rnd(-0.3, 0.3), vy: rnd(0.8, 2.2),
+      life: 1, decay: 0.0035, color: Math.random() < 0.7 ? "#ffd54a" : "#ffffff",
+      size: rnd(1.6, 3.4), shape: "star", g: 0.004
+    });
   }
 
   function star(x, y, r) {
@@ -129,13 +143,23 @@ const Fireworks = (() => {
     ctx.fillRect(0, 0, innerWidth, innerHeight);
     ctx.globalCompositeOperation = "lighter";
     if (ts >= nextBurst) {
-      burst(innerWidth * (0.12 + Math.random() * 0.76), innerHeight * (0.12 + Math.random() * 0.42));
-      nextBurst = ts + (calm() ? 1400 : 320 + Math.random() * 420);
+      const k = mega && !calm() ? 1 + Math.floor(Math.random() * 3) : 1;
+      for (let i = 0; i < k; i++)
+        burst(innerWidth * rnd(0.1, 0.9), innerHeight * rnd(0.1, mega ? 0.62 : 0.52));
+      nextBurst = ts + (calm() ? 1400 : mega ? rnd(150, 380) : rnd(320, 740));
     }
-    parts = parts.filter(p => p.life > 0);
+    if (mega && !calm()) {
+      if (ts >= nextFinale) {                       // a volley across the whole sky
+        for (let i = 0; i < 7; i++)
+          setTimeout(() => raf && burst(innerWidth * (0.08 + i * 0.14), innerHeight * rnd(0.12, 0.5)), i * 90);
+        nextFinale = ts + 3200;
+      }
+      if (Math.random() < 0.6) glitter();
+    }
+    parts = parts.filter(p => p.life > 0 && p.y < innerHeight + 20);
     for (const p of parts) {
       p.x += p.vx * dt; p.y += p.vy * dt;
-      p.vx *= 0.985; p.vy = p.vy * 0.985 + 0.05 * dt;
+      p.vx *= 0.985; p.vy = p.vy * 0.985 + p.g * dt;
       p.life -= p.decay * dt;
       ctx.globalAlpha = Math.max(0, p.life);
       ctx.fillStyle = p.color;
@@ -148,24 +172,29 @@ const Fireworks = (() => {
 
   function floater() {
     if (!floatBox) return;
+    const list = mega ? FLOATERS_MEGA : FLOATERS;
     const s = document.createElement("span");
-    s.textContent = FLOATERS[Math.floor(Math.random() * FLOATERS.length)];
+    s.textContent = list[Math.floor(Math.random() * list.length)];
     s.style.left = Math.random() * 94 + "vw";
-    s.style.fontSize = 1.4 + Math.random() * 1.8 + "rem";
+    s.style.fontSize = (mega ? 1.8 : 1.4) + Math.random() * (mega ? 2.6 : 1.8) + "rem";
     s.style.animationDuration = 4 + Math.random() * 3 + "s";
     floatBox.appendChild(s);
     setTimeout(() => s.remove(), 7200);
   }
 
   return {
-    start(canvas, floats) {
+    start(canvas, floats, opts) {
       this.stop();
+      mega = !!(opts && opts.mega);
       cvs = canvas; ctx = cvs.getContext("2d"); floatBox = floats;
       size();
       addEventListener("resize", size);
-      parts = []; last = 0; nextBurst = 0;
+      parts = []; last = 0; nextBurst = 0; nextFinale = 1200;
       raf = requestAnimationFrame(frame);
-      if (!calm()) { for (let i = 0; i < 6; i++) setTimeout(floater, i * 250); floatTimer = setInterval(floater, 600); }
+      if (!calm()) {
+        for (let i = 0; i < (mega ? 12 : 6); i++) setTimeout(floater, i * 200);
+        floatTimer = setInterval(floater, mega ? 260 : 600);
+      }
     },
     stop() {
       cancelAnimationFrame(raf); raf = 0;

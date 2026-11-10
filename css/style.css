@@ -839,18 +839,6 @@ input:focus { border-color: var(--accent); }
 .sprint-opt:active { transform: scale(.97); }
 .sprint-opt.right { background: var(--green-soft); border-color: var(--green); color: var(--green); }
 .sprint-opt.wrong { background: var(--red-soft); border-color: var(--red); color: var(--red); }
-/* Beat two is the beat whose whole job is reading, so the answers are at full
-   strength. What is locked is said by the box around them — flat, dashed, and
-   it does not give under a finger — not by fading the thing to be read. */
-.sprint-answers.shut .sprint-opt {
-  color: var(--ink); background: var(--bg);
-  border-style: dashed; border-color: var(--line);
-  cursor: default;
-}
-.sprint-answers.shut .sprint-opt:active { transform: none; }
-/* beat one: not even there — the som has to be worked out, not weighed up.
-   The space is kept, so nothing jumps when the answers arrive. */
-.sprint-answers.blind .sprint-opt { opacity: 0; visibility: hidden; }
 /* one line under the answers: an icon for the beat, a word only when there is
    something to say */
 .sprint-flash {
@@ -1160,6 +1148,86 @@ body.champ {
 .champ-win-sub { margin: 0 0 8px; font-size: 1.35rem; font-weight: 800; color: #fff; }
 .champ-win-score { margin: 0 0 20px; font-size: 1rem; font-weight: 600; color: #b9c6f2; }
 .champ-win .btn.primary { background: #f5c542; color: #1a2250; font-weight: 800; min-width: 160px; }
+.champ-win-later {
+  display: block; margin: 12px auto 0; background: none; border: none; cursor: pointer;
+  font-family: inherit; font-size: .95rem; font-weight: 700; color: #b9c6f2; text-decoration: underline;
+  min-height: var(--tap);
+}
+.champ-win-later.hidden { display: none; }
+.champ-badges { display: none; font-size: 1.6rem; letter-spacing: .3em; margin: 2px 0 2px; }
+.champ-win-sub.pop { animation: champ-pop .5s cubic-bezier(.2, 1.6, .4, 1); }
+@keyframes champ-pop { 0% { transform: scale(.4); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+
+/* ---------- the superfinale: grander than the kampioensronde ----------
+   Royal purple and crimson instead of navy, a sunburst turning slowly behind
+   the card, a gold frame that breathes. Same variables, turned further. */
+body.super {
+  background: radial-gradient(ellipse at 50% 28%, #6a1fa8 0%, #2b0a52 48%, #0c0220 100%) fixed;
+}
+body.super::before {
+  content: ""; position: fixed; z-index: -1; pointer-events: none;
+  left: 50%; top: 30%; width: 220vmax; height: 220vmax; margin: -110vmax 0 0 -110vmax;
+  background: repeating-conic-gradient(from 0deg, rgba(255, 213, 74, .16) 0 6deg, transparent 6deg 15deg);
+  animation: super-spin 60s linear infinite;
+}
+@keyframes super-spin { to { transform: rotate(360deg); } }
+#screen-sprint.super .sprint-card {
+  --line: rgba(255, 213, 74, .75); --accent: #ffd54a; --accent-soft: rgba(255, 213, 74, .2);
+  background:
+    radial-gradient(circle, rgba(255, 255, 255, .7) 0 1px, transparent 1.7px) 0 0 / 38px 38px,
+    radial-gradient(circle, rgba(255, 213, 74, .6) 0 1px, transparent 1.7px) 19px 19px / 38px 38px,
+    linear-gradient(160deg, #4a1580 0%, #1d0640 55%, #12032b 100%);
+  border: 2px solid #ffd54a;
+  animation: super-glow 2.4s ease-in-out infinite;
+}
+@keyframes super-glow {
+  0%, 100% { box-shadow: 0 0 0 4px rgba(255, 213, 74, .2), 0 0 28px rgba(255, 213, 74, .35), 0 18px 50px rgba(12, 2, 32, .6); }
+  50%      { box-shadow: 0 0 0 7px rgba(255, 213, 74, .32), 0 0 60px rgba(255, 213, 74, .7), 0 18px 50px rgba(12, 2, 32, .6); }
+}
+#screen-sprint.super .sprint-card::after { content: "👑"; opacity: .12; font-size: 10rem; }
+#screen-sprint.super .sprint-title {
+  background: linear-gradient(90deg, #fff6c7, #ffd54a, #ff9d3c, #ffd54a, #fff6c7); background-size: 200% 100%;
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  animation: super-shine 3s linear infinite;
+}
+@keyframes super-shine { to { background-position: -200% 0; } }
+#screen-sprint.super .sprint-q { text-shadow: 0 0 22px rgba(255, 213, 74, .8), 0 2px 0 rgba(0, 0, 0, .4); }
+#screen-sprint.super .sprint-opt { border-color: rgba(255, 213, 74, .85); background: rgba(255, 255, 255, .12); }
+#screen-sprint.super .btn.primary { background: linear-gradient(180deg, #fff2a8, #ffd54a 60%, #f0a020); color: #2b0a52; }
+
+/* the superfinale won: the grandest of them all */
+.champ-win.mega { background: radial-gradient(ellipse at 50% 35%, #7a24c4 0%, #2b0a52 50%, #0a0120 100%); }
+.champ-win.mega::before {
+  content: ""; position: absolute; pointer-events: none;
+  left: 50%; top: 42%; width: 220vmax; height: 220vmax; margin: -110vmax 0 0 -110vmax;
+  background: repeating-conic-gradient(from 0deg, rgba(255, 213, 74, .24) 0 5deg, transparent 5deg 12deg);
+  animation: super-spin 24s linear infinite;
+}
+.champ-win.mega .champ-win-card {
+  border-width: 3px; border-color: #ffd54a; background: rgba(24, 4, 56, .62);
+  animation: super-glow 1.6s ease-in-out infinite, mega-shake .6s ease-out;
+}
+@keyframes mega-shake {
+  0%, 100% { transform: translate(0, 0); }
+  15% { transform: translate(-7px, 4px) rotate(-1deg); } 30% { transform: translate(6px, -5px) rotate(1deg); }
+  45% { transform: translate(-5px, -3px); } 60% { transform: translate(4px, 3px); } 80% { transform: translate(-2px, 1px); }
+}
+.champ-win.mega .champ-trophy { font-size: 8rem; animation: champ-bounce 1.1s ease-in-out infinite; filter: drop-shadow(0 0 26px rgba(255, 213, 74, .9)); }
+.champ-win.mega .champ-badges { display: block; animation: champ-pop .8s .2s both cubic-bezier(.2, 1.6, .4, 1); }
+.champ-win.mega .champ-win-title {
+  font-size: clamp(1.9rem, 7.4vw, 3.3rem); line-height: 1.05; letter-spacing: .03em;
+  background: linear-gradient(90deg, #fff6c7, #ffd54a, #ff9d3c, #ff5ea8, #b388ff, #4dd0e1, #fff6c7);
+  background-size: 300% 100%; -webkit-background-clip: text; background-clip: text; color: transparent;
+  animation: super-shine 2.4s linear infinite, mega-pulse 1.2s ease-in-out infinite;
+}
+@keyframes mega-pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.06); } }
+.champ-win.mega .champ-win-sub { font-size: 1.6rem; color: #ffe27a; text-shadow: 0 0 16px rgba(255, 213, 74, .7); min-height: 2.1em; }
+.champ-win.mega .champ-float span { animation-name: champ-rise-mega; }
+@keyframes champ-rise-mega {
+  0%   { transform: translateY(0) rotate(0deg) scale(.6); opacity: 0; }
+  12%  { opacity: 1; }
+  100% { transform: translateY(-118vh) rotate(-40deg) scale(1.3); opacity: .95; }
+}
 
 /* the beat icon under the sprint answers */
 .beat-icon { font-size: 1.1rem; vertical-align: -2px; }
@@ -1259,11 +1327,6 @@ body.champ {
 .mirror-clock { display: flex; justify-content: center; margin: var(--s2) 0 var(--s3); }
 .mirror-opt-face { display: flex; align-items: center; justify-content: center; padding: var(--s2); }
 .mirror-opt-face svg { width: 100%; max-width: 104px; height: auto; }
-
-/* A tap during the reading beat reaches the answer now instead of being
-   swallowed by `disabled`, so it can be told it was too early: one short
-   shake, the same one a wrong password gets. */
-.sprint-opt.nudge { animation: login-shake .4s; }
 
 /* The sprint's line under the answers carries a button twice in a round —
    before the first tafel and after the last — so the word and the button sit
