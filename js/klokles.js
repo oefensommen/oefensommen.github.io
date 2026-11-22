@@ -134,9 +134,30 @@ const Klokles = (() => {
     }
   }
 
+  /* which card may be changed now: the minutes, then the hour, then the check */
+  function applyStage() {
+    const st = KL ? KL.stage : null;
+    $("kl-card-m").classList.toggle("active", st === "m");
+    $("kl-card-m").classList.toggle("locked", st !== "m");
+    $("kl-card-h").classList.toggle("active", st === "h");
+    $("kl-card-h").classList.toggle("locked", st !== "h");
+    $("kl-card-m").querySelectorAll("button").forEach(b => b.disabled = st !== "m");
+    $("kl-card-h").querySelectorAll("button").forEach(b => b.disabled = st !== "h");
+    $("kl-m-ok").classList.toggle("hidden", st !== "m");
+    $("kl-h-ok").classList.toggle("hidden", st !== "h");
+    $("kl-check").classList.toggle("hidden", st !== "done");
+  }
+
+  /* a confirmed minute hands over to the hour; a confirmed hour to the check */
+  function confirmStage(which) {
+    if (!KL || KL.locked || !KL.q || KL.q.type !== "set" || KL.stage !== which) return;
+    KL.stage = which === "m" ? "h" : "done";
+    applyStage();
+  }
+
   /* move one hand by a step: the hour by one hour, the minute by five minutes */
   function nudge(which, step) {
-    if (!KL || KL.locked || !KL.q || KL.q.type !== "set") return;
+    if (!KL || KL.locked || !KL.q || KL.q.type !== "set" || KL.stage !== which) return;
     if (which === "h") KL.cur.h = ((KL.cur.h - 1 + step + 12) % 12) + 1;
     else KL.cur.m = (KL.cur.m + step * 5 + 60) % 60;
     placeHands(KL.cur.h, KL.cur.m);
@@ -153,8 +174,9 @@ const Klokles = (() => {
       placeHands(KL.cur.h, KL.cur.m);
       $("kl-text").textContent = q.text;
       $("kl-opts").innerHTML = "";
-      $("kl-check").classList.remove("hidden");
       $("kl-nudge").classList.remove("hidden");
+      KL.stage = "m";                                   // minutes first, then the hour
+      applyStage();
     } else {
       $("kl-text").textContent = "";
       $("kl-opts").innerHTML = q.opts.map((o, i) =>
@@ -303,6 +325,8 @@ const Klokles = (() => {
       if (!wired) {
         $("kl-check").addEventListener("click", check);
         nudgeBtns.forEach(([id, w, st]) => $(id).addEventListener("click", () => nudge(w, st)));
+        $("kl-m-ok").addEventListener("click", () => confirmStage("m"));
+        $("kl-h-ok").addEventListener("click", () => confirmStage("h"));
         wired = true;
       }
       show("screen-klokles");
