@@ -79,6 +79,7 @@ function startTimer() {
   timerInt = setInterval(tickTimer, 1000);
 }
 function stopTimer() {
+  stopQClock();
   clearInterval(timerInt);
   timerInt = null;
   $("timerbox").classList.add("hidden");
@@ -88,7 +89,8 @@ function stopTimer() {
 function show(id) {
   document.querySelectorAll(".screen").forEach(s => s.classList.add("hidden"));
   $(id).classList.remove("hidden");
-  if (id !== "screen-sprint") champTheme(0);
+  if (id === "screen-task") setLevelTheme(taskLeague());
+  else if (id !== "screen-sprint") champTheme(0);
   $("btn-pause").classList.toggle("hidden", id !== "screen-task");
   $("btn-skip").classList.toggle("hidden", id !== "screen-task");
   $("btn-logout-top").classList.toggle("hidden", id === "screen-login");
@@ -509,35 +511,40 @@ function startSprint(then) {
   gameDelen = false;
   sprint.level = 0;
   introSprint(t("sprint_ready").replace("{n}", Sprint.N).replace("{s}", fmtSecs(Sprint.SECS)));
-  leaguePicker(then);
 }
 
-/* Before the first tafel the child picks the league: the kikkerliga, or
-   straight into the kampioensliga or dinozorenliga. Nothing starts by itself. */
-function leaguePicker(then) {
-  const flash = $("sprint-flash");
-  const picks = [0, 1, 2].map(lvl => {
-    const name = t(["sprint_title", "champ_title", "super_title"][lvl]);
-    return `<button class="league-pick" data-lvl="${lvl}">${esc(name)}
-              <small>${esc(fmtSecs(G().secsFor(lvl)))} s</small></button>`;
-  }).join("");
-  flash.innerHTML = `<span class="sprint-ready">${esc(t("league_pick"))}</span>
-                     <div class="league-picks">${picks}</div>`;
-  flash.querySelectorAll(".league-pick").forEach(b => b.addEventListener("click", () => {
-    const lvl = +b.dataset.lvl;
-    if (!sprint) return;
-    if (lvl === 0) return renderSprint();
-    sprint = null;                       // the chosen league builds its own round
-    startChampRound(then, lvl);
-  }));
+/* the league's name and its seconds, in one framed line in the header */
+function setChips(chips) {
+  $("sprint-badge-label").innerHTML = chips.map(c => `<span class="hchip">${esc(c)}</span>`).join("");
+}
+function setBadge(lvl) {
+  const name = t(["sprint_title", "champ_title", "super_title"][lvl]);
+  setChips([t(gameDelen ? "delen_word" : "tafels_word"), name, `${fmtSecs(G().secsFor(lvl))} s`, `${G().N} ${t("questions_word")}`]);
+}
+
+/* The ready screen of every category, the same as the tafels': the header
+   chips, and one green Start under them. Nothing else on the card. */
+function introReady(catText, lvl, count, secText, onGo) {
+  sprint = null;
+  $("sprint-progress").textContent = "";
+  $("sprint-question").textContent = "";
+  $("sprint-answers").innerHTML = "";
+  $("sprint-marks").innerHTML = "";
+  ["sprint-sep", "sprint-count", "sprint-unit"].forEach(id => $(id).classList.add("hidden"));
+  setChips([t(catText), t(["sprint_title", "champ_title", "super_title"][lvl]), secText, `${count} ${t("questions_word")}`]);
+  $("sprint-flash").className = "sprint-flash think";
+  $("sprint-flash").innerHTML = `<button id="sprint-go" class="btn primary start-green">${esc(t("sprint_go"))}</button>`;
+  $("sprint-go").addEventListener("click", onGo, { once: true });
+  show("screen-sprint");
+  champTheme(lvl);
 }
 
 /* The screen the clock waits behind: a beat to look up before it starts. */
 function introSprint(readyText) {
   const lvl = sprint.level || 0;
-  $("sprint-progress").textContent = `${sprint.i + 1} / ${sprint.qs.length}`;
-  $("sprint-question").textContent = ["⚡", "🏆", "👑"][lvl];
-  $("sprint-badge-label").textContent = t(["sprint_title", "champ_title", "super_title"][lvl]);
+  $("sprint-progress").textContent = "";     // the header chips say how many questions
+  $("sprint-question").textContent = "";
+  setBadge(lvl);
   $("sprint-answers").innerHTML = "";
   $("sprint-count").textContent = Math.ceil(sprintTotal());
   ["sprint-sep", "sprint-count", "sprint-unit"].forEach(id => $(id).classList.remove("hidden"));
@@ -546,8 +553,7 @@ function introSprint(readyText) {
   $("sprint-marks").innerHTML = "";
   $("sprint-flash").className = "sprint-flash think";
   $("sprint-flash").innerHTML =
-    `<span class="sprint-ready">${esc(readyText)}</span>
-     <button id="sprint-go" class="btn primary">${esc(t("sprint_go"))}</button>`;
+    `<button id="sprint-go" class="btn primary start-green">${esc(t("sprint_go"))}</button>`;
   // The line that says how this works used to be on screen for 1600ms and was
   // then replaced by a ticking clock — seven words, gone before a child of
   // eight has read them, and never shown again. Now the clock waits for a tap,
@@ -567,10 +573,12 @@ function champTheme(level) {
   document.body.classList.toggle("super", level === 2);
   $("screen-sprint").classList.toggle("champ", level >= 1);
   $("screen-sprint").classList.toggle("super", level === 2);
-  const frog = level === 0 && !!sprint;     // only while a round is on screen
+  // only while a ready screen or a round is on screen (the sprint screen is up)
+  const onScreen = !$("screen-sprint").classList.contains("hidden");
+  const frog = level === 0 && onScreen;
   $("screen-sprint").classList.toggle("frog", frog);
   document.body.classList.toggle("frog", frog);
-  decorate(level === 0 && !sprint ? null : level);
+  decorate(level === 0 && !onScreen ? null : level);
 }
 
 /* The little pictures drifting behind the card: cups and stars for the
@@ -626,7 +634,7 @@ function resumeSprintRound(open, then) {
              then, tick: null, locked: true, t0: Date.now(), secsBefore: open.secs || 0 };
   Live.startHeartbeat();
   champTheme(0);
-  $("sprint-badge-label").textContent = t("sprint_title");
+  setBadge(sprint.level || 0);
   $("sprint-paused").classList.add("hidden");
   document.querySelector("#screen-sprint .sprint-body").classList.remove("hidden");
   show("screen-sprint");
@@ -648,7 +656,7 @@ function showBeat() {
 function renderSprint() {
   const q = sprint.qs[sprint.i];
   sprint.locked = false;
-  $("sprint-progress").textContent = `${sprint.i + 1} / ${sprint.qs.length}`;
+  $("sprint-progress").textContent = `${sprint.i + 1} / ${sprint.qs.length} ${t("questions_word")}`;
   $("sprint-question").textContent = q.text || `${q.a} × ${q.b}`;
   ["sprint-sep", "sprint-count", "sprint-unit"].forEach(id => $(id).classList.remove("hidden"));
 
@@ -824,6 +832,7 @@ function bookSprintRound(qs, tiles, facts, secs) {
   if (data.actives) delete data.actives.tafels;
   day.sprints = sprintRounds(ds).slice();
   day.sprints.push({ n: qs.length, right, tiles, facts, secs });
+  addLv(day, "tafels", 0, qs.length, right);
   delete day.sprint; delete day.sprintEnd;        // the two old slots, folded in
   addDaySecs(day, "tafels", secs);
   data.days[ds] = day;
@@ -844,8 +853,16 @@ function finishSprint() {
   if (sprint.finished) return;                   // written down exactly once
   sprint.finished = true;
   if (sprint.level) return finishChamp();
-  const right = gameDelen ? sprint.tiles.split("").filter(c => c === "o").length
-                          : bookSprintRound(sprint.qs, sprint.tiles, sprint.facts, sprintSecs());
+  let right;
+  if (gameDelen) {
+    right = sprint.tiles.split("").filter(c => c === "o").length;
+    const ds = todayStr(), day = dayFor(ds);
+    addLv(day, "delen", 0, sprint.qs.length, right);
+    data.days[ds] = day;
+    Store.save(data);
+  } else {
+    right = bookSprintRound(sprint.qs, sprint.tiles, sprint.facts, sprintSecs());
+  }
 
   const all = right === sprint.qs.length;
   const chance = G().passed(right, sprint.qs.length);      // ten out of ten: the cup is on offer
@@ -913,16 +930,18 @@ function finishChamp() {
   const level = sprint.level;
   const right = sprint.tiles.split("").filter(c => c === "o").length;
   const won = G().passed(right, n);
-  const day = data.days[todayStr()];
-  if (day && !gameDelen) {
-    day.champs = (day.champs || []).concat([{ n, right, won, lvl: level }]);
-    Store.save(data);
-  }
+  const ds = todayStr(), day = dayFor(ds);
+  addLv(day, gameDelen ? "delen" : "tafels", level, n, right);
+  data.days[ds] = day;
+  if (!gameDelen) day.champs = (day.champs || []).concat([{ n, right, won, lvl: level }]);
+  Store.save(data);
+  const cupNow = won && level === 2 && grantCup(ds, gameDelen ? "delen" : "tafels");   // a second superfinale the same day: no second cup
   clearInterval(sprint.tick);
   sprint.tick = null;
   const then = sprint.then;
   const leave = () => { sprint = null; champTheme(0); then(); };
 
+  if (won && level === 2 && !cupNow) return leave();       // played, no second cup
   if (won) {
     // the kampioen goes on to the superfinale if they like; the winner of the
     // superfinale has nowhere higher to go
@@ -963,7 +982,6 @@ function startDelen() {
              locked: true, t0: Date.now(), secsBefore: 0 };
   sprint.level = 0;
   introSprint(t("sprint_ready").replace("{n}", Delen.N).replace("{s}", fmtSecs(Delen.secsFor(0))));
-  leaguePicker(goHome);
 }
 
 let megaTimer = 0;               // the superfinale's lines take turns
@@ -977,7 +995,7 @@ function setLevelTheme(level) {
   decorate(level == null ? null : level);              // the same drifting pictures on every level
 }
 
-function showChampWin(right, n, level, leave, next) {
+function showChampWin(right, n, level, leave, next, secsText) {
   const mega = false;  // no superfinale volleys: they froze the page
   const key = ["frog", "champ", "super"][level];
   const lines = t(key + "_win_lines").split("|");
@@ -997,7 +1015,7 @@ function showChampWin(right, n, level, leave, next) {
   clearInterval(megaTimer);
   if (mega) megaTimer = setInterval(() => { li = (li + 1) % lines.length; say(lines[li]); }, 2200);
   $("champ-win-score").textContent = t("champ_win_score").replace("{r}", right).replace("{n}", n)
-                                       .replace("{s}", fmtSecs(G().secsFor(level)));
+                                       .replace("{s}", secsText || fmtSecs(G().secsFor(level)));
   const go = $("champ-win-close"), later = $("champ-win-later");
   go.textContent = t(next ? (level === 0 ? "frog_next" : "champ_next") : "sprint_close");
   later.textContent = t("sprint_close");
@@ -1063,8 +1081,54 @@ let opening = false;              // a door is being opened right now
 /* The day has three doors, and two of them come through here: ten
    redactiesommen, or ten clock faces. Same runner, same report card, same
    second chance — only the bank the ten are drawn from differs. */
-function startTask(kind) {
+/* The leagues for the opdrachten: a story som gets three, two or one minutes.
+   A clock question (a dial) is not read, so it keeps the open-ended round. */
+const TASK_SECS = [180, 120, 60];
+let qInt = null;
+
+function taskLeague() { return session && session.league ? session.league : 0; }
+
+/* the story question's own clock: a bar that empties, and a skip when it runs out */
+function stopQClock() {
+  clearInterval(qInt);
+  qInt = null;
+  const q = session && session.questions ? session.questions[currentIdx()] : null;
+  if (q && q.qEnd) { q.qLeft = Math.max(0, q.qEnd - Date.now()); q.qEnd = 0; }
+  $("task-qbar").classList.add("hidden");
+}
+
+function tickQClock() {
+  const q = currentQ();
+  if (!q || finished(q) || session.review || session.midRetry) return stopQClock();
+  const limit = TASK_SECS[taskLeague()] * 1000;
+  const left = Math.max(0, q.qEnd - Date.now());
+  const frac = left / limit;
+  const fill = $("task-qfill");
+  fill.style.width = (frac * 100).toFixed(1) + "%";
+  fill.style.backgroundColor = frac < 0.1 ? "#e0455c" : frac < 0.2 ? "#ff8a3d" : frac < 0.4 ? "#f5c542" : "#2fb35c";
+  if (left <= 0) { stopQClock(); skip(); }
+}
+
+function startQClock(q) {
+  stopQClock();
+  const tp = tplOf(q);
+  if (!session || session.review || session.midRetry || finished(q) || (tp && tp.face)) return;
+  if (q.qLeft == null) q.qLeft = TASK_SECS[taskLeague()] * 1000;
+  q.qEnd = Date.now() + q.qLeft;
+  $("task-qbar").classList.remove("hidden");
+  tickQClock();
+  qInt = setInterval(tickQClock, 200);
+}
+
+/* the league a door is on: 0 kikker, 1 champions, 2 dinozaur. A perfect round
+   moves it up one (see winTask). */
+function taskLevel(kind) {
+  return ((data.taskLeague || {})[kind]) || 0;
+}
+
+function startTask(kind, league) {
   kind = kind === "klok" ? "klok" : "sommen";
+  if (league == null) league = taskLevel(kind);
   // Two tiles sit side by side and both stay live until the countdown lands,
   // so a quick pair of taps used to build two rounds and park the first one
   // unopened — a door advertising work that was never on screen.
@@ -1079,6 +1143,7 @@ function startTask(kind) {
     pool: [],
     idx: 0,
     kind,
+    league: league || 0,
     firstPass: true,
     round: 1,                   // 1 = eerste poging, 2+ = verbeterrondes
     queue: null,
@@ -1087,14 +1152,14 @@ function startTask(kind) {
   session.queue = session.questions.map((_, i) => i);
   saveActive();                   // resumable from the very first som
   Live.startHeartbeat();          // keep the parent's mirror alive while thinking
-  runCountdown(() => {
+  introReady(kind === "klok" ? "klok_word" : "sommen_word", league, TASK_N, `${TASK_SECS[league] / 60} min`, () => runCountdown(() => {
     // walking out during the countdown puts the round down; what is counted
     // in then belongs to nothing
     if (!session || session.kind !== kind || sprint) return;
     startTimer();
     renderQuestion();
     show("screen-task");
-  });
+  }));
 }
 
 /* Which som is on screen. Normally it is the one the queue points at, but the
@@ -1139,6 +1204,7 @@ function snapshotActive() {
     at: Date.now(),
     date: todayStr(),
     kind: session.kind || "sommen",
+    league: session.league || 0,
     idx: session.idx,
     queue: session.queue,
     firstPass: session.firstPass,
@@ -1162,6 +1228,30 @@ function snapshotActive() {
    child really did standing. Each som carries a flag saying it has been
    counted, and that flag travels with the opdracht, so picking the same work
    up on another device counts nothing twice. */
+/* One counter per category and league for a day: questions asked (n) and
+   answered right first time (c). Every category writes here, so the one-page
+   rapport can draw the table from a single place. */
+function addLv(day, cat, lvl, n, c) {
+  day.lv = day.lv || {};
+  const k = cat + "|" + lvl;
+  const x = day.lv[k] || { n: 0, c: 0 };
+  x.n += n; x.c += c;
+  day.lv[k] = x;
+}
+function dayFor(ds) {
+  return data.days[ds] || { solved: 0, firstCorrect: 0, done100: false, cats: {} };
+}
+
+/* a klok question on the Klok page, answered right first time or not */
+function recordKlokLv(lvl, ok) {
+  const ds = todayStr();
+  const day = dayFor(ds);
+  addLv(day, "klokles", lvl, 1, ok ? 1 : 0);
+  data.days[ds] = day;
+  Store.save(data);
+}
+window.recordKlokLv = recordKlokLv;
+
 function bankSettled() {
   if (!session || !session.questions) return;
   const ds = todayStr();
@@ -1176,6 +1266,7 @@ function bankSettled() {
     const c = day.cats[q.cat] || { n: 0, c: 0 };
     c.n++; if (q.correctFirst) c.c++;
     day.cats[q.cat] = c;
+    addLv(day, session.kind || "sommen", session.league || 0, 1, q.correctFirst ? 1 : 0);
     // the soort som that went wrong comes back in a later opdracht
     if (!q.correctFirst && q.cat !== "verrassing") {
       data.wrongTpl = [q.tplId, ...data.wrongTpl.filter(id => id !== q.tplId)].slice(0, 6);
@@ -1275,6 +1366,7 @@ function resumeActive(kind) {
     questions: a.questions,
     pool: a.pool || [],
     kind: a.kind || "sommen",
+    league: a.league || 0,
     queue: a.queue,
     idx: pastEnd ? a.queue.length : Math.min(a.idx, a.queue.length - 1),
     firstPass: a.firstPass,
@@ -1311,6 +1403,7 @@ function ensureTimer(restart) {
 function pauseTask() {
   if (!session || !isOn("screen-task")) return;
   session.pausedSec = elapsedSec();
+  stopQClock();
   clearInterval(timerInt);
   timerInt = null;
   // the card says the clock stands still, so the header may not go on showing
@@ -1412,6 +1505,7 @@ function renderQuestion() {
   // the 💡: help with understanding the som, never the answer, and rationed
   renderHintButton(q);
   $("hint-bubble").classList.add("hidden");
+  startQClock(q);
 
   if (correcting) {
     showExplainBox(`<p class="fix-hint">${esc(t("fix_hint"))}</p>`, false);
@@ -1482,6 +1576,7 @@ function answer(i, btn) {
   const q = currentQ();
   if (finished(q)) return;        // a settled som cannot be answered a second time
   const correct = i === q.answerIdx;
+  stopQClock();
 
   document.querySelectorAll(".answer").forEach(b => b.disabled = true);
   $("btn-skip").disabled = true;
@@ -1766,6 +1861,7 @@ function finishPass() {
   recordFirstPass();                 // waits until every som has been faced
   if (open.length === 0) {
     markDone100();          // this clears the active task — do not write it back
+    if (session.questions.every(q => q.correctFirst === true)) return winTask();
   } else {
     session.nextQueue = open;
     // The round is not over, so nothing is booked yet — and the clock must
@@ -1780,6 +1876,28 @@ function finishPass() {
 
   stopTimer();
   openReportAt(todayStr());
+}
+
+/* Ten out of ten first time: the league is won, and the win screen goes on
+   to the next league (or back to the report when it was the last). */
+function winTask() {
+  stopTimer();
+  stopQClock();
+  const kind = session.kind;
+  const lvl = taskLevel(kind);
+  const last = lvl === 2;
+  if (!last) {
+    data.taskLeague = Object.assign({}, data.taskLeague, { [kind]: lvl + 1 });
+    Store.save(data);
+  }
+  const n = session.questions.length;
+  // the last league's win is the cup: if today's cup for this category is
+  // already given, the round is written down and the pupil goes to the rapport
+  if (last && !grantCup(todayStr(), kind)) return openReportAt(todayStr());
+  showChampWin(n, n, lvl,
+    () => openReportAt(todayStr()),
+    last ? null : () => startTask(kind),
+    `${TASK_SECS[lvl] / 60} min`);
 }
 
 /* Close the books on a whole opdracht: the time it took, the level and the
@@ -1997,10 +2115,123 @@ const STRIP_DAYS = 14;
 
 function openReportAt(ds) {
   reportDay = ds || todayStr();
-  const live = reportDay === todayStr() && session && session.questions;
-  renderReportStrip();
-  if (live) renderResult(); else showDay(reportDay);
+  calShow(reportDay);
+  renderOnePager(reportDay);
   show("screen-result");
+}
+
+/* The rapport: one page for one day. A calendar to pick the day, and one table:
+   a row per category, a column per league with ✓ right and ✗ wrong, and a cup
+   at the far right of a row where all three leagues were won 100%. */
+const OP_CATS = [
+  { key: "tafels", name: "Tafels" },
+  { key: "delen", name: "Delen" },
+  { key: "sommen", name: "Redactiesommen" },
+  { key: "klokles", name: "Klok" },
+  { key: "klok", name: "Klokkijken" }
+];
+let calYM = null;
+
+function calShow(ds) {
+  const [y, m] = ds.split("-").map(Number);
+  calYM = { y, m: m - 1 };
+}
+
+/* A pupil gets at most ONE cup per category per day. A cup is granted the
+   first time a category is won 100% on all three leagues that day; any later
+   win in that category that day is played but earns no second cup. */
+function grantCup(ds, cat) {
+  if (!categoryWon(ds, cat)) return false;
+  const day = dayFor(ds);
+  day.cups = day.cups || {};
+  if (day.cups[cat]) return false;                 // already had today's cup
+  day.cups[cat] = true;
+  data.days[ds] = day;
+  Store.save(data);
+  return true;
+}
+
+function categoryWon(ds, cat) {
+  const lv = (data.days[ds] && data.days[ds].lv) || {};
+  return [0, 1, 2].every(l => { const x = lv[cat + "|" + l]; return x && x.n && x.c === x.n; });
+}
+
+/* how many categories were won 100% on all three leagues that day */
+function dayCups(ds) {
+  const lv = (data.days[ds] && data.days[ds].lv) || {};
+  return OP_CATS.filter(c => [0, 1, 2].every(l => { const x = lv[c.key + "|" + l]; return x && x.n && x.c === x.n; })).length;
+}
+
+function renderCalendar() {
+  const { y, m } = calYM;
+  const first = new Date(y, m, 1);
+  const lead = (first.getDay() + 6) % 7;                 // Monday first
+  const days = new Date(y, m + 1, 0).getDate();
+  const today = todayStr();
+  const wd = t("weekdays");
+  let cells = "";
+  for (let i = 0; i < lead; i++) cells += `<span class="cal-blank"></span>`;
+  for (let d = 1; d <= days; d++) {
+    const ds = todayStr(new Date(y, m, d));
+    const worked = !!(data.days[ds] && data.days[ds].lv);
+    const future = ds > today;
+    const cups = dayCups(ds);
+    cells += `<button class="cal-day${worked ? " worked" : ""}${ds === reportDay ? " on" : ""}${ds === today ? " today" : ""}"
+                ${future ? "disabled" : ""} data-day="${ds}"><span class="cal-n">${d}</span>${cups ? `<i class="cal-cup">🏆${cups}</i>` : ""}</button>`;
+  }
+  return `<div class="cal-head">
+            <button class="cal-nav" data-step="-1" aria-label="Vorige maand">‹</button>
+            <span class="cal-title">${esc(t("months")[m])} ${y}</span>
+            <button class="cal-nav" data-step="1" aria-label="Volgende maand">›</button>
+          </div>
+          <div class="cal-grid">${wd.map(w => `<span class="cal-wd">${esc(w)}</span>`).join("")}${cells}</div>`;
+}
+
+function renderOnePager(ds) {
+  const cal = $("op-cal"), box = $("op-day");
+  cal.innerHTML = renderCalendar();
+  cal.querySelectorAll(".cal-nav").forEach(b => b.addEventListener("click", () => {
+    const step = +b.dataset.step;
+    const nm = calYM.m + step;
+    calYM = { y: calYM.y + Math.floor(nm / 12), m: ((nm % 12) + 12) % 12 };
+    renderOnePager(reportDay);
+  }));
+  cal.querySelectorAll(".cal-day:not([disabled])").forEach(b => b.addEventListener("click", () => {
+    reportDay = b.dataset.day;
+    renderOnePager(reportDay);
+  }));
+
+  const [y, m, d] = ds.split("-").map(Number);
+  const lv = (data.days[ds] && data.days[ds].lv) || {};
+  const loc = LANG === "en" ? "en-GB" : LANG === "tr" ? "tr-TR" : "nl-NL";
+  const weekday = new Date(y, m - 1, d).toLocaleDateString(loc, { weekday: "long" });
+  const head = `${weekday} ${d} ${t("months")[m - 1]} ${y}`;
+  const levels = ["sprint_title", "champ_title", "super_title"];
+  const cell = (cat, l) => {
+    const x = lv[cat + "|" + l];
+    if (!x || !x.n) return `<td class="op-none">–</td>`;
+    return `<td><span class="op-pair"><span class="op-ok">✓ ${x.c}</span><span class="op-bar"></span><span class="op-no">✗ ${x.n - x.c}</span></span></td>`;
+  };
+  let cups = 0;
+  const tot = [0, 1, 2].map(() => ({ n: 0, c: 0 }));
+  const rows = OP_CATS.map(c => {
+    const won = [0, 1, 2].every(l => { const x = lv[c.key + "|" + l]; return x && x.n && x.c === x.n; });
+    if (won) cups++;
+    [0, 1, 2].forEach(l => { const x = lv[c.key + "|" + l]; if (x) { tot[l].n += x.n; tot[l].c += x.c; } });
+    return `<tr><th scope="row">${esc(c.name)}</th>${[0, 1, 2].map(l => cell(c.key, l)).join("")}
+              <td class="op-cup">${won ? "🏆" : ""}</td></tr>`;
+  }).join("");
+  const totals = `<tr class="op-total"><th scope="row">Totaal</th>${tot.map(x => !x.n ? `<td class="op-none">–</td>`
+      : `<td><span class="op-pair"><span class="op-ok">✓ ${x.c}</span><span class="op-bar"></span><span class="op-no">✗ ${x.n - x.c}</span></span></td>`).join("")}
+      <td class="op-cup">${cups ? "🏆 " + cups : ""}</td></tr>`;
+  const cupsToday = dayCups(ds);
+  box.innerHTML = `
+    <h3 class="op-date">${esc(head)}${cupsToday ? ` <span class="op-cups">🏆 ${cupsToday}</span>` : ""}</h3>
+    <div class="op-wrap"><table class="op-table">
+      <thead><tr><th></th>${levels.map((k, i) => `<th title="${esc(t(k))}">${["🐸", "🏆", "🦖"][i]}</th>`).join("")}<th></th></tr></thead>
+      <tbody>${rows}</tbody>
+      <tfoot>${totals}</tfoot>
+    </table></div>`;
 }
 
 let reportDay = null;

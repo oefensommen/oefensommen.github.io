@@ -1711,6 +1711,9 @@ body.super { background: radial-gradient(ellipse at 50% 20%, #ffb347 0%, #2f8f57
   font-weight: 800; font-size: 1.05rem; cursor: pointer;
 }
 .league-pick small { font-weight: 600; color: #5b5e73; }
+/* the tafels' league picker: just the names, no frame, no seconds */
+.league-pick.league-name { border: 0; background: none; box-shadow: none; min-height: 0; padding: 6px 12px; font-size: 1.15rem; }
+.sprint-step { white-space: nowrap; }
 .league-pick:active { transform: scale(.98); }
 
 /* ---------- the level looks, once, for every level in the app ----------
@@ -1769,3 +1772,103 @@ body.super .lvl-title {
   color: #1d1d2b; background: none; -webkit-background-clip: border-box; background-clip: border-box;
   -webkit-text-fill-color: #1d1d2b; text-transform: none; letter-spacing: normal; animation: none;
 }
+
+/* the opdracht's league picker (test account only): a card over the home screen */
+.league-overlay {
+  position: fixed; inset: 0; z-index: 60;
+  display: flex; align-items: center; justify-content: center;
+  padding: max(16px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px))
+           max(16px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
+  background: rgba(20, 22, 34, .55);
+}
+.league-box {
+  background: #fff; border-radius: 22px; padding: 22px 18px;
+  width: min(560px, 100%); text-align: center;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, .25);
+}
+#task-qbar { margin: 0 0 10px; }
+
+/* the tafels header: each fact in its own framed badge */
+#screen-sprint .sprint-title { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 1rem; }
+.hchip { display: inline-block; padding: 4px 12px; border: 2px solid #c9cedb; border-radius: 999px; background: #ffffff; color: #1d1d2b; font-size: .85rem; font-weight: 800; line-height: 1.2; white-space: nowrap; text-transform: none; letter-spacing: 0; }
+/* the one button under the header: green, the same on every ready screen */
+.start-green { background: #2fb35c; color: #ffffff; border-color: #2fb35c; box-shadow: 0 6px 14px rgba(47,179,92,.35); }
+
+
+/* ---------- the rapport: one calendar, one table, one page ---------- */
+.op-layout { display: grid; grid-template-columns: minmax(0, 320px) minmax(0, 1fr); gap: 28px; align-items: stretch; }
+@media (max-width: 720px) { .op-layout { grid-template-columns: minmax(0, 1fr); } }
+.op-cal { width: 100%; }
+.cal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.cal-title { font-weight: 800; }
+.cal-nav { border: 0; background: #eef1f7; width: 36px; height: 36px; border-radius: 10px; font-size: 1.3rem; cursor: pointer; }
+.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; text-align: center; }
+.cal-wd { font-size: .75rem; font-weight: 700; color: #6b7280; padding-bottom: 2px; }
+.cal-blank { display: block; }
+.cal-day { height: 38px; border: 0; border-radius: 10px; background: #f4f6fa; color: #1d2433; font-weight: 700; cursor: pointer; }
+.cal-day.worked { background: #d8f2e3; }
+.cal-day.today { box-shadow: inset 0 0 0 2px #3b6ef6; }
+.cal-day.on { background: #3b6ef6; color: #fff; }
+.cal-day:disabled { opacity: .35; cursor: default; }
+.op-date { margin: 0 0 10px; font-size: 1.05rem; }
+.op-wrap { overflow-x: auto; }
+.op-table { width: 100%; border-collapse: collapse; font-size: .95rem; }
+.op-table th, .op-table td { padding: 10px 12px; text-align: center; border-left: 1px solid #d5dae5; border-bottom: 1px solid #e6e9f0; }
+.op-table th:first-child, .op-table td:first-child { border-left: 0; }
+.op-table thead th { font-size: .78rem; color: #6b7280; font-weight: 700; border-bottom: 2px solid #c9cedb; }
+.op-table tbody th { text-align: left; font-weight: 800; }
+.op-n { display: none; }
+.op-ok { color: #1f7a4a; font-weight: 800; }
+.op-no { color: #b0302f; font-weight: 800; }
+.op-bar { display: inline-block; width: 1px; height: 1em; background: #c9cedb; margin: 0 8px; vertical-align: middle; }
+.op-none { color: #9aa3b5; }
+.op-cup { width: 52px; font-size: 1.3rem; }
+
+/* the calendar and the day's table each sit in a frame of their own */
+.op-cal, .op-day {
+  background: #ffffff; border: 1px solid #e3e7f0; border-radius: 18px;
+  padding: 16px; box-shadow: 0 4px 14px rgba(29, 36, 51, .06); min-width: 0;
+}
+.op-cal { max-width: 340px; }
+/* each cell stays on one line: ✓ 10 │ ✗ 0 */
+.op-table td, .op-table th { white-space: nowrap; padding-left: 8px; padding-right: 8px; }
+.op-table tbody th { padding-right: 14px; }
+
+/* both frames always share one height and one bottom edge */
+.op-cal, .op-day { display: flex; flex-direction: column; }
+.op-day { justify-content: flex-start; }
+.op-date { text-align: center; text-transform: capitalize; }
+.op-table tfoot th, .op-table tfoot td { border-top: 2px solid #c9cedb; border-bottom: 0; font-weight: 800; }
+.op-table tfoot th { text-align: left; }
+/* the table fits its frame: tighter cells, the cup count beside its cup */
+.op-table th, .op-table td { padding-left: 6px; padding-right: 6px; }
+.op-table tbody th, .op-table tfoot th { padding-right: 8px; }
+.op-table .op-cup { width: auto; font-size: 1.1rem; white-space: nowrap; padding-right: 4px; }
+.op-bar { margin: 0 5px; }
+
+/* the day's cups, in the calendar cell and beside the date */
+.cal-day { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0; line-height: 1.05; padding: 2px 0; }
+.cal-n { font-weight: 700; }
+.cal-cup { font-style: normal; font-size: .62rem; font-weight: 800; color: #8a5a00; }
+.cal-day.on .cal-cup { color: #ffe9a8; }
+.op-cups { font-size: .9rem; font-weight: 800; color: #8a5a00; background: #fff3cc; border-radius: 999px; padding: 2px 9px; margin-left: 6px; vertical-align: middle; }
+
+/* the three leagues share the width equally; the name and the cup take what they need */
+.op-table { table-layout: fixed; }
+.op-table th:first-child { width: 26%; }
+.op-table th:nth-child(2), .op-table th:nth-child(3), .op-table th:nth-child(4) { width: 22%; }
+.op-table th:last-child { width: 8%; }
+
+/* every ✓ | ✗ pair is two equal halves with the divider exactly in the middle */
+.op-pair { display: grid; grid-template-columns: 1fr 1px 1fr; align-items: center; column-gap: 0; width: 100%; min-width: 96px; }
+.op-pair .op-ok { text-align: right; padding-right: 8px; }
+.op-pair .op-no { text-align: left; padding-left: 8px; }
+.op-pair .op-bar { display: block; width: 1px; height: 1.1em; margin: 0; background: #c9cedb; }
+
+/* the rapport card is exactly the width of the top bar above it */
+#screen-result .report-card { width: min(900px, calc(100% - 32px)); margin-inline: auto; }
+
+/* the category names are smaller so "Redactiesommen" fits its column */
+.op-table { font-size: .85rem; }
+.op-table tbody th, .op-table tfoot th { font-size: .8rem; }
+.op-table .op-cup { font-size: 1rem; }

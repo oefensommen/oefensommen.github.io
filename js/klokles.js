@@ -342,6 +342,7 @@ const Klokles = (() => {
     clearInterval(timer);
     const q = KL.q;
     if (ok) KL.right++;
+    if (window.recordKlokLv) window.recordKlokLv(KL.tier, ok);   // the rapport counts it
     KL.tiles += ok ? "o" : how === "late" ? "t" : "n";
     if (q.type === "pick") {
       $("kl-opts").querySelectorAll(".kl-opt").forEach(b => {
@@ -418,31 +419,13 @@ const Klokles = (() => {
     renderQ();
   }
 
-  /* on the test account the klok opens on the league picker, as the tafels do:
-     Kikkerliga, Kampioensliga or Dinozorenliga, each with its seconds a clock */
-  function leaguePicker() {
+  /* the ready screen is the tafels' own: the same header chips and green Start */
+  function intro() {
     clearInterval(timer);
     $("kl-face").innerHTML = ""; $("kl-text").textContent = ""; $("kl-opts").innerHTML = "";
     $("kl-nudge").classList.add("hidden");
     $("kl-final").classList.add("hidden");
-    $("kl-panel").innerHTML = `
-      <p class="kl-kicker">${esc(t("league_pick"))}</p>
-      <div class="league-picks">${[0, 1, 2].map(lvl => `
-        <button class="league-pick" data-lvl="${lvl}">${esc(tierName(lvl))}
-          <small>${SECS[lvl]} s</small></button>`).join("")}</div>`;
-    $("kl-panel").querySelectorAll(".league-pick").forEach(b =>
-      b.addEventListener("click", () => begin(+b.dataset.lvl)));
-    show_panel(true);
-  }
-
-  function intro() {
-    if (Store.deviceUser && Store.deviceUser() === "test") return leaguePicker();
-    panel({
-      kicker: "Klok",
-      title: "Lees de klok, of zet de wijzers",
-      text: "10 klokken per niveau: 40, 30 en 20 seconden per klok. Alles goed? Dan het volgende niveau!",
-      go: "Start", onGo: () => begin(0)
-    });
+    introReady("klok_word", 0, 10, `${SECS[0]} s`, () => { show("screen-klokles"); begin(0); });
   }
 
   /* a level is won: the tafels' own win screen, with the way on or out */
