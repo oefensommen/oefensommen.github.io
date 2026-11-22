@@ -1,11 +1,12 @@
-/* Klok — one clock on its own page, read or set, one question at a time.
+/* Klok — one clock on its own page, read it or set it, one question at a time.
 
-   Ten clocks, a minute each. Each question is one of two kinds, drawn at
-   random: the clock is shown and two Dutch readings sit beneath it (pick the
-   right one), or the Dutch time is written beneath and the child sets the
-   hands with the − and + controls under the clock. Ten out of ten opens the
-   Kampioenenliga: the same ten, thirty seconds each. Ten out of ten there is
-   the biggest celebration. Nothing is written to the cloud: it is practice.
+   Ten clocks in a round. Each question is one of two kinds, drawn at random:
+   the clock is shown and two readings sit beneath it (blue or red: pick the
+   right one, 30 seconds), or the Dutch time is written beneath and the child
+   sets the hands with the − and + controls (minute first, then the hour,
+   1 minute). Ten out of ten opens the Champions League; ten out of ten there
+   opens the Dinosaurus League. Every wrong answer shows the right time and
+   why, in short Dutch. Nothing is written to the cloud: it is practice.
 
    Dutch clock language (the way the werkblad prints it):
      :00 "3 uur"          :05 "5 over 3"        :10 "10 over 3"
@@ -15,18 +16,22 @@
    "half 4" is half past THREE, not four: that is the mistake this teaches. */
 
 const Klokles = (() => {
-  const ROUND_SECS = 120, LEAGUE_SECS = 30, N = 10;
+  const N = 10;
+  const SECS = { set: 60, pick: 30 };             // a set-the-hands clock: 1 minute; two readings: 30 seconds
+  const TIERS = ["Klok", "Champions League", "Dinosaurus League"];
   const MINUTES = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55];
-  const C = 110, R = 104;                       // svg geometry, viewBox 220
+  const C = 110, R = 104;                         // svg geometry, viewBox 220
 
-  let KL = null;                                // the running round, or null
-  let timer = 0, onExitFn = null;
+  let KL = null;                                  // the running round, or null
+  let timer = 0, onExitFn = null, wired = false;
 
   const rnd = n => Math.floor(Math.random() * n);
   const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = rnd(i + 1); [a[i], a[j]] = [a[j], a[i]]; } return a; };
   const $ = id => document.getElementById(id);
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
   const nextH = h => (h === 12 ? 1 : h + 1);
   const prevH = h => (h === 1 ? 12 : h - 1);
+  const pad = m => String(m).padStart(2, "0");
 
   /* the Dutch words for a clock time, h 1..12, m a multiple of five */
   function phrase(h, m) {
@@ -37,6 +42,24 @@ const Klokles = (() => {
       35: `5 over half ${nx}`, 40: `10 over half ${nx}`, 45: `kwart voor ${nx}`,
       50: `10 voor ${nx}`, 55: `5 voor ${nx}`
     })[m];
+  }
+
+  /* why it is that time, in short Dutch — shown after a wrong answer */
+  function explain(h, m) {
+    const nx = nextH(h), hh = `${h}:${pad(m)}`;
+    switch (m) {
+      case 0:  return `De grote wijzer staat op 12, de kleine op ${h}. Dat is ${h} uur.`;
+      case 5:
+      case 10: return `${m} minuten na ${h}. "over" betekent: na het uur. Dat is ${hh}.`;
+      case 15: return `Kwart is 15 minuten. De grote wijzer staat op 3. Dat is ${hh}: kwart over ${h}.`;
+      case 20:
+      case 25: return `"half ${nx}" is ${h}:30. ${30 - m} minuten ervoor is ${hh}: "${30 - m} voor half ${nx}".`;
+      case 30: return `"half ${nx}" is halverwege tussen ${h} en ${nx}. Dat is ${hh}.`;
+      case 35:
+      case 40: return `"half ${nx}" is ${h}:30. ${m - 30} minuten erna is ${hh}: "over half ${nx}".`;
+      case 45: return `Kwart voor ${nx} is 15 minuten voor ${nx}. Dat is ${hh}.`;
+      default: return `${60 - m} minuten voor ${nx}. Dat is ${hh}: "${60 - m} voor ${nx}".`;
+    }
   }
 
   /* the wrong reading for a pick question: the confusions children really make
@@ -50,8 +73,8 @@ const Klokles = (() => {
     return cands.find(c => phrase(c.h, c.m) !== right && phrase(c.h, c.m));
   }
 
-  /* a face drawn for a clock: hands at h and m, optionally the one to drag */
-  function faceSVG(h, m, interactive) {
+  /* a face for the clock: hands at h and m; interactive only tints the hands */
+  function faceSVG(h, m, live) {
     let ticks = "";
     for (let i = 0; i < 60; i++) {
       const big = i % 5 === 0, a = (i * 6) * Math.PI / 180;
@@ -66,12 +89,12 @@ const Klokles = (() => {
       nums += `<text x="${(C + r * Math.sin(a)).toFixed(1)}" y="${(C - r * Math.cos(a)).toFixed(1)}"
                  text-anchor="middle" dominant-baseline="central" class="klok-num">${n}</text>`;
     }
-    const hand = (cls, len) => `<line id="kl-${cls}" x1="${C}" y1="${C}" class="klok-hand ${cls === "h" ? "hour" : "minute"}"/>`;
-    return `<svg viewBox="0 0 220 220" class="klok-face kl-face ${interactive ? "kl-live" : ""}" role="img"
+    return `<svg viewBox="0 0 220 220" class="klok-face kl-face ${live ? "kl-live" : ""}" role="img"
               aria-label="klok" style="width:min(74vw,320px);height:min(74vw,320px);display:block;margin:0 auto">
       <circle cx="${C}" cy="${C}" r="${R}" class="klok-rim"/>
       <g class="klok-ticks">${ticks}</g>${nums}
-      ${hand("h")}${hand("m")}
+      <line id="kl-h" x1="${C}" y1="${C}" class="klok-hand hour"/>
+      <line id="kl-m" x1="${C}" y1="${C}" class="klok-hand minute"/>
       <circle cx="${C}" cy="${C}" r="4.5" class="klok-pin"/>
     </svg>`;
   }
@@ -87,6 +110,17 @@ const Klokles = (() => {
     };
     set("kl-h", hd, R * 0.5);
     set("kl-m", md, R * 0.8);
+  }
+
+  /* a random start for the hands: never stacked (at least 30 degrees apart),
+     and never already the answer */
+  function startPosition(q) {
+    for (;;) {
+      const h = rnd(12) + 1, m = MINUTES[rnd(MINUTES.length)];
+      const hd = ((h % 12) + m / 60) * 30, md = m * 6;
+      const gap = Math.abs(hd - md) % 360, apart = Math.min(gap, 360 - gap);
+      if (apart >= 30 && !(h === q.h && m === q.m)) return { h, m };
+    }
   }
 
   /* ---- the timer strip ---- */
@@ -116,6 +150,7 @@ const Klokles = (() => {
       const q = { h, m, type, text: phrase(h, m) };
       if (type === "pick") {
         const w = wrongTime(h, m);
+        // position 0 is always blue, position 1 always red
         q.opts = shuffle([{ t: q.text, ok: true }, { t: phrase(w.h, w.m), ok: false }]);
       }
       qs.push(q);
@@ -123,15 +158,13 @@ const Klokles = (() => {
     return qs;
   }
 
-  /* a random start for the hands: the two never sit on top of each other
-     (at least 30 degrees apart) and never already show the answer */
-  function startPosition(q) {
-    for (;;) {
-      const h = rnd(12) + 1, m = MINUTES[rnd(MINUTES.length)];
-      const hd = ((h % 12) + m / 60) * 30, md = m * 6;
-      const gap = Math.abs(hd - md) % 360, apart = Math.min(gap, 360 - gap);
-      if (apart >= 30 && !(h === q.h && m === q.m)) return { h, m };
-    }
+  /* the tiles on the right: the same marks the sprint shows */
+  function renderMarks() {
+    const marks = KL.qs.map((_, i) => {
+      const ch = KL.tiles[i];
+      return ch === "o" ? "ok" : ch === "n" ? "no" : ch === "t" ? "skip" : "";
+    });
+    $("kl-marks").innerHTML = Live.marksPanelHTML(marks, KL.i);
   }
 
   /* which card may be changed now: the minutes, then the hour, then the check */
@@ -143,14 +176,13 @@ const Klokles = (() => {
     $("kl-card-h").classList.toggle("locked", st !== "h");
     $("kl-card-m").querySelectorAll("button").forEach(b => b.disabled = st !== "m");
     $("kl-card-h").querySelectorAll("button:not(#kl-h-x)").forEach(b => b.disabled = st !== "h");
-    $("kl-h-x").disabled = false;                       // × stays usable: back to the minute
+    $("kl-h-x").disabled = false;                     // × stays usable: back to the minute
     $("kl-h-x").classList.toggle("hidden", st !== "h" && st !== "done");
     $("kl-m-ok").classList.toggle("hidden", st !== "m");
     $("kl-h-ok").classList.toggle("hidden", st !== "h");
     $("kl-check").classList.toggle("hidden", st !== "done");
   }
 
-  /* a confirmed minute hands over to the hour; a confirmed hour to the check */
   function confirmStage(which) {
     if (!KL || KL.locked || !KL.q || KL.q.type !== "set" || KL.stage !== which) return;
     KL.stage = which === "m" ? "h" : "done";
@@ -178,38 +210,43 @@ const Klokles = (() => {
     KL.q = q; KL.locked = false;
     KL.cur = q.type === "set" ? startPosition(q) : { h: q.h, m: q.m };
     $("kl-progress").textContent = `${KL.i + 1} / ${N}`;
-    $("kl-title").textContent = KL.league ? "Kampioenenliga" : "Klok";
+    $("kl-title").textContent = TIERS[KL.tier];
+    document.body.classList.toggle("kl-t1", KL.tier === 1);
+    document.body.classList.toggle("kl-t2", KL.tier === 2);
+    $("screen-klokles").classList.toggle("kl-t1", KL.tier === 1);
+    $("screen-klokles").classList.toggle("kl-t2", KL.tier === 2);
     $("kl-face").innerHTML = faceSVG(KL.cur.h, KL.cur.m, q.type === "set");
     if (q.type === "set") {
       placeHands(KL.cur.h, KL.cur.m);
       $("kl-text").textContent = q.text;
       $("kl-opts").innerHTML = "";
       $("kl-nudge").classList.remove("hidden");
-      KL.stage = "m";                                   // minutes first, then the hour
+      KL.stage = "m";                                  // minutes first, then the hour
       applyStage();
     } else {
       $("kl-text").textContent = "";
       $("kl-opts").innerHTML = q.opts.map((o, i) =>
-        `<button class="kl-opt" data-i="${i}">${o.t}</button>`).join("");
+        `<button class="kl-opt ${i === 0 ? "kl-opt-b" : "kl-opt-r"}" data-i="${i}">${esc(o.t)}</button>`).join("");
       $("kl-opts").querySelectorAll(".kl-opt").forEach(b =>
         b.addEventListener("click", () => settle(q.opts[+b.dataset.i].ok, "pick", b)));
-      $("kl-check").classList.add("hidden");
       $("kl-nudge").classList.add("hidden");
+      $("kl-check").classList.add("hidden");
     }
     $("kl-flash").textContent = "";
     $("kl-flash").className = "kl-flash";
     show_panel(false);
-    startTimer(KL.league ? LEAGUE_SECS : ROUND_SECS);
+    renderMarks();
+    startTimer(SECS[q.type]);
   }
 
-  /* answered (or ran out): show it, then the next one */
+  /* answered (or ran out): show it, explain a miss, then the next one */
   function settle(ok, how, btn) {
     if (!KL || KL.locked) return;
     KL.locked = true;
     clearInterval(timer);
     const q = KL.q;
     if (ok) KL.right++;
-    KL.tiles += ok ? "o" : "n";
+    KL.tiles += ok ? "o" : how === "late" ? "t" : "n";
     if (q.type === "pick") {
       $("kl-opts").querySelectorAll(".kl-opt").forEach(b => {
         const o = q.opts[+b.dataset.i]; b.disabled = true;
@@ -217,14 +254,22 @@ const Klokles = (() => {
         else if (b === btn) b.classList.add("wrong");
       });
     } else {
-      placeHands(q.h, q.m);                               // show the answer on the face
-      $("kl-check").classList.add("hidden");
+      placeHands(q.h, q.m);                            // show the answer on the face
       $("kl-nudge").classList.add("hidden");
+      $("kl-check").classList.add("hidden");
     }
-    const msg = ok ? "Goed zo!" : how === "late" ? `Te laat! Het was: ${q.text}` : `Net niet. Het was: ${q.text}`;
-    $("kl-flash").textContent = msg;
-    $("kl-flash").className = "kl-flash " + (ok ? "good" : "bad");
-    setTimeout(next, ok ? 900 : 1600);
+    const flash = $("kl-flash");
+    if (ok) {
+      flash.textContent = "Goed zo!";
+      flash.className = "kl-flash good";
+    } else {
+      const lead = how === "late" ? "Te laat!" : "Net niet.";
+      flash.innerHTML = `${lead} Het is <b>${esc(q.text)}</b> (${q.h}:${pad(q.m)}).<br>` +
+                        `<span class="kl-why">${esc(explain(q.h, q.m))}</span>`;
+      flash.className = "kl-flash bad";
+    }
+    renderMarks();
+    setTimeout(next, ok ? 900 : 4200);
   }
 
   function next() {
@@ -235,20 +280,22 @@ const Klokles = (() => {
   }
 
   function endRound() {
-    if (!KL.league && KL.right === N) return panel({
-      kicker: "10 van 10!", title: "Klaar voor de Kampioenenliga?",
-      text: "Elke klok 30 seconden. Haal er 10 van 10 en je wordt kampioen!",
-      go: "Naar de Kampioenenliga 🏆", onGo: () => begin(true)
+    if (KL.right !== N) {
+      return panel({
+        kicker: `${KL.right} van ${N} goed`,
+        title: "Oefen nog een keer",
+        text: `Haal 10 van 10 voor de ${TIERS[1]}.`,
+        go: "Opnieuw", onGo: () => begin(0),
+        alt: "Klaar", onAlt: () => exit()
+      });
+    }
+    if (KL.tier === 0) return panel({
+      kicker: "10 van 10!", title: "Klaar voor de Champions League?",
+      text: "Haal er weer 10 van 10 en je gaat door naar de Dinosaurus League.",
+      go: "Naar de Champions League 🏆", onGo: () => begin(1)
     });
-    if (KL.league && KL.right === N) return win();
-    panel({
-      kicker: `${KL.right} van ${N} goed`,
-      title: KL.league ? "Bijna kampioen!" : "Oefen nog een keer",
-      text: KL.league ? "Je hebt 10 van 10 nodig. Probeer het nog eens!"
-                      : "Haal 10 van 10 voor de Kampioenenliga.",
-      go: "Opnieuw", onGo: () => begin(false),
-      alt: "Klaar", onAlt: () => exit()
-    });
+    if (KL.tier === 1) return win(1);
+    win(2);
   }
 
   /* the intro card and the result card share one panel */
@@ -272,17 +319,11 @@ const Klokles = (() => {
 
   function show_panel(on) {
     $("kl-panel").classList.toggle("hidden", !on);
-    $("kl-body").classList.toggle("hidden", on);
+    $("kl-layout").classList.toggle("hidden", on);
   }
 
-  /* "Klaar": the hands against the time written beneath the clock */
-  function check() {
-    if (!KL || KL.locked || !KL.q || KL.q.type !== "set") return;
-    settle(KL.cur.h === KL.q.h && KL.cur.m === KL.q.m, "check");
-  }
-
-  function begin(league) {
-    KL = { league, qs: makeQuestions(), i: 0, right: 0, tiles: "", locked: false, cur: null, q: null };
+  function begin(tier) {
+    KL = { tier, qs: makeQuestions(), i: 0, right: 0, tiles: "", locked: false, cur: null, q: null, stage: null };
     renderQ();
   }
 
@@ -290,29 +331,34 @@ const Klokles = (() => {
     panel({
       kicker: "Klok",
       title: "Lees de klok, of zet de wijzers",
-      text: "10 klokken, elk 2 minuten. Kies de juiste tekst, of draai de wijzers naar de tijd. Alles goed? Dan de Kampioenenliga!",
-      go: "Start", onGo: () => begin(false)
+      text: "10 klokken. Bij een keuze heb je 30 seconden, bij de wijzers 1 minuut. Alles goed? Dan de Champions League!",
+      go: "Start", onGo: () => begin(0)
     });
   }
 
-  /* the cup, with the same fireworks as the sprint */
-  function win() {
+  /* a cup is won: fireworks, and the way on, or the end of the road */
+  function win(tier) {
     clearInterval(timer);
     $("kl-face").innerHTML = ""; show_panel(false);
     const box = $("champ-win");
+    const last = tier === 2;
     box.classList.add("mega");
-    $("champ-win-trophy").textContent = "👑";
-    $("champ-win-title").textContent = "KLOKKAMPIOEN!";
-    $("champ-win-sub").textContent = "Jij kent de klok! 🕐";
-    $("champ-win-score").textContent = `10 van 10, ${LEAGUE_SECS} seconden per klok`;
-    $("champ-win-close").textContent = "Verder";
-    $("champ-win-later").classList.add("hidden");
+    $("champ-win-trophy").textContent = last ? "🦖" : "🏆";
+    $("champ-win-title").textContent = last ? "DINOSAURUS KAMPIOEN!" : "CHAMPIONS LEAGUE!";
+    $("champ-win-sub").textContent = last ? "Jij bent de koning van de klok! 🦖👑" : "Je kent de klok! Nu de dinosaurussen! 🦕";
+    $("champ-win-score").textContent = "10 van 10 goed";
+    const go = $("champ-win-close"), later = $("champ-win-later");
+    go.textContent = last ? "Verder" : "Naar de Dinosaurus League 🦖";
+    later.textContent = "Verder";
+    later.classList.toggle("hidden", last);
     box.classList.remove("hidden");
     Fireworks.start($("champ-fw"), $("champ-float"), { mega: true });
-    $("champ-win-close").onclick = () => {
+    const close = after => () => {
       Fireworks.stop(); box.classList.add("hidden"); box.classList.remove("mega");
-      exit();
+      after();
     };
+    go.onclick = close(last ? exit : () => begin(2));
+    later.onclick = close(exit);
   }
 
   function exit() {
@@ -325,16 +371,19 @@ const Klokles = (() => {
   function stop() {
     clearInterval(timer); timer = 0;
     KL = null;
+    document.body.classList.remove("kl-t1", "kl-t2");
   }
 
-  let wired = false;
-  const nudgeBtns = [["kl-h-dn", "h", -1], ["kl-h-up", "h", 1], ["kl-m-dn", "m", -1], ["kl-m-up", "m", 1]];
   return {
     start(onExit) {
       onExitFn = onExit;
       if (!wired) {
-        $("kl-check").addEventListener("click", check);
-        nudgeBtns.forEach(([id, w, st]) => $(id).addEventListener("click", () => nudge(w, st)));
+        $("kl-check").addEventListener("click", () => {
+          if (!KL || KL.locked || !KL.q || KL.q.type !== "set" || KL.stage !== "done") return;
+          settle(KL.cur.h === KL.q.h && KL.cur.m === KL.q.m, "check");
+        });
+        [["kl-h-dn", "h", -1], ["kl-h-up", "h", 1], ["kl-m-dn", "m", -1], ["kl-m-up", "m", 1]]
+          .forEach(([id, w, st]) => $(id).addEventListener("click", () => nudge(w, st)));
         $("kl-m-ok").addEventListener("click", () => confirmStage("m"));
         $("kl-h-ok").addEventListener("click", () => confirmStage("h"));
         $("kl-h-x").addEventListener("click", backToMinute);
@@ -345,7 +394,6 @@ const Klokles = (() => {
     },
     stop,
     quit() { exit(); },
-    /* exposed for tests */
-    _phrase: phrase, _wrong: wrongTime, _makeQuestions: makeQuestions, _state: () => KL
+    _phrase: phrase, _wrong: wrongTime, _makeQuestions: makeQuestions, _explain: explain, _state: () => KL
   };
 })();

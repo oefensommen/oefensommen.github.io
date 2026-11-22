@@ -1286,8 +1286,7 @@ body.super::before {
 .kl-tick:disabled, .kl-back:disabled { background: var(--line); color: var(--muted); cursor: default; }
 .kl-ctl-h .kl-ok { background: #e0484d; }
 .kl-ok:disabled { background: var(--line); color: var(--muted); }
-.kl-body { text-align: center; }
-.kl-body.hidden { display: none; }
+.kl-body { text-align: center; min-width: 0; }
 .kl-text { font-size: 2rem; font-weight: 800; margin: 14px 0 6px; min-height: 1.2em; }
 .kl-opts { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; max-width: 420px; margin: 16px auto 0; }
 .kl-opt {
@@ -1295,14 +1294,51 @@ body.super::before {
   border: 1.5px solid var(--line); background: var(--card); color: var(--ink); cursor: pointer;
 }
 .kl-opt:disabled { cursor: default; }
-.kl-opt.right { background: var(--green-soft); border-color: var(--green); color: var(--green); }
-.kl-opt.wrong { background: var(--red-soft); border-color: var(--red); color: var(--red); }
+/* two readings, blue and red, like the hour and minute */
+.kl-opt.kl-opt-b { border-color: #3b6ef6; background: #eef3ff; color: #2446b8; }
+.kl-opt.kl-opt-r { border-color: #e0484d; background: #fff0f0; color: #b8262b; }
+.kl-opt.kl-opt-b:hover:not(:disabled) { background: #dfe8ff; }
+.kl-opt.kl-opt-r:hover:not(:disabled) { background: #ffe0e0; }
+.kl-opt:disabled:not(.right):not(.wrong) { opacity: .45; }
+.kl-why { display: inline-block; margin-top: 6px; font-weight: 600; color: var(--ink); text-align: left; max-width: 420px; }
+.kl-opt.right { background: var(--green-soft) !important; border-color: var(--green) !important; color: var(--green) !important; }
+.kl-opt.wrong { background: var(--red-soft) !important; border-color: var(--red) !important; color: var(--red) !important; }
 .kl-check { margin-top: 16px; }
-.kl-flash { min-height: 1.5em; margin: 12px 0 0; font-weight: 700; color: var(--muted); }
+.kl-flash { min-height: 1.5em; margin: 12px 0 0; font-weight: 700; color: var(--muted); font-size: 1rem; line-height: 1.4; }
 .kl-flash.good { color: var(--green); }
 .kl-flash.bad { color: var(--red); }
 .kl-panel { text-align: center; padding: 18px 8px 4px; }
 .kl-panel.hidden { display: none; }
+#kl-layout.hidden { display: none; }
+
+/* ---- Champions League: navy and gold, with a trophy ---- */
+body.kl-t1 { background: radial-gradient(ellipse at 50% -10%, #25449f 0%, #0d1b4f 55%, #050b25 100%) fixed; }
+#screen-klokles.kl-t1 .kl-card {
+  --ink: #ffffff; --muted: #c4cff5; --card: rgba(255, 255, 255, .10); --bg: rgba(255, 255, 255, .09);
+  --line: rgba(245, 197, 66, .55); --accent: #f5c542; --accent-soft: rgba(245, 197, 66, .18);
+  position: relative; overflow: hidden; color: var(--ink);
+  background: radial-gradient(circle, rgba(255,255,255,.5) 0 1px, transparent 1.6px) 0 0 / 46px 46px,
+              linear-gradient(160deg, #1a3584 0%, #0b1a4d 100%);
+  border: 1.5px solid #f5c542;
+}
+#screen-klokles.kl-t1 .kl-card::after { content: "🏆"; position: absolute; right: -14px; bottom: -22px; font-size: 8rem; opacity: .08; pointer-events: none; }
+#screen-klokles.kl-t1 .kl-title { color: #f5c542; text-transform: uppercase; letter-spacing: .04em; }
+#screen-klokles.kl-t1 .kl-fill { background: #f5c542; }
+
+/* ---- Dinosaurus League: jungle green, with a dinosaur ---- */
+body.kl-t2 { background: radial-gradient(ellipse at 50% -10%, #2f8f4e 0%, #134a28 55%, #05200f 100%) fixed; }
+#screen-klokles.kl-t2 .kl-card {
+  --ink: #f4fff0; --muted: #c2e8c8; --card: rgba(255, 255, 255, .10); --bg: rgba(255, 255, 255, .08);
+  --line: rgba(155, 229, 100, .55); --accent: #9be564; --accent-soft: rgba(155, 229, 100, .18);
+  position: relative; overflow: hidden; color: var(--ink);
+  background: radial-gradient(circle, rgba(155,229,100,.35) 0 1px, transparent 1.6px) 0 0 / 40px 40px,
+              linear-gradient(160deg, #1f6b3a 0%, #0b3520 100%);
+  border: 1.5px solid #9be564;
+}
+#screen-klokles.kl-t2 .kl-card::after { content: "🦖"; position: absolute; right: -10px; bottom: -20px; font-size: 8rem; opacity: .1; pointer-events: none; }
+#screen-klokles.kl-t2 .kl-title { color: #9be564; text-transform: uppercase; letter-spacing: .04em; }
+#screen-klokles.kl-t2 .kl-fill { background: #9be564; }
+#screen-klokles.kl-t1 .kl-card > *, #screen-klokles.kl-t2 .kl-card > * { position: relative; z-index: 1; }
 .kl-kicker { margin: 0; font-weight: 800; color: var(--accent); letter-spacing: .04em; }
 .kl-ptitle { margin: 6px 0 10px; font-size: 1.7rem; }
 .kl-ptext { margin: 0 auto 18px; max-width: 420px; color: var(--muted); font-size: 1.05rem; }
