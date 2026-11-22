@@ -90,7 +90,7 @@ const Klokles = (() => {
                  text-anchor="middle" dominant-baseline="central" class="klok-num">${n}</text>`;
     }
     return `<svg viewBox="0 0 220 220" class="klok-face kl-face ${live ? "kl-live" : ""}" role="img"
-              aria-label="klok" style="width:min(74vw,320px);height:min(74vw,320px);display:block;margin:0 auto">
+              aria-label="klok">
       <circle cx="${C}" cy="${C}" r="${R}" class="klok-rim"/>
       <g class="klok-ticks">${ticks}</g>${nums}
       <line id="kl-h" x1="${C}" y1="${C}" class="klok-hand hour"/>
