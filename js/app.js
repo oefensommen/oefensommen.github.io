@@ -1266,7 +1266,7 @@ function bankSettled() {
     const c = day.cats[q.cat] || { n: 0, c: 0 };
     c.n++; if (q.correctFirst) c.c++;
     day.cats[q.cat] = c;
-    addLv(day, session.kind || "sommen", session.league || 0, 1, q.correctFirst ? 1 : 0);
+    addLv(day, session.kind || "sommen", session.league || 0, 1, q.solved || q.fixed ? 1 : 0);
     // the soort som that went wrong comes back in a later opdracht
     if (!q.correctFirst && q.cat !== "verrassing") {
       data.wrongTpl = [q.tplId, ...data.wrongTpl.filter(id => id !== q.tplId)].slice(0, 6);
@@ -1578,12 +1578,25 @@ function answer(i, btn) {
   const correct = i === q.answerIdx;
   stopQClock();
 
+  // Redactiesommen and Klokkijken give two tries at every question: a wrong
+  // first answer is marked, the others come back, and a right second answer
+  // counts as right. The second wrong one settles it as before.
+  if (!correct && !q.retry1 && flexibleTask()) {
+    q.retry1 = true;
+    btn.classList.add("wrong");
+    btn.disabled = true;
+    document.querySelectorAll(".answer").forEach(b => { if (b !== btn) b.disabled = false; });
+    showExplainBox(`<p class="fix-hint">${esc(t("try_again"))}</p>`, false);
+    startQClock(q);
+    return;
+  }
+
   document.querySelectorAll(".answer").forEach(b => b.disabled = true);
   $("btn-skip").disabled = true;
   $("btn-pause").disabled = true;      // the next som is already on its way in
 
-  q.tries = 1;
-  q.correctFirst = correct;
+  q.tries = q.retry1 ? 2 : 1;
+  q.correctFirst = correct && !q.retry1;
   q.chosen = i;
   btn.classList.add(correct ? "correct" : "wrong");
   if (!correct) {
@@ -1612,6 +1625,11 @@ function answer(i, btn) {
    that was about to come simply never appears (unshown, so not spent), and in
    its place comes one the child can win — that is where the confidence comes
    back. Only during the linear first sweep; the report card is its own world. */
+/* the two-try rule belongs to the redactiesommen and the klokkijken only */
+function flexibleTask() {
+  return !!session && (session.kind === "sommen" || session.kind === "klok");
+}
+
 function comfortSwap(cat) {
   if (!session.firstPass || session.viewOne != null) return;
   // A klok round is ten dials and nothing else. The swap draws from the soorten
@@ -1861,7 +1879,7 @@ function finishPass() {
   recordFirstPass();                 // waits until every som has been faced
   if (open.length === 0) {
     markDone100();          // this clears the active task — do not write it back
-    if (session.questions.every(q => q.correctFirst === true)) return winTask();
+    if (session.questions.every(q => q.solved || q.fixed)) return winTask();
   } else {
     session.nextQueue = open;
     // The round is not over, so nothing is booked yet — and the clock must
@@ -2162,6 +2180,19 @@ function dayCups(ds) {
   return OP_CATS.filter(c => [0, 1, 2].every(l => { const x = lv[c.key + "|" + l]; return x && x.n && x.c === x.n; })).length;
 }
 
+/* the kerstvakantie goal: 130 cups, counted from tomorrow on */
+const CUP_START = "2026-11-23", CUP_GOAL = 130;
+function cupsSince() {
+  let total = 0;
+  const today = todayStr();
+  for (let ds = CUP_START; ds <= today; ds = shiftDay(ds, 1)) total += dayCups(ds);
+  return total;
+}
+function showsCupGoal() {
+  const u = (Store.deviceUser() || "").toLowerCase();
+  return u === "tak" || u === "test";
+}
+
 function renderCalendar() {
   const { y, m } = calYM;
   const first = new Date(y, m, 1);
@@ -2184,7 +2215,8 @@ function renderCalendar() {
             <span class="cal-title">${esc(t("months")[m])} ${y}</span>
             <button class="cal-nav" data-step="1" aria-label="Volgende maand">›</button>
           </div>
-          <div class="cal-grid">${wd.map(w => `<span class="cal-wd">${esc(w)}</span>`).join("")}${cells}</div>`;
+          <div class="cal-grid">${wd.map(w => `<span class="cal-wd">${esc(w)}</span>`).join("")}${cells}</div>
+          ${showsCupGoal() ? `<p class="cal-goal">🏆 ${cupsSince()}/${CUP_GOAL}</p>` : ""}`;
 }
 
 function renderOnePager(ds) {

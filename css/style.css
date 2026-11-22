@@ -1872,3 +1872,6 @@ body.super .lvl-title {
 .op-table { font-size: .85rem; }
 .op-table tbody th, .op-table tfoot th { font-size: .8rem; }
 .op-table .op-cup { font-size: 1rem; }
+
+/* the kerstvakantie goal under the calendar */
+.cal-goal { margin: 10px 0 0; text-align: center; font-weight: 800; color: #8a5a00; }
