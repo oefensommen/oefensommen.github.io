@@ -8,7 +8,7 @@
    the sum does.
 
    Ten out of ten opens the next round, each one faster than the last:
-   the sprint (4 s a tafel), the kampioensronde (3 s), the superfinale (2,5 s).
+   the Wandelliga (3 s a tafel), the Kampioensliga (2 s), the Dinozorenliga (1 s).
 
    What went wrong yesterday comes round sooner: every fact keeps a small tally
    and the ones that were missed are weighted up, so the sprint quietly circles
@@ -16,14 +16,13 @@
 
 const Sprint = {
   N: 10,            // ten facts a round — the tafel half of a day's pakket
-  SECS: 4,          // four seconds a tafel, the som and its answers together
+  SECS: 3,          // three seconds a tafel, the som and its answers together
   OPTS: 4,          // four answers, and the wrong ones are neighbours in the
                     // table — near enough that only knowing it settles it
-  CHAMP_SECS: 3,    // the kampioensronde: ten out of ten in the sprint opens it
-  SUPER_SECS: 2.5,  // the superfinale: ten out of ten there opens this one
+  CHAMP_SECS: 2,    // the Kampioensliga: ten out of ten in the sprint opens it
+  SUPER_SECS: 1,    // the Dinozorenliga: ten out of ten there opens this one
   PASS: 1,          // all ten right — in every round — to go on to the next
-  MIN: 6, MAX: 10,  // only the hard tafels: 6 to 10, both factors. Anything
-                    // with a 1 to 5 in it is too easy and is never asked.
+  MIN: 2, MAX: 9,    // no 1s and no 10s: they are too easy and are never asked.
 
   key(a, b) { return Math.min(a, b) + "x" + Math.max(a, b); },
 
@@ -32,7 +31,7 @@ const Sprint = {
      round (6 × 8 and 8 × 6) — 25 different questions, ten of them drawn —
      and never the same question twice in a round. The same fact twice in a row
      is avoided as long as anything else is left. */
-  build(data, avoid) {
+  build(data, avoid, n = this.OPTS) {
     const seen = new Set((avoid || []).map(f => {
       const [a, b] = String(f).split("x").map(Number);
       return this.key(a, b);
@@ -45,7 +44,34 @@ const Sprint = {
       if (!f) break;
       used.add(f.a + "x" + f.b);
       last = this.key(f.a, f.b);
-      out.push(this.question(f.a, f.b));
+      out.push(this.question(f.a, f.b, n));
+    }
+    return out;
+  },
+
+  /* The dinozorenliga asks what this child gets wrong: the facts missed most
+     recently come first, and the rest of the round is drawn as usual. */
+  hardest(data, n = this.OPTS) {
+    const tally = data.tafel || {};
+    const missed = [];
+    for (let a = this.MIN; a <= this.MAX; a++) {
+      for (let b = this.MIN; b <= this.MAX; b++) {
+        const m = tally[this.key(a, b)];
+        if (m && m.w > 0) missed.push({ a, b, w: m.w, r: Math.random() });
+      }
+    }
+    missed.sort((x, y) => y.w - x.w || x.r - y.r);
+    const out = [], used = new Set();
+    for (const f of missed) {
+      if (out.length >= this.N) break;
+      const k = this.key(f.a, f.b);
+      if (used.has(k)) continue;                 // asked once, whichever way round
+      used.add(k);
+      out.push(this.question(f.a, f.b, n));
+    }
+    if (out.length < this.N) {
+      const rest = this.build(data, [...used], n).slice(0, this.N - out.length);
+      out.push(...rest);
     }
     return out;
   },
@@ -80,7 +106,7 @@ const Sprint = {
      in the table. 6 × 8 sits between 6 × 7 and 6 × 9, and next to 5 × 8 and
      7 × 8 — a slip of one row, never a number that can be dismissed at a
      glance. */
-  question(a, b) {
+  question(a, b, n = this.OPTS) {
     const answer = a * b;
     const near = [a * (b - 1), a * (b + 1), (a - 1) * b, (a + 1) * b]
       .filter(v => v > 0 && v !== answer);
@@ -96,9 +122,9 @@ const Sprint = {
     // 6 × 6 and 7 × 7 have too few neighbours: a slip of ten is the next
     // most real mistake, so it fills the gap before anything random does
     const tens = shuffle([answer - 10, answer + 10].filter(v => v > 0 && !uniq.includes(v)));
-    const opts = [answer].concat(uniq.concat(tens).slice(0, this.OPTS - 1));
+    const opts = [answer].concat(uniq.concat(tens).slice(0, n - 1));
     let guard = 0;
-    while (opts.length < this.OPTS && guard++ < 40) {    // 2 × 2 has few neighbours
+    while (opts.length < n && guard++ < 40) {    // 2 × 2 has few neighbours
       const v = answer + (Math.floor(Math.random() * 5) + 1) * (Math.random() < 0.5 ? -1 : 1);
       if (v > 0 && !opts.includes(v)) opts.push(v);
     }

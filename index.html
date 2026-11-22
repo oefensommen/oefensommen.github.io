@@ -4,19 +4,26 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Oefensommen</title>
-  <link rel="stylesheet" href="css/style.css?v=202611221337">
+  <link rel="stylesheet" href="css/style.css?v=202611221528">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧮</text></svg>">
 </head>
 <body>
+<div id="page-deco" class="page-deco" aria-hidden="true"></div>
 
   <header class="topbar">
-    <button id="btn-brand" class="brand" title="Oefensommen" aria-label="Oefensommen">
+    <button id="btn-brand" class="brand" title="Dashboard" aria-label="Dashboard">
       <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none"
-           stroke="currentColor" stroke-width="2" stroke-linecap="round">
-        <rect x="3" y="3" width="18" height="18" rx="5"/>
-        <path d="M7.5 9.5h9M7.5 14.5h9M12 7v3M9.5 12v5"/>
+           stroke="currentColor" stroke-width="2" stroke-linejoin="round">
+        <rect x="3" y="3" width="7.5" height="9" rx="2"/>
+        <rect x="13.5" y="3" width="7.5" height="5" rx="2"/>
+        <rect x="13.5" y="11" width="7.5" height="10" rx="2"/>
+        <rect x="3" y="15" width="7.5" height="6" rx="2"/>
       </svg>
     </button>
+    <div class="topbar-title">
+      <h1 id="home-greeting">Hoi!</h1>
+      <p id="home-chips" class="home-chips"></p>
+    </div>
     <div class="topbar-right">
       <div id="timerbox" class="timerbox hidden">
         <span class="timer-clock">⏱</span>
@@ -65,16 +72,16 @@
     <!-- HOME -->
     <section id="screen-home" class="screen hidden screen--fit">
       <div class="card home-card">
-        <div class="home-head">
-          <h1 id="home-greeting">Hoi!</h1>
-          <p id="home-chips" class="home-chips"></p>
-        </div>
-        <p id="home-status" class="status"></p>
+        <p id="home-status" class="status hidden"></p>
         <div class="home-doors">
           <button id="btn-sprint" class="door-tile hidden">
             <span class="door-icon">⚡</span>
             <span id="sprint-label" class="door-name">Tafels</span>
             <b id="sprint-done" class="door-badge"></b>
+          </button>
+          <button id="btn-delen" class="door-tile hidden">
+            <span class="door-icon">➗</span>
+            <span class="door-name" data-i18n="home_delen">Delen</span>
           </button>
           <button id="btn-start" class="door-tile">
             <span class="door-icon">🧮</span>
@@ -99,7 +106,7 @@
 
     <!-- KLOK: one clock, one page -->
     <section id="screen-klokles" class="screen hidden screen--fit">
-      <div class="card kl-card">
+      <div class="card kl-card lvl-card">
         <header class="kl-head">
           <button id="kl-quit" class="icon-ghost" aria-label="Terug">
             <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor"
@@ -107,7 +114,7 @@
               <path d="M15 18l-6-6 6-6"></path>
             </svg>
           </button>
-          <h2 id="kl-title" class="kl-title">Klok</h2>
+          <h2 id="kl-title" class="kl-title lvl-title">Klok</h2>
           <span id="kl-count" class="kl-count"></span>
           <span id="kl-progress" class="kl-step">1 / 10</span>
         </header>
@@ -118,32 +125,29 @@
             <p id="kl-text" class="kl-text"></p>
             <div id="kl-opts" class="kl-opts"></div>
             <div id="kl-nudge" class="kl-nudge hidden">
-              <div id="kl-card-m" class="kl-card-ctl kl-ctl-m active">
-                <div class="kl-ctl-head"><i class="kl-dot kl-dot-m"></i>Minuut</div>
-                <div class="kl-ctl-btns">
-                  <button id="kl-m-dn" class="kl-step-btn" aria-label="Minuut terug">−</button>
-                  <button id="kl-m-up" class="kl-step-btn" aria-label="Minuut vooruit">+</button>
+              <div class="kl-pick">
+                <div class="kl-col-l">
+                  <div id="kl-card-m" class="kl-frame kl-frame-m picked">
+                    <span class="kl-frame-name"><i class="kl-dot kl-dot-m"></i>Minuut</span>
+                  </div>
+                  <div id="kl-card-h" class="kl-frame kl-frame-h">
+                    <span class="kl-frame-name"><i class="kl-dot kl-dot-h"></i>Uur</span>
+                  </div>
                 </div>
-                <div class="kl-ok-row">
-                  <button id="kl-m-ok" class="kl-tick" aria-label="Dakika klaar">✓</button>
-                </div>
-              </div>
-              <div id="kl-card-h" class="kl-card-ctl kl-ctl-h locked">
-                <div class="kl-ctl-head"><i class="kl-dot kl-dot-h"></i>Uur</div>
-                <div class="kl-ctl-btns">
-                  <button id="kl-h-dn" class="kl-step-btn" aria-label="Uur terug">−</button>
-                  <button id="kl-h-up" class="kl-step-btn" aria-label="Uur vooruit">+</button>
-                </div>
-                <div class="kl-ok-row">
-                  <button id="kl-h-ok" class="kl-tick" aria-label="Uur klaar">✓</button>
+                <div class="kl-sep" aria-hidden="true"></div>
+                <div class="kl-col-r">
+                  <div class="kl-btns">
+                    <button id="kl-dn" class="kl-step-btn" aria-label="Terug">−</button>
+                    <button id="kl-up" class="kl-step-btn" aria-label="Vooruit">+</button>
+                  </div>
                 </div>
               </div>
             </div>
             <div id="kl-final" class="kl-final hidden">
               <button id="kl-check" class="btn primary big kl-check">Klaar ✓</button>
-              <button id="kl-undo" class="kl-back" aria-label="Terug naar de wijzers">×</button>
             </div>
             <p id="kl-flash" class="kl-flash"></p>
+            <button id="kl-next" class="btn primary kl-next hidden">Verder →</button>
           </div>
           <aside id="kl-marks" class="marks-panel"></aside>
         </div>
@@ -193,8 +197,7 @@
 
     <!-- TAFELSPRINT: ten tafels against the clock, two answers -->
     <section id="screen-sprint" class="screen hidden screen--fit">
-      <div class="card sprint-card">
-        <div id="sprint-deco" class="sprint-deco" aria-hidden="true"></div>
+      <div class="card sprint-card lvl-card">
         <header class="sprint-head">
           <button id="sprint-quit" class="icon-ghost" data-i18n-title="back_home" aria-label="Terug">
             <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor"
@@ -208,7 +211,7 @@
               <rect x="9.5" y="2.5" width="3.5" height="11" rx="1.2" fill="currentColor"/>
             </svg>
           </button>
-          <h2 id="sprint-badge-label" class="sprint-title">Tafelsprint</h2>
+          <h2 id="sprint-badge-label" class="sprint-title lvl-title">Tafelsprint</h2>
           <span id="sprint-sep" class="sprint-sep" aria-hidden="true">·</span>
           <span id="sprint-count" class="sprint-secs">20</span>
           <span id="sprint-unit" class="sprint-unit" aria-hidden="true">s</span>
@@ -313,20 +316,21 @@
 
   <div id="confetti"></div>
 
-  <script src="js/i18n.js?v=202611221337"></script>
-  <script src="js/celebrate.js?v=202611221337"></script>
-  <script src="js/config.js?v=202611221337"></script>
-  <script src="js/cloud.js?v=202611221337"></script>
-  <script src="js/storage.js?v=202611221337"></script>
-  <script src="js/templates.js?v=202611221337"></script>
-  <script src="js/explain.js?v=202611221337"></script>
-  <script src="js/klok.js?v=202611221337"></script>
-  <script src="js/levels.js?v=202611221337"></script>
-  <script src="js/rules.js?v=202611221337"></script>
-  <script src="js/klokles.js?v=202611221337"></script>
-  <script src="js/sprint.js?v=202611221337"></script>
-  <script src="js/engine.js?v=202611221337"></script>
-  <script src="js/live.js?v=202611221337"></script>
-  <script src="js/app.js?v=202611221337"></script>
+  <script src="js/i18n.js?v=202611221528"></script>
+  <script src="js/celebrate.js?v=202611221528"></script>
+  <script src="js/config.js?v=202611221528"></script>
+  <script src="js/cloud.js?v=202611221528"></script>
+  <script src="js/storage.js?v=202611221528"></script>
+  <script src="js/templates.js?v=202611221528"></script>
+  <script src="js/explain.js?v=202611221528"></script>
+  <script src="js/klok.js?v=202611221528"></script>
+  <script src="js/levels.js?v=202611221528"></script>
+  <script src="js/rules.js?v=202611221528"></script>
+  <script src="js/klokles.js?v=202611221528"></script>
+  <script src="js/sprint.js?v=202611221528"></script>
+  <script src="js/delen.js?v=202611221528"></script>
+  <script src="js/engine.js?v=202611221528"></script>
+  <script src="js/live.js?v=202611221528"></script>
+  <script src="js/app.js?v=202611221528"></script>
 </body>
 </html>

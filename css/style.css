@@ -251,10 +251,12 @@ input:focus { border-color: var(--accent); }
 
 /* ---------- Home — three doors and one line that says how today went ------- */
 .home-card { display: grid; gap: var(--s3); }
-.home-head {
-  display: flex; align-items: baseline; justify-content: space-between;
-  gap: var(--s3); flex-wrap: wrap;
+/* greeting and today's chips sit in the top bar, on one line */
+.topbar-title {
+  flex: 1; min-width: 0; display: flex; align-items: center; gap: var(--s3);
+  white-space: nowrap; overflow: hidden; padding-inline: var(--s2);
 }
+.topbar-title h1 { margin: 0; font-size: 1.05rem; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .home-card h1 { margin: 0; font-size: 1.5rem; }
 .status { color: var(--muted); margin: 0; font-size: var(--t-sm); }
 
@@ -805,13 +807,22 @@ input:focus { border-color: var(--accent); }
 
 /* the clock: a hairline that drains, right where the eye already is */
 /* the sprint clock: a hairline track with a draining fill */
-.sprint-track {
-  height: 3px; background: var(--line); border-radius: var(--r-pill);
-  overflow: hidden; margin-top: var(--s3);
+/* THE timer bar: the same on every timed screen. A thick track that fills from
+   the left, its colour going green, yellow, orange and red as the time runs out. */
+.sprint-track, .kl-track {
+  height: 10px; background: #e3e7f0; border-radius: var(--r-pill);
+  overflow: hidden; box-shadow: inset 0 1px 2px rgba(29, 36, 51, .12);
 }
+.sprint-track { margin-top: var(--s3); }
+.kl-track { margin: var(--s3) 0 18px; }
 .paused-text { font-size: var(--t-sm); color: var(--muted); }
-.sprint-fill { height: 100%; width: 100%; background: var(--accent); border-radius: 999px; }
-.sprint-fill.low { background: var(--red); }
+.sprint-fill, .kl-fill {
+  height: 100%; width: 0; border-radius: 999px; background-color: #2fb35c;
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, .45), rgba(255, 255, 255, 0) 55%);
+  box-shadow: 0 0 10px rgba(29, 36, 51, .18);
+}
+/* the countdown numbers are gone: the bar says how much time is left */
+#sprint-count, #sprint-sep, #sprint-unit, #kl-count { display: none !important; }
 
 /* the same marks rail as the task and the mirror, at the same width: it is one
    component and it was rendering 35px cells here and 47px there */
@@ -1106,7 +1117,6 @@ body.champ {
 #screen-sprint.champ .sprint-opt.wrong { background: #c93a40; border-color: #ff9a9e; color: #fff; }
 #screen-sprint.champ .sprint-flash.good { color: #7ee2a8; }
 #screen-sprint.champ .sprint-flash.bad  { color: #ff9a9e; }
-#screen-sprint.champ .sprint-track { background: rgba(255, 255, 255, .15); }
 #screen-sprint.champ .btn.primary { background: #f5c542; color: #1a2250; font-weight: 800; }
 
 /* the cup is won: fireworks over the whole page */
@@ -1196,7 +1206,29 @@ body.super::before {
 #screen-sprint.super .sprint-opt { border-color: rgba(255, 213, 74, .85); background: rgba(255, 255, 255, .12); }
 #screen-sprint.super .btn.primary { background: linear-gradient(180deg, #fff2a8, #ffd54a 60%, #f0a020); color: #2b0a52; }
 
-/* the floating pictures behind the card, for both leagues */
+/* the kikkerliga: bubblegum pond, lily pads and frogs, a card like a lily pad */
+#screen-sprint.frog {
+  background: radial-gradient(ellipse at 50% -10%, #ffe9f7 0%, #ff9fd6 45%, #c44fb0 100%) fixed;
+  min-height: 100%;
+}
+#screen-sprint.frog .sprint-card {
+  --ink: #3d1040; --muted: #8a4f80; --card: rgba(255, 255, 255, .85);
+  --bg: #fff4fb; --line: #7bd389; --accent: #2fb35c; --accent-soft: rgba(47, 179, 92, .15);
+  position: relative; overflow: hidden; color: var(--ink);
+  background:
+    radial-gradient(circle, rgba(123, 211, 137, .35) 0 2px, transparent 2.6px) 0 0 / 40px 40px,
+    linear-gradient(160deg, #ffffff 0%, #ffe3f5 100%);
+  border: 3px solid #7bd389; border-radius: 26px;
+  box-shadow: 0 0 0 5px rgba(255, 255, 255, .35), 0 16px 40px rgba(120, 20, 100, .35);
+}
+#screen-sprint.frog .sprint-title { color: #2fb35c; font-weight: 900; }
+#screen-sprint.frog .sprint-card > *:not(.sprint-deco) { position: relative; z-index: 1; }
+#screen-sprint.frog .sprint-opt { background: #fff; border: 2px solid #7bd389; border-radius: 18px; }
+#screen-sprint.frog .sprint-opt.right { background: #7bd389; color: #fff; }
+#screen-sprint.frog .sprint-opt.wrong { background: #ff7aa2; color: #fff; }
+#screen-sprint.frog .btn.primary { background: #2fb35c; color: #fff; border-radius: 16px; }
+
+/* the floating pictures behind the card, for all three leagues */
 #screen-sprint .sprint-card > .sprint-deco {
   position: absolute; inset: 0; z-index: 0; pointer-events: none; overflow: hidden;
 }
@@ -1254,7 +1286,6 @@ body.super::before {
 .kl-title { margin: 0; font-size: var(--t-lg); flex: 1; }
 .kl-count { font-weight: 800; font-variant-numeric: tabular-nums; color: var(--muted); }
 .kl-step { color: var(--muted); font-weight: 700; font-variant-numeric: tabular-nums; }
-.kl-track { height: 6px; border-radius: 999px; background: var(--line); margin: 12px 0 18px; overflow: hidden; }
 .kl-fill { height: 100%; width: 100%; background: var(--accent); border-radius: 999px; }
 .kl-stage { user-select: none; -webkit-user-select: none; }
 /* No double-tap zoom and no pinch on this page: a quick tap on + or − is a tap,
@@ -1263,9 +1294,9 @@ body.super::before {
 #screen-klokles button, #screen-klokles .klok-face { -webkit-touch-callout: none; }
 /* the clock itself: sized by the screen, not by a fixed pixel size, so it fills
    an iPad in landscape and stays whole on a phone */
-.kl-face { width: min(40vw, 300px); height: auto; aspect-ratio: 1 / 1; margin: 0 auto; display: block; }
+.kl-face { width: min(30vw, 270px); max-width: 100%; height: auto; aspect-ratio: 1 / 1; margin: 0 auto; display: block; }
 @media (min-width: 700px) {
-  .kl-face { width: min(40vh, 320px); }
+  .kl-face { width: min(34vh, 270px); max-width: 100%; }
   .kl-card { padding: 22px 26px 26px; }
   .kl-opt { font-size: 1.5rem; min-height: 64px; }
 }
@@ -1276,6 +1307,59 @@ body.super::before {
 .kl-live .klok-hand.minute { stroke: #3b6ef6; stroke-width: 4.5; stroke-linecap: round; }
 .kl-live .klok-hand.hour { stroke-linecap: round; }
 .kl-live .klok-pin { fill: #1d2433; }
+/* the frames: Minuut and Uur on the left, the + and − on the right. The picked
+   frame is the one + and − move: strong colour, a glow, lifted. The other is dimmed. */
+.kl-pick { display: grid; grid-template-columns: 170px 2px 240px; gap: 36px; align-items: stretch; }
+.kl-col-l, .kl-col-r { display: flex; flex-direction: column; gap: 12px; }
+.kl-col-l .kl-frame { height: 64px; }
+/* − and + sit together in one frame, like the hand frames on the left */
+.kl-col-r { align-self: center; width: 240px; }
+.kl-col-r .kl-btns {
+  gap: 14px; padding: 14px; width: 100%; justify-content: center; border-radius: 22px; background: var(--card);
+  border: 2px solid var(--line); box-shadow: 0 6px 18px rgba(29, 36, 51, .08);
+}
+.kl-col-r .kl-step-btn { width: 96px; height: 96px; font-size: 2.8rem; border-radius: 22px; }
+.kl-sep { width: 2px; border-radius: 2px; background: #b9bfcc; }
+/* one row per hand: its frame, and its − and + beside it */
+.kl-row { display: flex; align-items: center; gap: 12px; }
+.kl-row .kl-frame { width: 170px; }
+.kl-btns { display: flex; gap: 10px; }
+.kl-step-btn.off { opacity: .35; pointer-events: none; }
+.kl-btns .kl-step-btn { width: 84px; height: 84px; font-size: 2.6rem; border-radius: 22px; }
+.kl-frame {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
+  padding: 12px 10px; border-radius: 20px; cursor: pointer; text-align: center;
+  background: var(--card); border: 3px solid var(--line); opacity: .5;
+  transition: opacity .2s, border-color .2s, box-shadow .2s, transform .2s, background .2s;
+}
+.kl-frame-name { display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 800; font-size: 1.2rem; }
+.kl-frame-acts { display: flex; gap: 10px; justify-content: center; }
+/* minute: vivid blue. hour: red. The picked one is strong and lifted. */
+.kl-frame-m { border-color: #1d4ed8; }
+.kl-frame-h { border-color: #e0484d; }
+.kl-frame-m.picked { opacity: 1; background: #e6edff; box-shadow: 0 0 0 5px rgba(29,78,216,.22), 0 10px 24px rgba(29,78,216,.28); transform: translateY(-2px); }
+.kl-frame-h.picked { opacity: 1; background: #fff0f0; box-shadow: 0 0 0 5px rgba(224,72,77,.22), 0 10px 24px rgba(224,72,77,.28); transform: translateY(-2px); }
+.kl-dot-m { background: #1d4ed8; }
+.kl-dot-h { background: #e0484d; }
+/* ✓ is green, × is red: the same in both frames */
+.kl-frame .kl-tick, .kl-frame .kl-x {
+  width: 54px; height: 50px; border-radius: 16px; border: none; cursor: pointer;
+  font-size: 1.6rem; font-weight: 800; color: #fff; line-height: 1;
+}
+.kl-frame .kl-tick { background: #22a95c; }
+.kl-frame .kl-x { background: #e0484d; }
+.kl-frame .kl-tick:disabled, .kl-frame .kl-x:disabled { background: var(--line); color: var(--muted); cursor: default; }
+.kl-pm {
+  display: flex; flex-direction: row; align-items: center; justify-content: center; gap: 14px;
+  flex: none; padding: 14px; border-radius: 22px; border: 2px solid var(--line); background: var(--card);
+}
+.kl-pm .kl-step-btn { width: 104px; height: 104px; font-size: 3rem; border-radius: 24px; }
+/* the selected hand: thicker, with a soft glow; the hour keeps its red, the minute its blue */
+.kl-live .klok-hand.sel { filter: drop-shadow(0 0 5px rgba(29, 36, 51, .35)); }
+.kl-live .klok-hand.hour.sel { stroke-width: 12; }
+.kl-live .klok-hand.minute.sel { stroke-width: 8; }
+.kl-live .klok-hand { cursor: pointer; }
+.kl-card-ctl.picked { box-shadow: 0 0 0 4px rgba(29, 36, 51, .14), 0 6px 18px rgba(29, 36, 51, .10); }
 .kl-nudge { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 0 auto; width: 100%; max-width: 560px; }
 .kl-nudge.hidden { display: none; }
 .kl-card-ctl {
@@ -1334,33 +1418,42 @@ body.super::before {
 #kl-check { min-width: 200px; }
 .kl-next { margin-top: 10px; }
 #kl-layout { grid-template-columns: minmax(0, 1fr) 150px; }
-/* the klok page: the top bar is a white box too, and the card starts right under it */
-body.kl-page .topbar { background: #fff; border-radius: 18px; margin: 8px 16px 0; padding-block: 6px; box-shadow: 0 2px 10px rgba(29, 36, 51, .08); }
-#screen-klokles.screen--fit { align-content: start; min-height: 0; padding-top: 8px; }
+/* every page of the app: a white top bar, and the card starts right under it,
+   both on one centred column of the same width */
+.topbar { background: #fff; border-radius: 18px; width: min(900px, calc(100% - 32px)); margin: 8px auto 0; padding-block: 6px; box-shadow: 0 2px 10px rgba(29, 36, 51, .08); }
+.screen--fit { align-content: start; min-height: 0; padding-top: 8px; }
+.screen--fit > .card { width: min(900px, calc(100% - 32px)); margin-inline: auto; }
+#screen-login { align-content: center; }
+
 #screen-klokles .kl-card { margin-top: 0; }
 /* clock on top; minute box, the sentence, hour box side by side beneath it */
-#kl-body { display: grid; gap: 12px 14px; align-items: center; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr) minmax(0, 1fr); grid-template-areas: "face face face" "m text h" "check check check" "flash flash flash"; }
-#kl-face { grid-area: face; justify-self: center; }
-#kl-nudge { display: contents; }
+#kl-body { display: grid; gap: 22px 16px; align-items: center; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "face" "text" "pick" "check" "flash" "next"; }
+#kl-face { grid-area: face; justify-self: center; width: min(40vh, 320px); max-width: 100%; }
+#kl-text { align-self: center; }
+
+#kl-nudge { grid-area: pick; display: flex; gap: 22px; align-items: center; justify-content: center; justify-self: stretch; width: 100%; max-width: none; margin: 0; }
+#kl-body { grid-template-columns: minmax(0, 1fr) !important; }
 #kl-nudge.hidden { display: none; }
-#kl-card-m { grid-area: m; }
-#kl-card-h { grid-area: h; }
 #kl-opts { grid-column: 1 / -1; grid-row: 2; }
-#kl-text { grid-area: text; align-self: stretch; display: flex; align-items: center; justify-content: center; margin: 0; padding: 12px; border-radius: 18px; background: var(--bg); border: 2px solid var(--line); font-size: 1.5rem; }
-#kl-flash { grid-area: flash; margin: 0; padding: 12px 16px; border-radius: 18px; background: var(--bg); text-align: left; }
+#kl-text { grid-area: text; display: flex; align-items: center; justify-content: center; margin: 0; padding: 12px 16px; border-radius: 18px; background: var(--bg); border: 2px solid var(--line); font-size: 1.5rem; justify-self: center; min-width: 200px; }
+#kl-flash { grid-area: flash; justify-self: center; width: min(100%, 460px); margin: 0; padding: 10px 14px; border-radius: 16px; background: var(--bg); text-align: center; font-size: .95rem; }
+.kl-next { grid-area: next; justify-self: center; min-width: 180px; margin-top: 4px; }
+.kl-next.hidden { display: none; }
 #kl-flash:empty { display: none; }
 #kl-text:empty { display: none; }
 #kl-flash.good { background: var(--green-soft); }
 #kl-flash.bad { background: var(--red-soft); }
+#kl-flash .kl-why { display: block; margin-top: 4px; max-width: none; text-align: center; }
 #kl-marks .mark-list { grid-template-columns: 1fr !important; gap: 6px; width: 100%; }
 #kl-marks .mark-list { align-content: start; }
 #kl-marks .mark-cell { width: 100%; height: 40px; min-height: 0; }
 #kl-flash { grid-area: flash; margin: 0; }
 .kl-text { font-size: 2rem; font-weight: 800; margin: 14px 0 6px; min-height: 1.2em; }
-.kl-opts { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; max-width: 420px; margin: 16px auto 0; }
+.kl-opts { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; max-width: 520px; margin: 16px auto 0; }
 .kl-opt {
-  font-family: inherit; font-size: 1.4rem; font-weight: 800; min-height: 64px; border-radius: 16px;
+  font-family: inherit; font-size: 1.2rem; font-weight: 800; min-height: 72px; padding: 8px 10px; border-radius: 18px;
   border: 1.5px solid var(--line); background: var(--card); color: var(--ink); cursor: pointer;
+  white-space: normal; overflow-wrap: anywhere; line-height: 1.2;
 }
 .kl-opt:disabled { cursor: default; }
 .kl-opt:disabled:not(.right):not(.wrong) { opacity: .45; }
@@ -1375,34 +1468,6 @@ body.kl-page .topbar { background: #fff; border-radius: 18px; margin: 8px 16px 0
 .kl-panel.hidden { display: none; }
 #kl-layout.hidden { display: none; }
 
-/* ---- Champions League: navy and gold, with a trophy ---- */
-body.kl-t1 { background: radial-gradient(ellipse at 50% -10%, #25449f 0%, #0d1b4f 55%, #050b25 100%) fixed; }
-#screen-klokles.kl-t1 .kl-card {
-  --ink: #ffffff; --muted: #c4cff5; --card: rgba(255, 255, 255, .10); --bg: rgba(255, 255, 255, .09);
-  --line: rgba(245, 197, 66, .55); --accent: #f5c542; --accent-soft: rgba(245, 197, 66, .18);
-  position: relative; overflow: hidden; color: var(--ink);
-  background: radial-gradient(circle, rgba(255,255,255,.5) 0 1px, transparent 1.6px) 0 0 / 46px 46px,
-              linear-gradient(160deg, #1a3584 0%, #0b1a4d 100%);
-  border: 1.5px solid #f5c542;
-}
-#screen-klokles.kl-t1 .kl-card::after { content: "🏆"; position: absolute; right: -14px; bottom: -22px; font-size: 8rem; opacity: .08; pointer-events: none; }
-#screen-klokles.kl-t1 .kl-title { color: #f5c542; text-transform: uppercase; letter-spacing: .04em; }
-#screen-klokles.kl-t1 .kl-fill { background: #f5c542; }
-
-/* ---- Dinosaurus League: jungle green, with a dinosaur ---- */
-body.kl-t2 { background: radial-gradient(ellipse at 50% -10%, #2f8f4e 0%, #134a28 55%, #05200f 100%) fixed; }
-#screen-klokles.kl-t2 .kl-card {
-  --ink: #f4fff0; --muted: #c2e8c8; --card: rgba(255, 255, 255, .10); --bg: rgba(255, 255, 255, .08);
-  --line: rgba(155, 229, 100, .55); --accent: #9be564; --accent-soft: rgba(155, 229, 100, .18);
-  position: relative; overflow: hidden; color: var(--ink);
-  background: radial-gradient(circle, rgba(155,229,100,.35) 0 1px, transparent 1.6px) 0 0 / 40px 40px,
-              linear-gradient(160deg, #1f6b3a 0%, #0b3520 100%);
-  border: 1.5px solid #9be564;
-}
-#screen-klokles.kl-t2 .kl-card::after { content: "🦖"; position: absolute; right: -10px; bottom: -20px; font-size: 8rem; opacity: .1; pointer-events: none; }
-#screen-klokles.kl-t2 .kl-title { color: #9be564; text-transform: uppercase; letter-spacing: .04em; }
-#screen-klokles.kl-t2 .kl-fill { background: #9be564; }
-#screen-klokles.kl-t1 .kl-card > *, #screen-klokles.kl-t2 .kl-card > * { position: relative; z-index: 1; }
 .kl-kicker { margin: 0; font-weight: 800; color: var(--accent); letter-spacing: .04em; }
 .kl-ptitle { margin: 6px 0 10px; font-size: 1.7rem; }
 .kl-ptext { margin: 0 auto 18px; max-width: 420px; color: var(--muted); font-size: 1.05rem; }
@@ -1416,12 +1481,12 @@ body.kl-t2 { background: radial-gradient(ellipse at 50% -10%, #2f8f4e 0%, #134a2
    The sprint bar drains because that IS the information. Everything else
    stops moving for anyone who asked their device to stop moving things. */
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
+  *:not(.sprint-fill):not(.kl-fill), *:not(.sprint-fill):not(.kl-fill)::before, *:not(.sprint-fill):not(.kl-fill)::after {
     animation-duration: .001ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: .001ms !important;
   }
-  .sprint-fill { transition-duration: inherit !important; }
+  /* the sprint bar keeps its own timed drain: the clock is the information */
   /* both of the things that say "this is the one to tap" are a pulse, so both
      of them need a still version — otherwise asking for less motion takes the
      only cue away and leaves the child with ten identical vakjes */
@@ -1529,3 +1594,178 @@ body.kl-t2 { background: radial-gradient(ellipse at 50% -10%, #2f8f4e 0%, #134a2
 /* The lamp is not a disabled button any more — it answers, with the reason —
    so it may not look dead. */
 .hint-btn.spent { opacity: .55; }
+
+
+/* ---- round 2 of the sprint look: pictures across the page, white answer
+   tiles, celebrations per league ---- */
+#screen-sprint { position: relative; overflow: hidden; }
+#screen-sprint > *:not(.sprint-deco-bg) { position: relative; z-index: 1; }
+.sprint-deco-bg { position: absolute; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+.sprint-deco-bg span, .sprint-deco span {
+  position: absolute; line-height: 1; animation: deco-float 7s ease-in-out infinite alternate;
+}
+.sprint-deco-bg span { opacity: .55; }
+@keyframes deco-float { to { margin-top: -14px; } }
+
+/* answer tiles stay white in every league; right and wrong show in the frame */
+#screen-sprint .sprint-opt,
+#screen-sprint .sprint-opt.right,
+#screen-sprint .sprint-opt.wrong { background: #fff; }
+#screen-sprint.frog .sprint-opt { color: #3d1040; }
+#screen-sprint.frog .sprint-opt.right { border-color: #2fb35c; box-shadow: 0 0 0 4px rgba(47, 179, 92, .35); color: #1f7a45; }
+#screen-sprint.frog .sprint-opt.wrong { border-color: #e0455c; box-shadow: 0 0 0 4px rgba(224, 69, 92, .35); color: #b0203a; }
+#screen-sprint.champ .sprint-opt { color: #1a2250; }
+#screen-sprint.champ .sprint-opt.right { border-color: #1f9d57; box-shadow: 0 0 0 4px rgba(31, 157, 87, .45); color: #13663a; }
+#screen-sprint.champ .sprint-opt.wrong { border-color: #c93a40; box-shadow: 0 0 0 4px rgba(201, 58, 64, .45); color: #8f1d22; }
+#screen-sprint.super .sprint-opt { color: #2b0a52; }
+#screen-sprint.super .sprint-opt.right { border-color: #1f9d57; box-shadow: 0 0 0 4px rgba(31, 157, 87, .5); color: #13663a; }
+#screen-sprint.super .sprint-opt.wrong { border-color: #c93a40; box-shadow: 0 0 0 4px rgba(201, 58, 64, .5); color: #8f1d22; }
+
+/* the three celebrations */
+.champ-win.frog {
+  background: radial-gradient(ellipse at 50% 30%, #ffe9f7 0%, #ff9fd6 50%, #c44fb0 100%);
+}
+.champ-win.frog .champ-win-title, .champ-win.frog .champ-win-sub, .champ-win.frog .champ-win-score {
+  color: #fff; text-shadow: 0 2px 12px rgba(120, 20, 100, .45);
+}
+.champ-win.frog .champ-win-title { font-size: 2.2rem; }
+.champ-win.frog .champ-trophy { font-size: 7rem; animation: champ-bounce 1.2s ease-in-out infinite; }
+.champ-win.frog .champ-win-card { background: rgba(255, 255, 255, .18); }
+.champ-win.frog .champ-win-later, .champ-win.frog .btn.primary { background: #2fb35c; color: #fff; }
+.champ-win.dino.mega {
+  background: radial-gradient(ellipse at 50% 35%, #ffb347 0%, #2f8f57 50%, #0b3a25 100%);
+}
+.champ-win.dino.mega .champ-win-title { color: #fff6c7; }
+
+
+/* ---- one design language for all three leagues ----
+   The colour lives on the whole page (body, top bar included). The question
+   card is the same plain white card everywhere, and every answer is the same
+   size, so only the page changes from league to league. */
+.page-deco { position: fixed; inset: 0; z-index: -1; pointer-events: none; overflow: hidden; }
+.page-deco span {
+  position: absolute; line-height: 1; opacity: .6;
+  animation: deco-float 8s ease-in-out infinite alternate;
+}
+@keyframes deco-float { to { margin-top: -16px; } }
+
+body.frog {
+  background: radial-gradient(ellipse at 50% -10%, #ffe9f7 0%, #ff9fd6 45%, #c44fb0 100%) fixed;
+}
+body.champ { background: radial-gradient(ellipse at 50% -10%, #25449f 0%, #0d1b4f 55%, #050b25 100%) fixed; }
+body.super { background: radial-gradient(ellipse at 50% 20%, #ffb347 0%, #2f8f57 42%, #0b3a25 100%) fixed; }
+#screen-sprint.frog, #screen-sprint.champ, #screen-sprint.super { background: none; min-height: 0; }
+
+#screen-sprint.frog .sprint-card, #screen-sprint.champ .sprint-card, #screen-sprint.super .sprint-card {
+  background: #ffffff; color: #1d1d2b; border: none; border-radius: 22px;
+  box-shadow: 0 10px 30px rgba(20, 20, 60, .18); animation: none; overflow: visible;
+}
+#screen-sprint .sprint-card::after { content: none; }
+#screen-sprint .sprint-title, #screen-sprint.frog .sprint-title, #screen-sprint.champ .sprint-title,
+#screen-sprint.super .sprint-title {
+  color: #1d1d2b; background: none; -webkit-background-clip: border-box; background-clip: border-box;
+  -webkit-text-fill-color: #1d1d2b; text-transform: none; letter-spacing: normal; animation: none;
+}
+#screen-sprint .sprint-q, #screen-sprint.champ .sprint-q, #screen-sprint.super .sprint-q {
+  color: #1d1d2b; text-shadow: none;
+}
+#screen-sprint .sprint-secs, #screen-sprint .sprint-count, #screen-sprint .sprint-unit,
+#screen-sprint .sprint-step, #screen-sprint .sprint-sep, #screen-sprint.champ .sprint-count,
+#screen-sprint.super .sprint-count { color: #5b5e73; }
+
+#screen-sprint .sprint-answers {
+  grid-template-columns: repeat(2, 1fr); gap: 12px; max-width: 420px;
+}
+#screen-sprint .sprint-opt,
+#screen-sprint.frog .sprint-opt,
+#screen-sprint.champ .sprint-opt,
+#screen-sprint.super .sprint-opt {
+  height: 84px; min-height: 84px; width: 100%; box-sizing: border-box;
+  display: flex; align-items: center; justify-content: center;
+  padding: 0; font-size: 1.9rem; font-weight: 800; line-height: 1;
+  background: #ffffff; color: #1d1d2b; border: 2px solid #d9dce6; border-radius: 16px;
+  box-shadow: none;
+}
+#screen-sprint .sprint-opt.right,
+#screen-sprint.frog .sprint-opt.right,
+#screen-sprint.champ .sprint-opt.right,
+#screen-sprint.super .sprint-opt.right {
+  background: #ffffff; border: 3px solid #2fb35c; color: #1f7a45; box-shadow: none;
+}
+#screen-sprint .sprint-opt.wrong,
+#screen-sprint.frog .sprint-opt.wrong,
+#screen-sprint.champ .sprint-opt.wrong,
+#screen-sprint.super .sprint-opt.wrong {
+  background: #ffffff; border: 3px solid #e0455c; color: #b0203a; box-shadow: none;
+}
+#screen-sprint .sprint-flash, #screen-sprint.champ .sprint-flash, #screen-sprint.super .sprint-flash {
+  color: #1d1d2b;
+}
+
+/* the league picker shown before the first tafel */
+.league-picks { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; max-width: 720px; margin: 12px auto 0; }
+.league-pick {
+  display: flex; flex-direction: column; justify-content: center; align-items: center;
+  flex: 1 1 110px; max-width: 220px; min-height: 64px; padding: 8px 14px; border-radius: 14px;
+  border: 2px solid #d9dce6; background: #ffffff; color: #1d1d2b;
+  font-weight: 800; font-size: 1.05rem; cursor: pointer;
+}
+.league-pick small { font-weight: 600; color: #5b5e73; }
+.league-pick:active { transform: scale(.98); }
+
+/* ---------- the level looks, once, for every level in the app ----------
+   body.frog / body.champ / body.super set the page; the card and title follow. */
+body.champ .lvl-card {
+  --ink: #ffffff; --muted: #b9c6f2; --card: rgba(255, 255, 255, .10);
+  --bg: rgba(255, 255, 255, .09); --line: rgba(245, 197, 66, .55);
+  --accent: #f5c542; --accent-soft: rgba(245, 197, 66, .18);
+  position: relative; overflow: hidden; color: var(--ink);
+  background:
+    radial-gradient(circle, rgba(255, 255, 255, .55) 0 1px, transparent 1.6px) 0 0 / 46px 46px,
+    radial-gradient(circle, rgba(245, 197, 66, .45) 0 1px, transparent 1.6px) 23px 23px / 46px 46px,
+    linear-gradient(160deg, #1a3584 0%, #0b1a4d 100%);
+  border: 1.5px solid #f5c542;
+  box-shadow: 0 0 0 4px rgba(245, 197, 66, .15), 0 18px 50px rgba(5, 11, 37, .55);
+}
+body.champ .lvl-card::after {
+  content: "🏆"; position: absolute; right: -14px; bottom: -26px;
+  font-size: 9rem; line-height: 1; opacity: .09; pointer-events: none;
+}
+body.champ .lvl-card > * { position: relative; z-index: 1; }
+body.champ .lvl-title { color: #f5c542; letter-spacing: .04em; text-transform: uppercase; }
+body.super .lvl-card {
+  --line: rgba(255, 213, 74, .75); --accent: #ffd54a; --accent-soft: rgba(255, 213, 74, .2);
+  background:
+    radial-gradient(circle, rgba(255, 255, 255, .7) 0 1px, transparent 1.7px) 0 0 / 38px 38px,
+    radial-gradient(circle, rgba(255, 213, 74, .6) 0 1px, transparent 1.7px) 19px 19px / 38px 38px,
+    linear-gradient(160deg, #2f9a5c 0%, #17603a 55%, #0b3a25 100%);
+  border: 2px solid #ffd54a;
+  overflow: hidden;
+  animation: super-glow 2.4s ease-in-out infinite;
+}
+body.super .lvl-card::after { content: "🦖"; opacity: .1; font-size: 10rem; }
+body.super .lvl-title {
+  background: linear-gradient(90deg, #fff6c7, #ffd54a, #ff9d3c, #ffd54a, #fff6c7); background-size: 200% 100%;
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  animation: super-shine 3s linear infinite;
+}
+body.frog .lvl-card {
+  --ink: #3d1040; --muted: #8a4f80; --card: rgba(255, 255, 255, .85);
+  --bg: #fff4fb; --line: #7bd389; --accent: #2fb35c; --accent-soft: rgba(47, 179, 92, .15);
+  position: relative; overflow: hidden; color: var(--ink);
+  background:
+    radial-gradient(circle, rgba(123, 211, 137, .35) 0 2px, transparent 2.6px) 0 0 / 40px 40px,
+    linear-gradient(160deg, #ffffff 0%, #ffe3f5 100%);
+  border: 3px solid #7bd389; border-radius: 26px;
+  box-shadow: 0 0 0 5px rgba(255, 255, 255, .35), 0 16px 40px rgba(120, 20, 100, .35);
+}
+body.frog .lvl-title { color: #2fb35c; font-weight: 900; }
+body.frog .lvl-card > *:not(.sprint-deco) { position: relative; z-index: 1; }
+body.frog .lvl-card, body.champ .lvl-card, body.super .lvl-card {
+  background: #ffffff; color: #1d1d2b; border: none; border-radius: 22px;
+  box-shadow: 0 10px 30px rgba(20, 20, 60, .18); animation: none; overflow: visible;
+}
+body.super .lvl-title {
+  color: #1d1d2b; background: none; -webkit-background-clip: border-box; background-clip: border-box;
+  -webkit-text-fill-color: #1d1d2b; text-transform: none; letter-spacing: normal; animation: none;
+}

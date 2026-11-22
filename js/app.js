@@ -357,8 +357,9 @@ function renderHome() {
   // are no chips and no badges, and that was exactly when it used to hide the
   // one thing it had to say: that all three doors want opening.
   const saysMore = !!open || parent || pakkets >= 2 || !tally.n || todo.length < DOORS.length;
-  $("home-status").textContent = saysMore ? status : "";
-  $("home-status").classList.toggle("hidden", !saysMore);
+  // the status sentence ("Je was bezig met som …") is no longer shown on home
+  $("home-status").textContent = "";
+  $("home-status").classList.add("hidden");
 
   /* How today is going, without a sentence to read: one line of icons with
      numbers behind them. Nothing here is new information — it is the same
@@ -384,6 +385,7 @@ function renderHome() {
   $("btn-klok").classList.toggle("hidden", parent);
   $("btn-klokles").classList.toggle("hidden", parent);
   $("btn-sprint").classList.toggle("hidden", parent || sprintOff);
+  $("btn-delen").classList.toggle("hidden", parent);
   $("btn-watch").classList.toggle("hidden", !parent);
   // the rapport is the one place "how is it going" lives, for both of them
   $("btn-report").classList.remove("hidden");
@@ -472,7 +474,7 @@ function activeSprint() {
 }
 
 function saveSprint() {
-  if (!sprint || sprint.finished || sprint.level) return;
+  if (!sprint || sprint.finished || sprint.level || gameDelen) return;
   data.actives = data.actives || {};
   data.actives.tafels = {
     at: Date.now(), date: todayStr(), kind: "tafels",
@@ -493,23 +495,47 @@ function startSprint(then) {
   if (opening) return;                 // see startTask: two doors, one burst
   opening = true;
   setTimeout(() => { opening = false; }, 250);
+  // Always the league picker first. A round left open today is kept, and the
+  // kikkerliga picks it up where it was; nothing is drawn or started on its own.
   const open = activeSprint();
-  if (open) return resumeSprintRound(open, then);
   // Fifteen tafels, twenty questions a round: a tafel comes round again within
   // the day, so there is nothing left to hold back (see Sprint.build).
-  const qs = Sprint.build(data, []);
+  const qs = open ? open.qs : Sprint.build(data, []);
   if (!qs.length) { sprintOff = true; return then(); }
-  sprint = { qs, i: 0, tiles: "", facts: [], then, tick: null, locked: true,
-             t0: Date.now(), secsBefore: 0 };
+  sprint = { qs, i: open ? open.i : 0, tiles: open ? (open.tiles || "") : "",
+             facts: open ? (open.facts || []) : [], then, tick: null, locked: true,
+             t0: Date.now(), secsBefore: open ? (open.secs || 0) : 0 };
   Live.startHeartbeat();
+  gameDelen = false;
   sprint.level = 0;
   introSprint(t("sprint_ready").replace("{n}", Sprint.N).replace("{s}", fmtSecs(Sprint.SECS)));
+  leaguePicker(then);
+}
+
+/* Before the first tafel the child picks the league: the kikkerliga, or
+   straight into the kampioensliga or dinozorenliga. Nothing starts by itself. */
+function leaguePicker(then) {
+  const flash = $("sprint-flash");
+  const picks = [0, 1, 2].map(lvl => {
+    const name = t(["sprint_title", "champ_title", "super_title"][lvl]);
+    return `<button class="league-pick" data-lvl="${lvl}">${esc(name)}
+              <small>${esc(fmtSecs(G().secsFor(lvl)))} s</small></button>`;
+  }).join("");
+  flash.innerHTML = `<span class="sprint-ready">${esc(t("league_pick"))}</span>
+                     <div class="league-picks">${picks}</div>`;
+  flash.querySelectorAll(".league-pick").forEach(b => b.addEventListener("click", () => {
+    const lvl = +b.dataset.lvl;
+    if (!sprint) return;
+    if (lvl === 0) return renderSprint();
+    sprint = null;                       // the chosen league builds its own round
+    startChampRound(then, lvl);
+  }));
 }
 
 /* The screen the clock waits behind: a beat to look up before it starts. */
 function introSprint(readyText) {
   const lvl = sprint.level || 0;
-  $("sprint-progress").textContent = `1 / ${sprint.qs.length}`;
+  $("sprint-progress").textContent = `${sprint.i + 1} / ${sprint.qs.length}`;
   $("sprint-question").textContent = ["⚡", "🏆", "👑"][lvl];
   $("sprint-badge-label").textContent = t(["sprint_title", "champ_title", "super_title"][lvl]);
   $("sprint-answers").innerHTML = "";
@@ -541,32 +567,51 @@ function champTheme(level) {
   document.body.classList.toggle("super", level === 2);
   $("screen-sprint").classList.toggle("champ", level >= 1);
   $("screen-sprint").classList.toggle("super", level === 2);
-  decorate(level);
+  const frog = level === 0 && !!sprint;     // only while a round is on screen
+  $("screen-sprint").classList.toggle("frog", frog);
+  document.body.classList.toggle("frog", frog);
+  decorate(level === 0 && !sprint ? null : level);
 }
 
 /* The little pictures drifting behind the card: cups and stars for the
    kampioensliga, dinosaurs with medals, gold and coins for the dinozorenliga. */
-function decorate(level) {
-  const box = $("sprint-deco");
+const DECO = {
+  0: ["🐸", "🐸", "🐸", "🐸", "🪷", "🍄", "🦋", "🐞", "🫧", "🌟", "⭐", "🍀", "🌿", "🪲", "🐛", "🐸"],
+  1: ["🏆", "🏆", "🏆", "🥇", "🏅", "⭐", "🌟", "✨", "🎖️", "👑", "🎉", "💫", "🥈"],
+  2: ["🦖", "🦖", "🦖", "🦖", "🦕", "🦕", "🦕", "🥚", "🦴", "🌋", "🌿", "🌴", "🪙", "💰", "🥇", "🏅", "⭐"],
+};
+
+/* Scatter a league's pictures: many across the whole page behind, a few on the
+   card. Frogs get a random hue and a flip, so no two look alike. */
+function fillDeco(box, list, n, level) {
   if (!box) return;
-  const set = level === 2 ? ["🦖", "🦕", "🥇", "🏅", "🪙", "💰", "⭐", "🦴"]
-            : level === 1 ? ["🏆", "⭐", "🥇", "✨", "🏅", "🎖️"] : [];
   box.innerHTML = "";
-  for (let i = 0; set.length && i < 16; i++) {
+  if (!list.length) return;
+  for (let i = 0; i < n; i++) {
     const s = document.createElement("span");
-    s.textContent = set[i % set.length];
+    s.textContent = list[Math.floor(Math.random() * list.length)];
     s.style.left = (Math.random() * 100).toFixed(1) + "%";
     s.style.top = (Math.random() * 100).toFixed(1) + "%";
-    s.style.fontSize = (1 + Math.random() * 1.4).toFixed(2) + "rem";
-    s.style.transform = `rotate(${Math.round(Math.random() * 60 - 30)}deg)`;
+    // big and small together: a few large pictures, many little ones
+    const big = Math.random() < 0.15;
+    s.style.fontSize = (big ? 3 + Math.random() * 2 : 0.8 + Math.random() * 1.6).toFixed(2) + "rem";
+    const flip = Math.random() < 0.5 ? -1 : 1;
+    s.style.transform = `rotate(${Math.round(Math.random() * 70 - 35)}deg) scaleX(${flip})`;
+    if (level === 0) s.style.filter = `hue-rotate(${Math.round(Math.random() * 300)}deg)`;
     s.style.animationDelay = (-Math.random() * 6).toFixed(1) + "s";
     box.appendChild(s);
   }
 }
 
+function decorate(level) {
+  // no level (off the round, or the page is plain): the pictures are cleared, not left behind
+  if (level == null) return fillDeco($("page-deco"), [], 0, 0);
+  fillDeco($("page-deco"), DECO[level] || [], 130, level);
+}
+
 /* seconds a tafel gets: the round on screen decides, not the constant */
 function sprintTotal() {
-  return Sprint.secsFor(sprint ? sprint.level : 0);
+  return G().secsFor(sprint ? sprint.level : 0);
 }
 
 /* 2.5 → "2,5" in Dutch and Turkish, "2.5" in English */
@@ -604,7 +649,7 @@ function renderSprint() {
   const q = sprint.qs[sprint.i];
   sprint.locked = false;
   $("sprint-progress").textContent = `${sprint.i + 1} / ${sprint.qs.length}`;
-  $("sprint-question").textContent = `${q.a} × ${q.b}`;
+  $("sprint-question").textContent = q.text || `${q.a} × ${q.b}`;
   ["sprint-sep", "sprint-count", "sprint-unit"].forEach(id => $(id).classList.remove("hidden"));
 
   const box = $("sprint-answers");
@@ -642,16 +687,18 @@ function startSprintClock(msLeft) {
   const total = sprintTotal() * 1000;
   const left0 = msLeft == null ? total : msLeft;
   sprint.endAt = Date.now() + left0;
-  bar.style.transition = "none";
-  bar.style.width = (left0 / total * 100) + "%";
-  bar.classList.remove("low");
-  void bar.offsetWidth;
-  bar.style.transition = `width ${left0}ms linear`;
-  bar.style.width = "0%";
-
   clearInterval(sprint.tick);
   let handle;
   const mine = sprint;                  // this clock times THIS round, no other
+  // The bar fills left to right as the time runs out: green at the start, then
+  // yellow, orange and red as the last seconds come. Painted every tick, so a
+  // pause and a resume simply carry on from where the clock stands.
+  const paintBar = frac => {
+    bar.style.transition = "none";
+    bar.style.width = (frac * 100).toFixed(2) + "%";
+    bar.style.backgroundColor = frac < 0.4 ? "#2fb35c" : frac < 0.65 ? "#f5c542"
+                         : frac < 0.85 ? "#ff8a3d" : "#e0455c";
+  };
   const paint = () => {
     // A round can be left and a new one started while a tick is still in
     // flight. Such a tick must not paint, and must certainly not time out,
@@ -663,13 +710,13 @@ function startSprintClock(msLeft) {
     // tick that settles the question, and "0s" flashing once a question reads
     // as a fault rather than as the end of the time
     num.textContent = Math.max(1, Math.ceil(left / 1000));
-    const low = left <= total / 3;
-    num.classList.toggle("low", low);
-    bar.classList.toggle("low", low);
+    const frac = 1 - left / total;
+    num.classList.toggle("low", frac >= 0.65);
+    paintBar(frac);
     if (left <= 0) { clearInterval(sprint.tick); timeoutSprint(); }
   };
   paint();
-  handle = setInterval(paint, 100);
+  handle = setInterval(paint, 50);
   sprint.tick = handle;
 }
 
@@ -679,8 +726,9 @@ function stopSprintClock() {
   clearInterval(sprint.tick);
   const left = Math.max(0, sprint.endAt - Date.now());
   const bar = $("sprint-bar");
+  const frac = 1 - left / (sprintTotal() * 1000);
   bar.style.transition = "none";
-  bar.style.width = (left / (sprintTotal() * 1000) * 100) + "%";
+  bar.style.width = (frac * 100).toFixed(2) + "%";
 }
 
 /* A break in the middle of a round. The clock stops and the tafel goes off
@@ -745,7 +793,7 @@ function settleSprintQ(tile, msg, ok) {
   sprint.tiles += tile;
   renderSprintMarks();
   sprint.facts.push(`${q.a}x${q.b}`);
-  if (!sprint.level) Sprint.remember(data, q, ok);   // the cups count for the cup only
+  if (!gameDelen) Sprint.remember(data, q, ok);   // every league remembers what was missed
   sprint.i++;                                 // so what is saved is where we go next
   saveSprint();
   sprint.i--;                                 // nextSprint moves it on for real
@@ -796,10 +844,20 @@ function finishSprint() {
   if (sprint.finished) return;                   // written down exactly once
   sprint.finished = true;
   if (sprint.level) return finishChamp();
-  const right = bookSprintRound(sprint.qs, sprint.tiles, sprint.facts, sprintSecs());
+  const right = gameDelen ? sprint.tiles.split("").filter(c => c === "o").length
+                          : bookSprintRound(sprint.qs, sprint.tiles, sprint.facts, sprintSecs());
 
   const all = right === sprint.qs.length;
-  const chance = Sprint.passed(right, sprint.qs.length);      // ten out of ten: the cup is on offer
+  const chance = G().passed(right, sprint.qs.length);      // ten out of ten: the cup is on offer
+  if (chance) {
+    // ten out of ten in the kikkerliga: the frog cup, then on to the kampioensliga
+    clearInterval(sprint.tick);
+    sprint.tick = null;
+    const then = sprint.then;
+    return showChampWin(right, sprint.qs.length, 0,
+                        () => { sprint = null; then(); },
+                        () => { sprint = null; startChampRound(then, 1); });
+  }
   $("sprint-question").textContent = `${right}/${sprint.qs.length}`;
   $("sprint-answers").innerHTML = "";
   renderSprintMarks();
@@ -811,7 +869,7 @@ function finishSprint() {
   const bar = $("sprint-bar");
   bar.classList.remove("low");
   bar.style.transition = "none";
-  bar.style.width = "100%";
+  bar.style.width = "0%";
   const flash = $("sprint-flash");
   flash.className = "sprint-flash " + (all ? "good" : "");
   const msg = (all ? t("sprint_all") : t("sprint_done")) + (chance ? " " + t("champ_unlocked") : "");
@@ -838,23 +896,25 @@ function finishSprint() {
    kept (day.champs). */
 function startChampRound(then, level) {
   level = level || 1;
-  const qs = Sprint.build(data, []);
+  // the dinozorenliga: two answers side by side, one second a tafel
+  const qs = level === 2 ? (gameDelen ? Delen.build(data, [], 2) : Sprint.hardest(data, 2))
+                         : G().build(data, []);
   if (!qs.length) return then();
   sprint = { qs, i: 0, tiles: "", facts: [], then, tick: null, locked: true,
              t0: Date.now(), secsBefore: 0, level };
   Live.startHeartbeat();
   introSprint(t(level === 2 ? "super_ready" : "champ_ready")
-                .replace("{n}", qs.length).replace("{s}", fmtSecs(Sprint.secsFor(level)))
-                .replace("{need}", Sprint.need(qs.length)));
+                .replace("{n}", qs.length).replace("{s}", fmtSecs(G().secsFor(level)))
+                .replace("{need}", G().need(qs.length)));
 }
 
 function finishChamp() {
   const n = sprint.qs.length;
   const level = sprint.level;
   const right = sprint.tiles.split("").filter(c => c === "o").length;
-  const won = Sprint.passed(right, n);
+  const won = G().passed(right, n);
   const day = data.days[todayStr()];
-  if (day) {
+  if (day && !gameDelen) {
     day.champs = (day.champs || []).concat([{ n, right, won, lvl: level }]);
     Store.save(data);
   }
@@ -878,27 +938,55 @@ function finishChamp() {
   const bar = $("sprint-bar");
   bar.classList.remove("low");
   bar.style.transition = "none";
-  bar.style.width = "100%";
+  bar.style.width = "0%";
   const flash = $("sprint-flash");
   flash.className = "sprint-flash";
   flash.innerHTML = `<span>${esc(t(level === 2 ? "super_miss" : "champ_miss")
                                   .replace("{r}", right).replace("{n}", n)
-                                  .replace("{need}", Sprint.need(n)))}</span>
+                                  .replace("{need}", G().need(n)))}</span>
      <button id="sprint-done-btn" class="btn primary">${esc(t("sprint_close"))}</button>`;
   $("sprint-done-btn").addEventListener("click", leave);
+}
+
+/* The division game (Delen) runs through the very same screens, leagues,
+   clock, cups and wins as the tafels; only the sums and the seconds differ. */
+let gameDelen = false;
+const G = () => (gameDelen ? Delen : Sprint);
+
+function startDelen() {
+  if (opening) return;
+  opening = true;
+  setTimeout(() => { opening = false; }, 250);
+  gameDelen = true;
+  Live.startHeartbeat();
+  sprint = { qs: Delen.build(data, []), i: 0, tiles: "", facts: [], then: goHome, tick: null,
+             locked: true, t0: Date.now(), secsBefore: 0 };
+  sprint.level = 0;
+  introSprint(t("sprint_ready").replace("{n}", Delen.N).replace("{s}", fmtSecs(Delen.secsFor(0))));
+  leaguePicker(goHome);
 }
 
 let megaTimer = 0;               // the superfinale's lines take turns
 
 /* The cup is won. Level 1: fireworks, and the way on to the superfinale.
    Level 2: everything at once, and nothing higher to go to. */
+/* the one level theme: body.frog / body.champ / body.super, or none (level null) */
+function setLevelTheme(level) {
+  const key = level == null ? null : ["frog", "champ", "super"][level];
+  ["frog", "champ", "super"].forEach(c => document.body.classList.toggle(c, c === key));
+  decorate(level == null ? null : level);              // the same drifting pictures on every level
+}
+
 function showChampWin(right, n, level, leave, next) {
-  const mega = level === 2;
-  const lines = t(mega ? "super_win_lines" : "champ_win_lines").split("|");
+  const mega = false;  // no superfinale volleys: they froze the page
+  const key = ["frog", "champ", "super"][level];
+  const lines = t(key + "_win_lines").split("|");
   const box = $("champ-win");
   box.classList.toggle("mega", mega);
-  $("champ-win-trophy").textContent = mega ? "👑" : "🏆";
-  $("champ-win-title").textContent = t(mega ? "super_win_title" : "champ_win_title");
+  box.classList.toggle("frog", level === 0);
+  box.classList.toggle("dino", mega);
+  $("champ-win-trophy").textContent = ["🐸", "🏆", "🦖"][level];
+  $("champ-win-title").textContent = t(key + "_win_title");
   const sub = $("champ-win-sub");
   const say = line => {
     sub.textContent = line;
@@ -909,13 +997,15 @@ function showChampWin(right, n, level, leave, next) {
   clearInterval(megaTimer);
   if (mega) megaTimer = setInterval(() => { li = (li + 1) % lines.length; say(lines[li]); }, 2200);
   $("champ-win-score").textContent = t("champ_win_score").replace("{r}", right).replace("{n}", n)
-                                       .replace("{s}", fmtSecs(Sprint.secsFor(level)));
+                                       .replace("{s}", fmtSecs(G().secsFor(level)));
   const go = $("champ-win-close"), later = $("champ-win-later");
-  go.textContent = t(next ? "champ_next" : "sprint_close");
+  go.textContent = t(next ? (level === 0 ? "frog_next" : "champ_next") : "sprint_close");
   later.textContent = t("sprint_close");
   later.classList.toggle("hidden", !next);
   box.classList.remove("hidden");
-  Fireworks.start($("champ-fw"), $("champ-float"), { mega });
+  const floaters = [["🐸", "🪷", "⭐", "🦋", "🍀", "🐞"], ["🏆", "🥇", "⭐", "🏅", "🎖️", "✨"],
+                    ["🦖", "🦕", "🪙", "💰", "🥇", "🏅"]][level];
+  Fireworks.start($("champ-fw"), $("champ-float"), { mega, floaters, edges: true });
   const close = after => () => {
     clearInterval(megaTimer);
     Fireworks.stop();
@@ -925,6 +1015,23 @@ function showChampWin(right, n, level, leave, next) {
   };
   go.onclick = close(next || leave);
   later.onclick = close(leave);
+}
+
+/* A perfect day (every som right) gets the same win screen and fireworks as
+   a league cup, with the day's praise as its line. */
+function showPerfectWin(msg) {
+  const box = $("champ-win");
+  box.classList.remove("mega", "frog", "dino");
+  $("champ-win-trophy").textContent = "⭐";
+  $("champ-win-title").textContent = t("perfect_title");
+  $("champ-win-sub").textContent = msg;
+  $("champ-win-score").textContent = "";
+  const go = $("champ-win-close"), later = $("champ-win-later");
+  go.textContent = t("sprint_close");
+  later.classList.add("hidden");
+  box.classList.remove("hidden");
+  Fireworks.start($("champ-fw"), $("champ-float"), { edges: true });
+  go.onclick = () => { Fireworks.stop(); box.classList.add("hidden"); };
 }
 
 /* one line of tafels, for the report card and for the parent's kalender */
@@ -2922,6 +3029,7 @@ document.addEventListener("DOMContentLoaded", () => {
   $("btn-klokles").addEventListener("click", () => Klokles.start(goHome));
   $("kl-quit").addEventListener("click", () => Klokles.quit());
   $("btn-sprint").addEventListener("click", () => startSprint(goHome));
+  $("btn-delen").addEventListener("click", startDelen);
   $("sprint-pause").addEventListener("click", pauseSprint);
   $("sprint-resume").addEventListener("click", resumeSprint);
   $("btn-watch").addEventListener("click", () => openMirror());

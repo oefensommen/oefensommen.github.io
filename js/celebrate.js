@@ -47,23 +47,8 @@ function partyMessage(lang) {
 }
 
 function fireConfetti() {
-  const box = document.getElementById("confetti");
-  if (!box) return;
-  box.innerHTML = "";
-  const N = 90;
-  for (let i = 0; i < N; i++) {
-    const p = document.createElement("div");
-    p.className = "confetti-piece";
-    p.style.left = Math.random() * 100 + "vw";
-    p.style.background = CONFETTI_COLORS[Math.floor(Math.random() * CONFETTI_COLORS.length)];
-    const dur = 2.2 + Math.random() * 1.8;
-    p.style.animationDuration = dur + "s";
-    p.style.animationDelay = Math.random() * 0.5 + "s";
-    p.style.transform = `translateY(-10px) scale(${0.7 + Math.random() * 0.8})`;
-    if (Math.random() > 0.5) p.style.borderRadius = "50%";
-    box.appendChild(p);
-  }
-  setTimeout(() => { box.innerHTML = ""; }, 4800);
+  // the perfect day gets the same win screen and fireworks as every league
+  if (typeof showPerfectWin === "function") showPerfectWin(partyMessage(LANG));
 }
 
 
@@ -77,7 +62,7 @@ const Fireworks = (() => {
   const FLOATERS = ["🏆", "⭐", "🥇", "🎉", "👑", "✨", "🎆"];
   const FLOATERS_MEGA = ["👑", "🏆", "🌟", "🥇", "🎆", "🎇", "💫", "🔥", "🎉", "⭐"];
   let raf = 0, cvs = null, ctx = null, parts = [], last = 0, nextBurst = 0, nextFinale = 0,
-      floatBox = null, floatTimer = 0, mega = false;
+      floatBox = null, floatTimer = 0, mega = false, floaters = null, edges = false, nextVolley = 0;
 
   const calm = () => window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
   const rnd = (a, b) => a + Math.random() * (b - a);
@@ -89,21 +74,53 @@ const Fireworks = (() => {
     ctx.setTransform(r, 0, 0, r, 0, 0);
   }
 
+  /* Six kinds of burst, picked at random, so no two look alike: the round
+     burst, a flat ring, a double peony, long palm lines, a drooping willow
+     and a crackle of quick sparks. */
+  const KINDS = ["burst", "burst", "ring", "peony", "palm", "willow", "crackle"];
+  function push(x, y, a, v, o) {
+    parts.push(Object.assign({
+      x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: 1,
+      decay: 0.008 + Math.random() * 0.008, color: COLORS[0], size: 2.6, shape: "dot", g: 0.05
+    }, o));
+  }
+
   function burst(x, y) {
-    const color = COLORS[Math.floor(Math.random() * COLORS.length)];
+    const kind = KINDS[Math.floor(Math.random() * KINDS.length)];
+    const c1 = COLORS[Math.floor(Math.random() * COLORS.length)];
+    const c2 = COLORS[Math.floor(Math.random() * COLORS.length)];
     const shape = ["dot", "star", "heart"][Math.floor(Math.random() * 3)];
-    const ring = mega && Math.random() < 0.35;          // a perfect circle, all one speed
-    const n = calm() ? 24 : mega ? 90 + Math.floor(Math.random() * 50) : 56 + Math.floor(Math.random() * 30);
-    for (let i = 0; i < n; i++) {
-      const a = (Math.PI * 2 * i) / n + (ring ? 0 : Math.random() * 0.2);
-      const v = ring ? (mega ? 5 : 3.5) : (1.6 + Math.random() * (mega ? 6 : 4.4));
-      parts.push({
-        x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v,
-        life: 1, decay: 0.008 + Math.random() * 0.008,
-        color: Math.random() < 0.25 ? "#ffd54a" : color,
-        size: (2.2 + Math.random() * 2.6) * (mega ? 1.35 : 1),
-        shape: Math.random() < 0.5 ? shape : "dot", g: 0.05
-      });
+    const k = calm() ? 0.4 : mega ? 1.4 : 1;          // how many sparks
+    const sz = (3 + Math.random() * 3.4) * (mega ? 1.4 : 1.2);   // bigger sparks: they must be seen
+    if (kind === "ring" || kind === "peony") {
+      const n = Math.round((mega ? 110 : 70) * k);
+      for (let i = 0; i < n; i++) {
+        const a = (Math.PI * 2 * i) / n;
+        push(x, y, a, 4.2, { color: c1, size: sz, shape, g: 0.03 });
+        if (kind === "peony") push(x, y, a, 7.5, { color: c2, size: sz * 0.8, shape: "dot", g: 0.03 });
+      }
+    } else if (kind === "palm") {
+      const n = Math.round(26 * k);
+      for (let i = 0; i < n; i++)
+        push(x, y, Math.random() * Math.PI * 2, 6 + Math.random() * 4,
+             { color: c1, size: 1.8, shape: "dot", g: 0.07, decay: 0.012 });
+    } else if (kind === "willow") {
+      const n = Math.round(60 * k);
+      for (let i = 0; i < n; i++)
+        push(x, y, Math.random() * Math.PI * 2, 1 + Math.random() * 2.5,
+             { color: Math.random() < 0.6 ? "#ffd54a" : "#ffffff", size: 1.9, g: 0.035, decay: 0.0045 });
+    } else if (kind === "crackle") {
+      const n = Math.round(70 * k);
+      for (let i = 0; i < n; i++)
+        push(x, y, Math.random() * Math.PI * 2, 2 + Math.random() * 5,
+             { color: Math.random() < 0.5 ? "#ffffff" : c1, size: 1.4, g: 0.04, decay: 0.03 });
+    } else {
+      const n = Math.round((calm() ? 24 : mega ? 90 + Math.floor(Math.random() * 50)
+                                                : 56 + Math.floor(Math.random() * 30)));
+      for (let i = 0; i < n; i++)
+        push(x, y, Math.random() * Math.PI * 2, 1.6 + Math.random() * (mega ? 6 : 4.4),
+             { color: Math.random() < 0.25 ? "#ffd54a" : c1, size: sz,
+               shape: Math.random() < 0.5 ? shape : "dot" });
     }
   }
 
@@ -139,19 +156,27 @@ const Fireworks = (() => {
     last = ts;
     // fade the last frame instead of wiping it: that is the trail
     ctx.globalCompositeOperation = "destination-out";
-    ctx.fillStyle = "rgba(0,0,0,0.22)";
+    ctx.fillStyle = "rgba(0,0,0,0.13)";                // longer trails: brighter bursts
     ctx.fillRect(0, 0, innerWidth, innerHeight);
     ctx.globalCompositeOperation = "lighter";
     if (ts >= nextBurst) {
-      const k = mega && !calm() ? 1 + Math.floor(Math.random() * 3) : 1;
-      for (let i = 0; i < k; i++)
-        burst(innerWidth * rnd(0.1, 0.9), innerHeight * rnd(0.1, mega ? 0.62 : 0.52));
-      nextBurst = ts + (calm() ? 1400 : mega ? rnd(150, 380) : rnd(320, 740));
+      // edges: the kikkerliga bursts at the left and right of the page, never
+      // in the middle, and a little more often
+      const k = calm() ? 1 : edges ? 3 + Math.floor(Math.random() * 2)
+              : mega ? 2 + Math.floor(Math.random() * 3) : 1;
+      for (let i = 0; i < k; i++) {
+        // the bands at both sides keep clear of the card in the middle
+        const x = edges ? (Math.random() < 0.5 ? rnd(0.04, 0.2) : rnd(0.8, 0.96))
+                        : rnd(0.1, 0.9);
+        burst(innerWidth * x, innerHeight * rnd(0.1, mega ? 0.62 : edges ? 0.6 : 0.52));
+      }
+      nextBurst = ts + (calm() ? 1400 : mega ? rnd(120, 300) : edges ? rnd(140, 340) : rnd(320, 740));
     }
     if (mega && !calm()) {
       if (ts >= nextFinale) {                       // a volley across the whole sky
-        for (let i = 0; i < 7; i++)
-          setTimeout(() => raf && burst(innerWidth * (0.08 + i * 0.14), innerHeight * rnd(0.12, 0.5)), i * 90);
+        for (let i = 0; i < 8; i++)
+          setTimeout(() => raf && burst(innerWidth * (edges ? (i % 2 ? rnd(0.04, 0.2) : rnd(0.8, 0.96))
+                                                            : 0.08 + i * 0.14), innerHeight * rnd(0.12, 0.5)), i * 90);
         nextFinale = ts + 3200;
       }
       if (Math.random() < 0.6) glitter();
@@ -163,16 +188,18 @@ const Fireworks = (() => {
       p.life -= p.decay * dt;
       ctx.globalAlpha = Math.max(0, p.life);
       ctx.fillStyle = p.color;
+      ctx.shadowBlur = 12; ctx.shadowColor = p.color;      // a soft glow round each spark
       if (p.shape === "star") star(p.x, p.y, p.size * 1.7);
       else if (p.shape === "heart") heart(p.x, p.y, p.size * 1.1);
       else { ctx.beginPath(); ctx.arc(p.x, p.y, p.size * 0.7, 0, Math.PI * 2); ctx.fill(); }
     }
     ctx.globalAlpha = 1;
+    ctx.shadowBlur = 0;
   }
 
   function floater() {
     if (!floatBox) return;
-    const list = mega ? FLOATERS_MEGA : FLOATERS;
+    const list = floaters || (mega ? FLOATERS_MEGA : FLOATERS);
     const s = document.createElement("span");
     s.textContent = list[Math.floor(Math.random() * list.length)];
     s.style.left = Math.random() * 94 + "vw";
@@ -185,11 +212,13 @@ const Fireworks = (() => {
   return {
     start(canvas, floats, opts) {
       this.stop();
-      mega = !!(opts && opts.mega);
+      mega = false;  // the superfinale volleys froze the page: one burst at a time only
+      floaters = (opts && opts.floaters) || null;
+      edges = !!(opts && opts.edges);
       cvs = canvas; ctx = cvs.getContext("2d"); floatBox = floats;
       size();
       addEventListener("resize", size);
-      parts = []; last = 0; nextBurst = 0; nextFinale = 1200;
+      parts = []; last = 0; nextBurst = 0; nextFinale = 1200; nextVolley = 600;
       raf = requestAnimationFrame(frame);
       if (!calm()) {
         for (let i = 0; i < (mega ? 12 : 6); i++) setTimeout(floater, i * 200);

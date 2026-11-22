@@ -17,8 +17,9 @@
 
 const Klokles = (() => {
   const N = 10;
-  const SECS = { set: 60, pick: 30 };             // a set-the-hands clock: 1 minute; two readings: 30 seconds
-  const TIERS = ["Klok", "Champions League", "Dinosaurus League"];
+  const SECS = [40, 30, 20];                      // seconds a clock gets, per level
+  // the level names are the tafels' own: Wandelliga, Kampioensronde, Dinozorenliga
+  const tierName = i => [t("sprint_title"), t("champ_title"), t("super_title")][i];
   const MINUTES = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55];
   const C = 110, R = 104;                         // svg geometry, viewBox 220
 
@@ -124,19 +125,128 @@ const Klokles = (() => {
     }
   }
 
+  /* ---- touching the face ----
+     Tap the hour or the minute hand: that hand is selected (highlighted, and its
+     card lights up). Drag a selected hand to move only that hand. Tap the dial
+     anywhere else and the selection goes. The − and + controls keep working. */
+  const angDiff = (a, b) => { const x = Math.abs(a - b) % 360; return Math.min(x, 360 - x); };
+
+  /* the angle of a pointer around the face, and its distance from the centre
+     in the face's own units (0..220) */
+  function faceAt(e) {
+    const svg = $("kl-face").querySelector("svg");
+    const rect = svg.getBoundingClientRect();
+    const dx = e.clientX - (rect.left + rect.width / 2), dy = e.clientY - (rect.top + rect.height / 2);
+    const deg = (Math.atan2(dx, -dy) * 180 / Math.PI + 360) % 360;
+    const dist = Math.hypot(dx, dy) * (220 / rect.width);
+    return { deg, dist };
+  }
+
+  /* which hand, if any, a tap landed on */
+  function handAt(deg, dist) {
+    const hd = ((KL.cur.h % 12) + KL.cur.m / 60) * 30, md = KL.cur.m * 6;
+    const dh = angDiff(deg, hd), dm = angDiff(deg, md);
+    if (dist > 10 && dm <= 14 && dist <= R * 0.85 && (dm <= dh || dh > 18)) return "m";
+    if (dist > 10 && dh <= 18 && dist <= R * 0.55) return "h";
+    return null;
+  }
+
+  /* the selection is drawn on the hands and on their cards */
+  function showSelection() {
+    const sel = KL && KL.sel;
+    const h = document.getElementById("kl-h"), m = document.getElementById("kl-m");
+    if (h) h.classList.toggle("sel", sel === "h");
+    if (m) m.classList.toggle("sel", sel === "m");
+    const cm = document.getElementById("kl-card-m"), ch = document.getElementById("kl-card-h");
+    if (cm) cm.classList.toggle("picked", sel === "m");
+    if (ch) ch.classList.toggle("picked", sel === "h");
+
+    if (cm) cm.classList.toggle("done", KL && KL.step !== "m");
+    if (ch) ch.classList.toggle("done", KL && KL.step === "done");
+  }
+
+  /* the frames: tap one to choose which hand the + and − move. Minute is the default. */
+  function pick(which) {
+    if (!KL || KL.locked || !KL.q || KL.q.type !== "set") return;
+    KL.sel = which;
+    showSelection();
+  }
+
+  /* ✓ on the minute: the minute is kept, the hour is picked next.
+     ✓ on the hour: the hour is kept; Klaar ✓ checks the whole time. */
+  function confirmHand(which) {
+    if (!KL || KL.locked || !KL.q || KL.q.type !== "set") return;
+    if (which === "m") { KL.step = "h"; KL.sel = "h"; }
+    else { KL.step = "done"; KL.sel = "h"; }
+    showSelection();
+  }
+
+  /* × on the minute: that hand goes back to where it started */
+  function resetMinute() {
+    if (!KL || KL.locked || !KL.q || KL.q.type !== "set") return;
+    KL.cur.m = KL.start.m;
+    KL.step = "m"; KL.sel = "m";
+    placeHands(KL.cur.h, KL.cur.m);
+    showSelection();
+  }
+
+  /* × on the hour: back to the minute, to change it again */
+  function backToMinute() {
+    if (!KL || KL.locked || !KL.q || KL.q.type !== "set") return;
+    KL.step = "m"; KL.sel = "m";
+    showSelection();
+  }
+
+  /* a drag moves the selected hand only, snapped: the hour to the hour, the minute to five minutes */
+  function faceMove(e) {
+    if (!KL || KL.locked || !KL.dragging) return;
+    const { deg } = faceAt(e);
+    if (KL.dragging === "h") {
+      const hh = Math.round(deg / 30) % 12;
+      KL.cur.h = hh === 0 ? 12 : hh;
+    } else {
+      KL.cur.m = (Math.round(deg / 30) * 5) % 60;
+    }
+    placeHands(KL.cur.h, KL.cur.m);
+  }
+
+  function faceDown(e) {
+    if (!KL || KL.locked || !KL.q || KL.q.type !== "set") return;
+    const { deg, dist } = faceAt(e);
+    const hit = handAt(deg, dist);
+    KL.dragging = hit;                  // a tap on the dial away from the hands keeps the current choice
+    if (hit) {
+      KL.sel = hit;
+      showSelection();
+      const svg = $("kl-face").querySelector("svg");
+      svg.setPointerCapture && svg.setPointerCapture(e.pointerId);
+      faceMove(e);
+    }
+  }
+
+  function faceUp() { if (KL) KL.dragging = null; }
+
   /* ---- the timer strip ---- */
+  /* the same timer bar as the tafels: it fills from the left, and its colour
+     goes green, yellow, orange and red as the time runs out */
+  function barColour(frac) {
+    return frac < 0.4 ? "#2fb35c" : frac < 0.65 ? "#f5c542" : frac < 0.85 ? "#ff8a3d" : "#e0455c";
+  }
+
   function startTimer(secs) {
     clearInterval(timer);
     const bar = $("kl-bar"), total = secs * 1000;
     KL.deadline = Date.now() + total;
-    bar.style.transition = "none"; bar.style.width = "100%"; void bar.offsetWidth;
-    bar.style.transition = `width ${total}ms linear`; bar.style.width = "0%";
-    timer = setInterval(() => {
-      const left = KL.deadline - Date.now();
-      $("kl-count").textContent = Math.max(0, Math.ceil(left / 1000));
+    bar.style.transition = "none";
+    const paint = () => {
+      const left = Math.max(0, KL.deadline - Date.now());
+      const frac = 1 - left / total;
+      bar.style.width = (frac * 100).toFixed(2) + "%";
+      bar.style.backgroundColor = barColour(frac);
       if (left <= 0) { clearInterval(timer); settle(false, "late"); }
-    }, 200);
-    $("kl-count").textContent = secs;
+    };
+    paint();
+    timer = setInterval(paint, 50);
   }
 
   /* ---- questions ---- */
@@ -167,38 +277,20 @@ const Klokles = (() => {
     $("kl-marks").innerHTML = Live.marksPanelHTML(marks, KL.i);
   }
 
-  /* which card may be changed now: the minutes, then the hour, then the check */
+  /* the set-the-hands controls: always there, and Klaar ✓ and × sit at the bottom */
   function applyStage() {
-    const st = KL ? KL.stage : null;
-    $("kl-card-m").classList.toggle("active", st === "m");
-    $("kl-card-m").classList.toggle("locked", st !== "m");
-    $("kl-card-h").classList.toggle("active", st === "h");
-    $("kl-card-h").classList.toggle("locked", st !== "h");
-    $("kl-card-m").querySelectorAll("button").forEach(b => b.disabled = st !== "m");
-    $("kl-card-h").querySelectorAll("button").forEach(b => b.disabled = st !== "h");
-    $("kl-m-ok").classList.toggle("hidden", st !== "m");
-    $("kl-h-ok").classList.toggle("hidden", st !== "h");
-    $("kl-final").classList.toggle("hidden", st !== "done");   // Klaar ✓ and × beside it
+    const on = !!(KL && KL.q && KL.q.type === "set" && !KL.locked);
+    document.querySelectorAll("#kl-nudge button").forEach(b => b.disabled = !on);
+    $("kl-final").classList.toggle("hidden", !on);
+    showSelection();
   }
 
-  function confirmStage(which) {
-    if (!KL || KL.locked || !KL.q || KL.q.type !== "set" || KL.stage !== which) return;
-    KL.stage = which === "m" ? "h" : "done";
-    applyStage();
-  }
-
-  /* × on the hour card: back to the minute, the hour kept as it was */
-  function backToMinute() {
+  /* move one hand by a step: the hour by one hour, the minute by five minutes.
+     Its own − and + move it; the selection stays where it was. */
+  /* the one − and + move the selected hand: the hour by one hour, the minute by five minutes */
+  function nudge(step) {
     if (!KL || KL.locked || !KL.q || KL.q.type !== "set") return;
-    if (KL.stage !== "h" && KL.stage !== "done") return;
-    KL.stage = "m";
-    applyStage();
-  }
-
-  /* move one hand by a step: the hour by one hour, the minute by five minutes */
-  function nudge(which, step) {
-    if (!KL || KL.locked || !KL.q || KL.q.type !== "set" || KL.stage !== which) return;
-    if (which === "h") KL.cur.h = ((KL.cur.h - 1 + step + 12) % 12) + 1;
+    if (KL.sel === "h") KL.cur.h = ((KL.cur.h - 1 + step + 12) % 12) + 1;
     else KL.cur.m = (KL.cur.m + step * 5 + 60) % 60;
     placeHands(KL.cur.h, KL.cur.m);
   }
@@ -208,18 +300,22 @@ const Klokles = (() => {
     KL.q = q; KL.locked = false;
     KL.cur = q.type === "set" ? startPosition(q) : { h: q.h, m: q.m };
     $("kl-progress").textContent = `${KL.i + 1} / ${N}`;
-    $("kl-title").textContent = TIERS[KL.tier];
-    document.body.classList.toggle("kl-t1", KL.tier === 1);
-    document.body.classList.toggle("kl-t2", KL.tier === 2);
-    $("screen-klokles").classList.toggle("kl-t1", KL.tier === 1);
-    $("screen-klokles").classList.toggle("kl-t2", KL.tier === 2);
+    $("kl-title").textContent = tierName(KL.tier);
+    setLevelTheme(KL.tier);                                  // the same background and pictures as the tafels level
     $("kl-face").innerHTML = faceSVG(KL.cur.h, KL.cur.m, q.type === "set");
     if (q.type === "set") {
       placeHands(KL.cur.h, KL.cur.m);
+      KL.sel = "m"; KL.step = "m"; KL.dragging = null;   // the minute is picked to start with
+      const svgEl = $("kl-face").querySelector("svg");
+      svgEl.addEventListener("pointerdown", faceDown);
+      svgEl.addEventListener("pointermove", faceMove);
+      svgEl.addEventListener("pointerup", faceUp);
+      svgEl.addEventListener("pointercancel", faceUp);
+      showSelection();
       $("kl-text").textContent = q.text;
       $("kl-opts").innerHTML = "";
       $("kl-nudge").classList.remove("hidden");
-      KL.stage = "m";                                  // minutes first, then the hour
+      KL.start = { h: KL.cur.h, m: KL.cur.m };
       applyStage();
     } else {
       placeHands(KL.cur.h, KL.cur.m);
@@ -233,9 +329,10 @@ const Klokles = (() => {
     }
     $("kl-flash").textContent = "";
     $("kl-flash").className = "kl-flash";
+    $("kl-next").classList.add("hidden");
     show_panel(false);
     renderMarks();
-    startTimer(SECS[q.type]);
+    startTimer(SECS[KL.tier]);
   }
 
   /* answered (or ran out): show it, explain a miss, then the next one */
@@ -264,13 +361,12 @@ const Klokles = (() => {
     } else {
       const lead = how === "late" ? "Te laat!" : "Net niet.";
       flash.innerHTML = `${lead} Het is <b>${esc(q.text)}</b> (${q.h}:${pad(q.m)}).<br>` +
-                        `<span class="kl-why">${esc(explain(q.h, q.m))}</span><br>` +
-                        `<button id="kl-next" class="btn primary kl-next">Verder →</button>`;
+                        `<span class="kl-why">${esc(explain(q.h, q.m))}</span>`;
       flash.className = "kl-flash bad";
     }
     renderMarks();
     if (ok) setTimeout(next, 900);                      // a right one moves on; a wrong one waits to be read
-    else $("kl-next").addEventListener("click", next);
+    else { const nb = $("kl-next"); nb.classList.remove("hidden"); nb.onclick = next; }
   }
 
   function next() {
@@ -285,18 +381,12 @@ const Klokles = (() => {
       return panel({
         kicker: `${KL.right} van ${N} goed`,
         title: "Oefen nog een keer",
-        text: `Haal 10 van 10 voor de ${TIERS[1]}.`,
+        text: `Haal 10 van 10 voor de ${tierName(1)}.`,
         go: "Opnieuw", onGo: () => begin(0),
         alt: "Klaar", onAlt: () => exit()
       });
     }
-    if (KL.tier === 0) return panel({
-      kicker: "10 van 10!", title: "Klaar voor de Champions League?",
-      text: "Haal er weer 10 van 10 en je gaat door naar de Dinosaurus League.",
-      go: "Naar de Champions League 🏆", onGo: () => begin(1)
-    });
-    if (KL.tier === 1) return win(1);
-    win(2);
+    win(KL.tier);                                 // every level ends on the tafels' own win screen
   }
 
   /* the intro card and the result card share one panel */
@@ -328,38 +418,40 @@ const Klokles = (() => {
     renderQ();
   }
 
+  /* on the test account the klok opens on the league picker, as the tafels do:
+     Kikkerliga, Kampioensliga or Dinozorenliga, each with its seconds a clock */
+  function leaguePicker() {
+    clearInterval(timer);
+    $("kl-face").innerHTML = ""; $("kl-text").textContent = ""; $("kl-opts").innerHTML = "";
+    $("kl-nudge").classList.add("hidden");
+    $("kl-final").classList.add("hidden");
+    $("kl-panel").innerHTML = `
+      <p class="kl-kicker">${esc(t("league_pick"))}</p>
+      <div class="league-picks">${[0, 1, 2].map(lvl => `
+        <button class="league-pick" data-lvl="${lvl}">${esc(tierName(lvl))}
+          <small>${SECS[lvl]} s</small></button>`).join("")}</div>`;
+    $("kl-panel").querySelectorAll(".league-pick").forEach(b =>
+      b.addEventListener("click", () => begin(+b.dataset.lvl)));
+    show_panel(true);
+  }
+
   function intro() {
+    if (Store.deviceUser && Store.deviceUser() === "test") return leaguePicker();
     panel({
       kicker: "Klok",
       title: "Lees de klok, of zet de wijzers",
-      text: "10 klokken. Bij een keuze heb je 30 seconden, bij de wijzers 1 minuut. Alles goed? Dan de Champions League!",
+      text: "10 klokken per niveau: 40, 30 en 20 seconden per klok. Alles goed? Dan het volgende niveau!",
       go: "Start", onGo: () => begin(0)
     });
   }
 
-  /* a cup is won: fireworks, and the way on, or the end of the road */
+  /* a level is won: the tafels' own win screen, with the way on or out */
   function win(tier) {
     clearInterval(timer);
     $("kl-face").innerHTML = ""; show_panel(false);
-    const box = $("champ-win");
     const last = tier === 2;
-    box.classList.add("mega");
-    $("champ-win-trophy").textContent = last ? "🦖" : "🏆";
-    $("champ-win-title").textContent = last ? "DINOSAURUS KAMPIOEN!" : "CHAMPIONS LEAGUE!";
-    $("champ-win-sub").textContent = last ? "Jij bent de koning van de klok! 🦖👑" : "Je kent de klok! Nu de dinosaurussen! 🦕";
-    $("champ-win-score").textContent = "10 van 10 goed";
-    const go = $("champ-win-close"), later = $("champ-win-later");
-    go.textContent = last ? "Verder" : "Naar de Dinosaurus League 🦖";
-    later.textContent = "Verder";
-    later.classList.toggle("hidden", last);
-    box.classList.remove("hidden");
-    Fireworks.start($("champ-fw"), $("champ-float"), { mega: true });
-    const close = after => () => {
-      Fireworks.stop(); box.classList.add("hidden"); box.classList.remove("mega");
-      after();
-    };
-    go.onclick = close(last ? exit : () => begin(2));
-    later.onclick = close(exit);
+    showChampWin(10, 10, tier, exit, last ? null : () => begin(tier + 1));
+    $("champ-win-score").textContent = `10 van 10 goed, ${SECS[tier]} seconden per klok`;
   }
 
   function exit() {
@@ -372,7 +464,7 @@ const Klokles = (() => {
   function stop() {
     clearInterval(timer); timer = 0;
     KL = null;
-    document.body.classList.remove("kl-t1", "kl-t2");
+    setLevelTheme(null);
   }
 
   return {
@@ -380,14 +472,14 @@ const Klokles = (() => {
       onExitFn = onExit;
       if (!wired) {
         $("kl-check").addEventListener("click", () => {
-          if (!KL || KL.locked || !KL.q || KL.q.type !== "set" || KL.stage !== "done") return;
+          if (!KL || KL.locked || !KL.q || KL.q.type !== "set") return;
           settle(KL.cur.h === KL.q.h && KL.cur.m === KL.q.m, "check");
         });
-        [["kl-h-dn", "h", -1], ["kl-h-up", "h", 1], ["kl-m-dn", "m", -1], ["kl-m-up", "m", 1]]
-          .forEach(([id, w, st]) => $(id).addEventListener("click", () => nudge(w, st)));
-        $("kl-m-ok").addEventListener("click", () => confirmStage("m"));
-        $("kl-h-ok").addEventListener("click", () => confirmStage("h"));
-        $("kl-undo").addEventListener("click", backToMinute);
+        // one − and one +: they move whichever hand is selected
+        $("kl-dn").addEventListener("click", () => nudge(-1));
+        $("kl-up").addEventListener("click", () => nudge(1));
+        $("kl-card-m").addEventListener("click", () => pick("m"));
+        $("kl-card-h").addEventListener("click", () => pick("h"));
         wired = true;
       }
       show("screen-klokles");
