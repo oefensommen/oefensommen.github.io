@@ -3,7 +3,7 @@
    Ten clocks, a minute each. Each question is one of two kinds, drawn at
    random: the clock is shown and two Dutch readings sit beneath it (pick the
    right one), or the Dutch time is written beneath and the child sets the
-   hands by dragging them (mouse or finger). Ten out of ten opens the
+   hands with the − and + controls under the clock. Ten out of ten opens the
    Kampioenenliga: the same ten, thirty seconds each. Ten out of ten there is
    the biggest celebration. Nothing is written to the cloud: it is practice.
 
@@ -20,7 +20,7 @@ const Klokles = (() => {
   const C = 110, R = 104;                       // svg geometry, viewBox 220
 
   let KL = null;                                // the running round, or null
-  let timer = 0, dragging = null, svgEl = null, onExitFn = null;
+  let timer = 0, onExitFn = null;
 
   const rnd = n => Math.floor(Math.random() * n);
   const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = rnd(i + 1); [a[i], a[j]] = [a[j], a[i]]; } return a; };
@@ -89,38 +89,12 @@ const Klokles = (() => {
     set("kl-m", md, R * 0.8);
   }
 
-  /* the angle of a pointer around the face, clockwise from twelve */
-  function pointerTo(e) {
-    const rect = svgEl.getBoundingClientRect();
-    const dx = e.clientX - (rect.left + rect.width / 2), dy = e.clientY - (rect.top + rect.height / 2);
-    const deg = (Math.atan2(dx, -dy) * 180 / Math.PI + 360) % 360;
-    const dist = Math.hypot(dx, dy) / (rect.width / 2) * R;
-    return { deg, near: dist < R * 0.45 };
+  /* the hour and minute values shown in the controls below the clock */
+  function showValues() {
+    const h = KL && KL.cur ? KL.cur.h : 12, m = KL && KL.cur ? KL.cur.m : 0;
+    $("kl-h-val").textContent = h;
+    $("kl-m-val").textContent = String(m).padStart(2, "0");
   }
-
-  function dragMove(e) {
-    if (!dragging || !KL || KL.locked) return;
-    const { deg } = pointerTo(e);
-    if (dragging === "h") {
-      const hh = Math.round(deg / 30) % 12;
-      KL.cur.h = hh === 0 ? 12 : hh;                         // the hour hand snaps to the hour
-    } else {
-      KL.cur.m = (Math.round(deg / 30) * 5) % 60;            // the minute hand snaps to five minutes
-    }
-    placeHands(KL.cur.h, KL.cur.m);
-  }
-
-  /* whichever hand the finger is nearest to, by angle, takes the drag */
-  function onDown(e) {
-    if (!KL || KL.locked) return;
-    const { deg } = pointerTo(e);
-    const hd = ((KL.cur.h % 12) + KL.cur.m / 60) * 30, md = KL.cur.m * 6;
-    const dist = (a, b) => { const d = Math.abs(a - b) % 360; return Math.min(d, 360 - d); };
-    dragging = dist(deg, hd) <= dist(deg, md) ? "h" : "m";
-    svgEl.setPointerCapture && svgEl.setPointerCapture(e.pointerId);
-    dragMove(e);
-  }
-  function onUp() { dragging = null; }
 
   /* ---- the timer strip ---- */
   function startTimer(secs) {
@@ -173,6 +147,7 @@ const Klokles = (() => {
     if (which === "h") KL.cur.h = ((KL.cur.h - 1 + step + 12) % 12) + 1;
     else KL.cur.m = (KL.cur.m + step * 5 + 60) % 60;
     placeHands(KL.cur.h, KL.cur.m);
+    showValues();
   }
 
   function renderQ() {
@@ -182,11 +157,9 @@ const Klokles = (() => {
     $("kl-progress").textContent = `${KL.i + 1} / ${N}`;
     $("kl-title").textContent = KL.league ? "Kampioenenliga" : "Klok";
     $("kl-face").innerHTML = faceSVG(KL.cur.h, KL.cur.m, q.type === "set");
-    svgEl = $("kl-face").querySelector("svg");
     if (q.type === "set") {
       placeHands(KL.cur.h, KL.cur.m);
-      svgEl.addEventListener("pointerdown", onDown);
-      svgEl.addEventListener("pointermove", dragMove);
+      showValues();
       $("kl-text").textContent = q.text;
       $("kl-opts").innerHTML = "";
       $("kl-check").classList.remove("hidden");
@@ -328,8 +301,7 @@ const Klokles = (() => {
   /* leaves the page and clears every timer: safe to call any time */
   function stop() {
     clearInterval(timer); timer = 0;
-    dragging = null; KL = null;
-    if (svgEl) { svgEl = null; }
+    KL = null;
   }
 
   let wired = false;
