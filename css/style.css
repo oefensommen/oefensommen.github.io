@@ -1162,12 +1162,12 @@ body.champ {
    Royal purple and crimson instead of navy, a sunburst turning slowly behind
    the card, a gold frame that breathes. Same variables, turned further. */
 body.super {
-  background: radial-gradient(ellipse at 50% 28%, #6a1fa8 0%, #2b0a52 48%, #0c0220 100%) fixed;
+  background: radial-gradient(ellipse at 50% 20%, #ffb347 0%, #2f8f57 42%, #0b3a25 100%) fixed;
 }
 body.super::before {
   content: ""; position: fixed; z-index: -1; pointer-events: none;
   left: 50%; top: 30%; width: 220vmax; height: 220vmax; margin: -110vmax 0 0 -110vmax;
-  background: repeating-conic-gradient(from 0deg, rgba(255, 213, 74, .16) 0 6deg, transparent 6deg 15deg);
+  background: repeating-conic-gradient(from 0deg, rgba(255, 245, 180, .18) 0 6deg, transparent 6deg 15deg);
   animation: super-spin 60s linear infinite;
 }
 @keyframes super-spin { to { transform: rotate(360deg); } }
@@ -1176,15 +1176,16 @@ body.super::before {
   background:
     radial-gradient(circle, rgba(255, 255, 255, .7) 0 1px, transparent 1.7px) 0 0 / 38px 38px,
     radial-gradient(circle, rgba(255, 213, 74, .6) 0 1px, transparent 1.7px) 19px 19px / 38px 38px,
-    linear-gradient(160deg, #4a1580 0%, #1d0640 55%, #12032b 100%);
+    linear-gradient(160deg, #2f9a5c 0%, #17603a 55%, #0b3a25 100%);
   border: 2px solid #ffd54a;
+  overflow: hidden;
   animation: super-glow 2.4s ease-in-out infinite;
 }
 @keyframes super-glow {
   0%, 100% { box-shadow: 0 0 0 4px rgba(255, 213, 74, .2), 0 0 28px rgba(255, 213, 74, .35), 0 18px 50px rgba(12, 2, 32, .6); }
   50%      { box-shadow: 0 0 0 7px rgba(255, 213, 74, .32), 0 0 60px rgba(255, 213, 74, .7), 0 18px 50px rgba(12, 2, 32, .6); }
 }
-#screen-sprint.super .sprint-card::after { content: "👑"; opacity: .12; font-size: 10rem; }
+#screen-sprint.super .sprint-card::after { content: "🦖"; opacity: .1; font-size: 10rem; }
 #screen-sprint.super .sprint-title {
   background: linear-gradient(90deg, #fff6c7, #ffd54a, #ff9d3c, #ffd54a, #fff6c7); background-size: 200% 100%;
   -webkit-background-clip: text; background-clip: text; color: transparent;
@@ -1194,6 +1195,24 @@ body.super::before {
 #screen-sprint.super .sprint-q { text-shadow: 0 0 22px rgba(255, 213, 74, .8), 0 2px 0 rgba(0, 0, 0, .4); }
 #screen-sprint.super .sprint-opt { border-color: rgba(255, 213, 74, .85); background: rgba(255, 255, 255, .12); }
 #screen-sprint.super .btn.primary { background: linear-gradient(180deg, #fff2a8, #ffd54a 60%, #f0a020); color: #2b0a52; }
+
+/* the floating pictures behind the card, for both leagues */
+#screen-sprint .sprint-card > .sprint-deco {
+  position: absolute; inset: 0; z-index: 0; pointer-events: none; overflow: hidden;
+}
+.sprint-deco span {
+  position: absolute; opacity: .22; line-height: 1;
+  animation: deco-float 7s ease-in-out infinite alternate;
+}
+@keyframes deco-float { to { transform: translateY(-12px) rotate(10deg); } }
+
+/* the cup on a day whose three leagues were all won */
+.sprint-cup {
+  margin-top: 12px; padding: 9px 12px; border-radius: 12px; text-align: center;
+  font-weight: 800; color: #5a3600;
+  background: linear-gradient(90deg, #fff2a8, #ffd54a, #f0a020);
+  box-shadow: 0 2px 10px rgba(240, 160, 32, .45);
+}
 
 /* the superfinale won: the grandest of them all */
 .champ-win.mega { background: radial-gradient(ellipse at 50% 35%, #7a24c4 0%, #2b0a52 50%, #0a0120 100%); }
@@ -1315,6 +1334,24 @@ body.super::before {
 #kl-check { min-width: 200px; }
 .kl-next { margin-top: 10px; }
 #kl-layout { grid-template-columns: minmax(0, 1fr) 150px; }
+/* the klok page: the top bar is a white box too, and the card starts right under it */
+body.kl-page .topbar { background: #fff; border-radius: 18px; margin: 8px 16px 0; padding-block: 6px; box-shadow: 0 2px 10px rgba(29, 36, 51, .08); }
+#screen-klokles.screen--fit { align-content: start; min-height: 0; padding-top: 8px; }
+#screen-klokles .kl-card { margin-top: 0; }
+/* clock on top; minute box, the sentence, hour box side by side beneath it */
+#kl-body { display: grid; gap: 12px 14px; align-items: center; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr) minmax(0, 1fr); grid-template-areas: "face face face" "m text h" "check check check" "flash flash flash"; }
+#kl-face { grid-area: face; justify-self: center; }
+#kl-nudge { display: contents; }
+#kl-nudge.hidden { display: none; }
+#kl-card-m { grid-area: m; }
+#kl-card-h { grid-area: h; }
+#kl-opts { grid-column: 1 / -1; grid-row: 2; }
+#kl-text { grid-area: text; align-self: stretch; display: flex; align-items: center; justify-content: center; margin: 0; padding: 12px; border-radius: 18px; background: var(--bg); border: 2px solid var(--line); font-size: 1.5rem; }
+#kl-flash { grid-area: flash; margin: 0; padding: 12px 16px; border-radius: 18px; background: var(--bg); text-align: left; }
+#kl-flash:empty { display: none; }
+#kl-text:empty { display: none; }
+#kl-flash.good { background: var(--green-soft); }
+#kl-flash.bad { background: var(--red-soft); }
 #kl-marks .mark-list { grid-template-columns: 1fr !important; gap: 6px; width: 100%; }
 #kl-marks .mark-list { align-content: start; }
 #kl-marks .mark-cell { width: 100%; height: 40px; min-height: 0; }

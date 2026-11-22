@@ -92,6 +92,7 @@ function show(id) {
   $("btn-pause").classList.toggle("hidden", id !== "screen-task");
   $("btn-skip").classList.toggle("hidden", id !== "screen-task");
   $("btn-logout-top").classList.toggle("hidden", id === "screen-login");
+  document.body.classList.toggle("kl-page", id === "screen-klokles");   // the klok page: a white top bar, the card right under it
   renderLangPicker();          // the menu belongs to whoever is signed in now
 }
 
@@ -540,6 +541,27 @@ function champTheme(level) {
   document.body.classList.toggle("super", level === 2);
   $("screen-sprint").classList.toggle("champ", level >= 1);
   $("screen-sprint").classList.toggle("super", level === 2);
+  decorate(level);
+}
+
+/* The little pictures drifting behind the card: cups and stars for the
+   kampioensliga, dinosaurs with medals, gold and coins for the dinozorenliga. */
+function decorate(level) {
+  const box = $("sprint-deco");
+  if (!box) return;
+  const set = level === 2 ? ["🦖", "🦕", "🥇", "🏅", "🪙", "💰", "⭐", "🦴"]
+            : level === 1 ? ["🏆", "⭐", "🥇", "✨", "🏅", "🎖️"] : [];
+  box.innerHTML = "";
+  for (let i = 0; set.length && i < 16; i++) {
+    const s = document.createElement("span");
+    s.textContent = set[i % set.length];
+    s.style.left = (Math.random() * 100).toFixed(1) + "%";
+    s.style.top = (Math.random() * 100).toFixed(1) + "%";
+    s.style.fontSize = (1 + Math.random() * 1.4).toFixed(2) + "rem";
+    s.style.transform = `rotate(${Math.round(Math.random() * 60 - 30)}deg)`;
+    s.style.animationDelay = (-Math.random() * 6).toFixed(1) + "s";
+    box.appendChild(s);
+  }
 }
 
 /* seconds a tafel gets: the round on screen decides, not the constant */
@@ -921,8 +943,12 @@ function sprintStripHTML(sp, label) {
 /* every round of a day, in the order they were played */
 function sprintStripsHTML(ds) {
   const rounds = sprintRounds(ds);
+  const day = data.days[ds] || {};
+  // all three leagues at ten out of ten: the day's tafels get a cup
+  const cup = (day.champs || []).some(c => c.won && c.lvl === 2)
+    ? `<div class="sprint-cup">${esc(t("tafel_cup"))}</div>` : "";
   return rounds.map((sp, i) =>
-    sprintStripHTML(sp, rounds.length > 1 ? `${t("sprint_title")} ${i + 1}` : t("sprint_title"))).join("");
+    sprintStripHTML(sp, rounds.length > 1 ? `${t("sprint_title")} ${i + 1}` : t("sprint_title"))).join("") + cup;
 }
 
 let opening = false;              // a door is being opened right now
