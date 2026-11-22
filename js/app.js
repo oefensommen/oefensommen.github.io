@@ -962,7 +962,9 @@ function finishChamp() {
   const then = sprint.then;
   const leave = () => { sprint = null; champTheme(0); then(); };
 
-  if (won && level === 2 && !cupNow) return leave();       // played, no second cup
+  // the dinozorenliga is the last league: its cup is shown every time, and Verder goes to the rapport
+  const toReport = () => { sprint = null; champTheme(0); openReportAt(todayStr()); };
+  if (won && level === 2) return showChampWin(right, n, level, toReport, null);
   if (won) {
     // the kampioen goes on to the superfinale if they like; the winner of the
     // superfinale has nowhere higher to go
@@ -1024,7 +1026,8 @@ function showChampWin(right, n, level, leave, next, secsText) {
   box.classList.toggle("mega", mega);
   box.classList.toggle("frog", level === 0);
   box.classList.toggle("dino", mega);
-  $("champ-win-trophy").textContent = ["🐸", "🏆", "🦖"][level];
+  // the dinozorenliga win is shown as the cup itself
+  $("champ-win-trophy").textContent = level === 2 ? "🏆" : ["🐸", "🏆", "🦖"][level];
   $("champ-win-title").textContent = t(key + "_win_title");
   const sub = $("champ-win-sub");
   const say = line => {
@@ -1972,7 +1975,7 @@ function winTask() {
   const n = session.questions.length;
   // the last league's win is the cup: if today's cup for this category is
   // already given, the round is written down and the pupil goes to the rapport
-  if (last && !grantCup(todayStr(), kind)) return openReportAt(todayStr());
+  if (last) grantCup(todayStr(), kind);            // the cup is shown whether or not it was already given today
   showChampWin(n, n, lvl,
     () => openReportAt(todayStr()),
     last ? null : () => startTask(kind),

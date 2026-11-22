@@ -447,7 +447,14 @@ const Klokles = (() => {
     clearInterval(timer);
     $("kl-face").innerHTML = ""; show_panel(false);
     const last = tier === 2;
-    showChampWin(10, 10, tier, exit, last ? null : () => begin(tier + 1));
+    // the dinozorenliga win is the cup: given once a day, and Verder goes to the rapport
+    if (last) {
+      grantCup(todayStr(), "klokles");
+      const toReport = () => { stop(); onExitFn = null; openReportAt(todayStr()); };
+      showChampWin(10, 10, tier, toReport, null);
+    } else {
+      showChampWin(10, 10, tier, exit, () => begin(tier + 1));
+    }
     $("champ-win-score").textContent = `10 van 10 goed, ${sec(tier)} seconden per klok`;
   }
 
