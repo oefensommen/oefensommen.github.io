@@ -142,7 +142,9 @@ const Klokles = (() => {
     $("kl-card-h").classList.toggle("active", st === "h");
     $("kl-card-h").classList.toggle("locked", st !== "h");
     $("kl-card-m").querySelectorAll("button").forEach(b => b.disabled = st !== "m");
-    $("kl-card-h").querySelectorAll("button").forEach(b => b.disabled = st !== "h");
+    $("kl-card-h").querySelectorAll("button:not(#kl-h-x)").forEach(b => b.disabled = st !== "h");
+    $("kl-h-x").disabled = false;                       // × stays usable: back to the minute
+    $("kl-h-x").classList.toggle("hidden", st !== "h" && st !== "done");
     $("kl-m-ok").classList.toggle("hidden", st !== "m");
     $("kl-h-ok").classList.toggle("hidden", st !== "h");
     $("kl-check").classList.toggle("hidden", st !== "done");
@@ -152,6 +154,14 @@ const Klokles = (() => {
   function confirmStage(which) {
     if (!KL || KL.locked || !KL.q || KL.q.type !== "set" || KL.stage !== which) return;
     KL.stage = which === "m" ? "h" : "done";
+    applyStage();
+  }
+
+  /* × on the hour card: back to the minute, the hour kept as it was */
+  function backToMinute() {
+    if (!KL || KL.locked || !KL.q || KL.q.type !== "set") return;
+    if (KL.stage !== "h" && KL.stage !== "done") return;
+    KL.stage = "m";
     applyStage();
   }
 
@@ -327,6 +337,7 @@ const Klokles = (() => {
         nudgeBtns.forEach(([id, w, st]) => $(id).addEventListener("click", () => nudge(w, st)));
         $("kl-m-ok").addEventListener("click", () => confirmStage("m"));
         $("kl-h-ok").addEventListener("click", () => confirmStage("h"));
+        $("kl-h-x").addEventListener("click", backToMinute);
         wired = true;
       }
       show("screen-klokles");

@@ -1273,6 +1273,17 @@ body.super::before {
   border: none; background: var(--accent); color: #fff; cursor: pointer;
 }
 .kl-ok.hidden { display: none; }
+.kl-ok-row { display: flex; justify-content: center; align-items: center; gap: 10px; min-height: 56px; }
+.kl-ok-row .hidden { display: none; }
+.kl-tick, .kl-back {
+  font-family: inherit; font-size: 1.8rem; font-weight: 800; width: 64px; height: 56px; border-radius: 16px;
+  border: none; cursor: pointer; line-height: 1;
+}
+.kl-tick { background: #3b6ef6; color: #fff; }
+.kl-ctl-h .kl-tick { background: #e0484d; }
+.kl-back { background: var(--bg); color: var(--muted); width: 52px; height: 52px; font-size: 1.6rem; }
+.kl-back:hover { background: var(--accent-soft); }
+.kl-tick:disabled, .kl-back:disabled { background: var(--line); color: var(--muted); cursor: default; }
 .kl-ctl-h .kl-ok { background: #e0484d; }
 .kl-ok:disabled { background: var(--line); color: var(--muted); }
 .kl-body { text-align: center; }
