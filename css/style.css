@@ -1229,6 +1229,41 @@ body.super::before {
   100% { transform: translateY(-118vh) rotate(-40deg) scale(1.3); opacity: .95; }
 }
 
+/* ---------- klok: one clock, one page ---------- */
+.kl-card { width: 100%; padding: 18px 20px 22px; }
+.kl-head { display: flex; align-items: center; gap: 10px; }
+.kl-title { margin: 0; font-size: var(--t-lg); flex: 1; }
+.kl-count { font-weight: 800; font-variant-numeric: tabular-nums; color: var(--muted); }
+.kl-step { color: var(--muted); font-weight: 700; font-variant-numeric: tabular-nums; }
+.kl-track { height: 6px; border-radius: 999px; background: var(--line); margin: 12px 0 18px; overflow: hidden; }
+.kl-fill { height: 100%; width: 100%; background: var(--accent); border-radius: 999px; }
+.kl-stage { touch-action: none; user-select: none; }
+.kl-face { cursor: default; }
+.kl-face.kl-live, .kl-live { cursor: grab; touch-action: none; }
+.kl-live .klok-hand { stroke: var(--accent); }
+.kl-body { text-align: center; }
+.kl-body.hidden { display: none; }
+.kl-text { font-size: 2rem; font-weight: 800; margin: 14px 0 6px; min-height: 1.2em; }
+.kl-opts { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; max-width: 420px; margin: 16px auto 0; }
+.kl-opt {
+  font-family: inherit; font-size: 1.4rem; font-weight: 800; min-height: 64px; border-radius: 16px;
+  border: 1.5px solid var(--line); background: var(--card); color: var(--ink); cursor: pointer;
+}
+.kl-opt:disabled { cursor: default; }
+.kl-opt.right { background: var(--green-soft); border-color: var(--green); color: var(--green); }
+.kl-opt.wrong { background: var(--red-soft); border-color: var(--red); color: var(--red); }
+.kl-check { margin-top: 16px; }
+.kl-flash { min-height: 1.5em; margin: 12px 0 0; font-weight: 700; color: var(--muted); }
+.kl-flash.good { color: var(--green); }
+.kl-flash.bad { color: var(--red); }
+.kl-panel { text-align: center; padding: 18px 8px 4px; }
+.kl-panel.hidden { display: none; }
+.kl-kicker { margin: 0; font-weight: 800; color: var(--accent); letter-spacing: .04em; }
+.kl-ptitle { margin: 6px 0 10px; font-size: 1.7rem; }
+.kl-ptext { margin: 0 auto 18px; max-width: 420px; color: var(--muted); font-size: 1.05rem; }
+.kl-alt { display: block; margin: 12px auto 0; background: none; border: none; cursor: pointer;
+          font-family: inherit; font-weight: 700; color: var(--muted); text-decoration: underline; min-height: var(--tap); }
+
 /* the beat icon under the sprint answers */
 .beat-icon { font-size: 1.1rem; vertical-align: -2px; }
 

@@ -381,6 +381,7 @@ function renderHome() {
   // belongs to both of them, so the child can see their own week too
   $("btn-start").classList.toggle("hidden", parent);
   $("btn-klok").classList.toggle("hidden", parent);
+  $("btn-klokles").classList.toggle("hidden", parent);
   $("btn-sprint").classList.toggle("hidden", parent || sprintOff);
   $("btn-watch").classList.toggle("hidden", !parent);
   // the rapport is the one place "how is it going" lives, for both of them
@@ -2841,6 +2842,7 @@ function goHome() {
   opening = false;                 // back and in again is not a double tap
   stopTimer();
   stopSprint();
+  Klokles.stop();
   Live.stopHeartbeat();
   if (Store.isParent() && isOn("screen-mirror")) leftMirror = true;
   // the child always works in Dutch, whatever the parent last picked here
@@ -2891,6 +2893,8 @@ document.addEventListener("DOMContentLoaded", () => {
   // home
   $("btn-start").addEventListener("click", () => startTask("sommen"));
   $("btn-klok").addEventListener("click", () => startTask("klok"));
+  $("btn-klokles").addEventListener("click", () => Klokles.start(goHome));
+  $("kl-quit").addEventListener("click", () => Klokles.quit());
   $("btn-sprint").addEventListener("click", () => startSprint(goHome));
   $("sprint-pause").addEventListener("click", pauseSprint);
   $("sprint-resume").addEventListener("click", resumeSprint);
