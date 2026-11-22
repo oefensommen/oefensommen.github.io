@@ -1310,7 +1310,14 @@ body.super::before {
 #kl-text { grid-area: text; text-align: left; margin: 0; font-size: 1.6rem; }
 #kl-opts { grid-area: ctl; }
 #kl-nudge { grid-area: ctl; }
-#kl-check { grid-area: check; margin: 0 auto; min-width: 200px; }
+#kl-final { grid-area: check; display: flex; justify-content: center; align-items: center; gap: 10px; }
+#kl-final.hidden { display: none; }
+#kl-check { min-width: 200px; }
+.kl-next { margin-top: 10px; }
+#kl-layout { grid-template-columns: minmax(0, 1fr) 150px; }
+#kl-marks .mark-list { grid-template-columns: 1fr !important; gap: 6px; width: 100%; }
+#kl-marks .mark-list { align-content: start; }
+#kl-marks .mark-cell { width: 100%; height: 40px; min-height: 0; }
 #kl-flash { grid-area: flash; margin: 0; }
 .kl-text { font-size: 2rem; font-weight: 800; margin: 14px 0 6px; min-height: 1.2em; }
 .kl-opts { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; max-width: 420px; margin: 16px auto 0; }

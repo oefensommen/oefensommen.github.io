@@ -175,12 +175,10 @@ const Klokles = (() => {
     $("kl-card-h").classList.toggle("active", st === "h");
     $("kl-card-h").classList.toggle("locked", st !== "h");
     $("kl-card-m").querySelectorAll("button").forEach(b => b.disabled = st !== "m");
-    $("kl-card-h").querySelectorAll("button:not(#kl-h-x)").forEach(b => b.disabled = st !== "h");
-    $("kl-h-x").disabled = false;                     // × stays usable: back to the minute
-    $("kl-h-x").classList.toggle("hidden", st !== "h" && st !== "done");
+    $("kl-card-h").querySelectorAll("button").forEach(b => b.disabled = st !== "h");
     $("kl-m-ok").classList.toggle("hidden", st !== "m");
     $("kl-h-ok").classList.toggle("hidden", st !== "h");
-    $("kl-check").classList.toggle("hidden", st !== "done");
+    $("kl-final").classList.toggle("hidden", st !== "done");   // Klaar ✓ and × beside it
   }
 
   function confirmStage(which) {
@@ -231,7 +229,7 @@ const Klokles = (() => {
       $("kl-opts").querySelectorAll(".kl-opt").forEach(b =>
         b.addEventListener("click", () => settle(q.opts[+b.dataset.i].ok, "pick", b)));
       $("kl-nudge").classList.add("hidden");
-      $("kl-check").classList.add("hidden");
+      $("kl-final").classList.add("hidden");
     }
     $("kl-flash").textContent = "";
     $("kl-flash").className = "kl-flash";
@@ -257,7 +255,7 @@ const Klokles = (() => {
     } else {
       placeHands(q.h, q.m);                            // show the answer on the face
       $("kl-nudge").classList.add("hidden");
-      $("kl-check").classList.add("hidden");
+      $("kl-final").classList.add("hidden");
     }
     const flash = $("kl-flash");
     if (ok) {
@@ -266,11 +264,13 @@ const Klokles = (() => {
     } else {
       const lead = how === "late" ? "Te laat!" : "Net niet.";
       flash.innerHTML = `${lead} Het is <b>${esc(q.text)}</b> (${q.h}:${pad(q.m)}).<br>` +
-                        `<span class="kl-why">${esc(explain(q.h, q.m))}</span>`;
+                        `<span class="kl-why">${esc(explain(q.h, q.m))}</span><br>` +
+                        `<button id="kl-next" class="btn primary kl-next">Verder →</button>`;
       flash.className = "kl-flash bad";
     }
     renderMarks();
-    setTimeout(next, ok ? 900 : 4200);
+    if (ok) setTimeout(next, 900);                      // a right one moves on; a wrong one waits to be read
+    else $("kl-next").addEventListener("click", next);
   }
 
   function next() {
@@ -311,7 +311,7 @@ const Klokles = (() => {
     $("kl-go").addEventListener("click", p.onGo);
     if (p.alt) $("kl-alt").addEventListener("click", p.onAlt);
     $("kl-face").innerHTML = ""; $("kl-text").textContent = ""; $("kl-opts").innerHTML = "";
-    $("kl-check").classList.add("hidden");
+    $("kl-final").classList.add("hidden");
     $("kl-nudge").classList.add("hidden");
     $("kl-bar").style.width = "0%";
     $("kl-count").textContent = "";
@@ -387,7 +387,7 @@ const Klokles = (() => {
           .forEach(([id, w, st]) => $(id).addEventListener("click", () => nudge(w, st)));
         $("kl-m-ok").addEventListener("click", () => confirmStage("m"));
         $("kl-h-ok").addEventListener("click", () => confirmStage("h"));
-        $("kl-h-x").addEventListener("click", backToMinute);
+        $("kl-undo").addEventListener("click", backToMinute);
         wired = true;
       }
       show("screen-klokles");
