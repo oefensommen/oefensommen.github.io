@@ -110,9 +110,13 @@ const Klokles = (() => {
     placeHands(KL.cur.h, KL.cur.m);
   }
 
+  /* whichever hand the finger is nearest to, by angle, takes the drag */
   function onDown(e) {
     if (!KL || KL.locked) return;
-    dragging = pointerTo(e).near ? "h" : "m";
+    const { deg } = pointerTo(e);
+    const hd = ((KL.cur.h % 12) + KL.cur.m / 60) * 30, md = KL.cur.m * 6;
+    const dist = (a, b) => { const d = Math.abs(a - b) % 360; return Math.min(d, 360 - d); };
+    dragging = dist(deg, hd) <= dist(deg, md) ? "h" : "m";
     svgEl.setPointerCapture && svgEl.setPointerCapture(e.pointerId);
     dragMove(e);
   }
@@ -152,10 +156,29 @@ const Klokles = (() => {
     return qs;
   }
 
+  /* a random start for the hands: the two never sit on top of each other
+     (at least 30 degrees apart) and never already show the answer */
+  function startPosition(q) {
+    for (;;) {
+      const h = rnd(12) + 1, m = MINUTES[rnd(MINUTES.length)];
+      const hd = ((h % 12) + m / 60) * 30, md = m * 6;
+      const gap = Math.abs(hd - md) % 360, apart = Math.min(gap, 360 - gap);
+      if (apart >= 30 && !(h === q.h && m === q.m)) return { h, m };
+    }
+  }
+
+  /* move one hand by a step: the hour by one hour, the minute by five minutes */
+  function nudge(which, step) {
+    if (!KL || KL.locked || !KL.q || KL.q.type !== "set") return;
+    if (which === "h") KL.cur.h = ((KL.cur.h - 1 + step + 12) % 12) + 1;
+    else KL.cur.m = (KL.cur.m + step * 5 + 60) % 60;
+    placeHands(KL.cur.h, KL.cur.m);
+  }
+
   function renderQ() {
     const q = KL.qs[KL.i];
     KL.q = q; KL.locked = false;
-    KL.cur = q.type === "set" ? { h: 12, m: 0 } : { h: q.h, m: q.m };
+    KL.cur = q.type === "set" ? startPosition(q) : { h: q.h, m: q.m };
     $("kl-progress").textContent = `${KL.i + 1} / ${N}`;
     $("kl-title").textContent = KL.league ? "Kampioenenliga" : "Klok";
     $("kl-face").innerHTML = faceSVG(KL.cur.h, KL.cur.m, q.type === "set");
@@ -167,6 +190,7 @@ const Klokles = (() => {
       $("kl-text").textContent = q.text;
       $("kl-opts").innerHTML = "";
       $("kl-check").classList.remove("hidden");
+      $("kl-nudge").classList.remove("hidden");
     } else {
       $("kl-text").textContent = "";
       $("kl-opts").innerHTML = q.opts.map((o, i) =>
@@ -174,6 +198,7 @@ const Klokles = (() => {
       $("kl-opts").querySelectorAll(".kl-opt").forEach(b =>
         b.addEventListener("click", () => settle(q.opts[+b.dataset.i].ok, "pick", b)));
       $("kl-check").classList.add("hidden");
+      $("kl-nudge").classList.add("hidden");
     }
     $("kl-flash").textContent = "";
     $("kl-flash").className = "kl-flash";
@@ -198,6 +223,7 @@ const Klokles = (() => {
     } else {
       placeHands(q.h, q.m);                               // show the answer on the face
       $("kl-check").classList.add("hidden");
+      $("kl-nudge").classList.add("hidden");
     }
     const msg = ok ? "Goed zo!" : how === "late" ? `Te laat! Het was: ${q.text}` : `Net niet. Het was: ${q.text}`;
     $("kl-flash").textContent = msg;
@@ -242,6 +268,7 @@ const Klokles = (() => {
     if (p.alt) $("kl-alt").addEventListener("click", p.onAlt);
     $("kl-face").innerHTML = ""; $("kl-text").textContent = ""; $("kl-opts").innerHTML = "";
     $("kl-check").classList.add("hidden");
+    $("kl-nudge").classList.add("hidden");
     $("kl-bar").style.width = "0%";
     $("kl-count").textContent = "";
     show_panel(true);
@@ -306,10 +333,15 @@ const Klokles = (() => {
   }
 
   let wired = false;
+  const nudgeBtns = [["kl-h-dn", "h", -1], ["kl-h-up", "h", 1], ["kl-m-dn", "m", -1], ["kl-m-up", "m", 1]];
   return {
     start(onExit) {
       onExitFn = onExit;
-      if (!wired) { $("kl-check").addEventListener("click", check); wired = true; }
+      if (!wired) {
+        $("kl-check").addEventListener("click", check);
+        nudgeBtns.forEach(([id, w, st]) => $(id).addEventListener("click", () => nudge(w, st)));
+        wired = true;
+      }
       show("screen-klokles");
       intro();
     },

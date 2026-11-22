@@ -1240,7 +1240,22 @@ body.super::before {
 .kl-stage { touch-action: none; user-select: none; }
 .kl-face { cursor: default; }
 .kl-face.kl-live, .kl-live { cursor: grab; touch-action: none; }
-.kl-live .klok-hand { stroke: var(--accent); }
+/* the two hands, told apart at a glance: the short red hour, the long blue minute */
+.kl-live .klok-hand.hour { stroke: #e0484d; stroke-width: 7; }
+.kl-live .klok-hand.minute { stroke: #3b6ef6; stroke-width: 4.5; }
+.kl-live .klok-pin { fill: #1d2433; }
+.kl-nudge { display: flex; flex-direction: column; gap: 8px; margin: 14px auto 0; max-width: 360px; }
+.kl-nudge.hidden { display: none; }
+.kl-nudge-row { display: grid; grid-template-columns: 14px 1fr 64px 64px; align-items: center; gap: 10px; }
+.kl-dot { width: 14px; height: 14px; border-radius: 50%; }
+.kl-dot-h { background: #e0484d; }
+.kl-dot-m { background: #3b6ef6; }
+.kl-nudge-name { text-align: left; font-weight: 800; }
+.kl-step-btn {
+  font-family: inherit; font-size: 1.8rem; font-weight: 800; min-height: 56px; border-radius: 14px;
+  border: 1.5px solid var(--line); background: var(--card); color: var(--ink); cursor: pointer;
+}
+.kl-step-btn:active { transform: scale(.96); }
 .kl-body { text-align: center; }
 .kl-body.hidden { display: none; }
 .kl-text { font-size: 2rem; font-weight: 800; margin: 14px 0 6px; min-height: 1.2em; }
