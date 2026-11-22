@@ -1244,13 +1244,13 @@ body.super::before {
 .kl-live .klok-hand.minute { stroke: #3b6ef6; stroke-width: 4.5; }
 .kl-live .klok-pin { fill: #1d2433; }
 .kl-nudge {
-  display: flex; flex-direction: column; gap: 10px; margin: 16px auto 0; max-width: 380px;
+  display: flex; flex-direction: column; gap: 14px; margin: 16px auto 0; max-width: 460px;
   padding: 12px; border-radius: 20px; background: var(--bg); border: 1px solid var(--line);
 }
 .kl-nudge.hidden { display: none; }
 .kl-ctl {
-  display: grid; grid-template-columns: 1fr 58px 84px 58px; align-items: center; gap: 8px;
-  background: var(--card); border-radius: 16px; padding: 8px 10px;
+  display: grid; grid-template-columns: 1fr 96px 96px; align-items: center; gap: 18px;
+  background: var(--card); border-radius: 18px; padding: 12px 14px;
   border: 2px solid transparent;
 }
 .kl-ctl-h { border-color: rgba(224, 72, 77, .35); }
@@ -1266,7 +1266,7 @@ body.super::before {
 .kl-ctl-h .kl-val { color: #c23e42; }
 .kl-ctl-m .kl-val { color: #3563dd; }
 .kl-step-btn {
-  font-family: inherit; font-size: 1.8rem; font-weight: 800; height: 56px; border-radius: 16px;
+  font-family: inherit; font-size: 2.6rem; font-weight: 800; height: 76px; border-radius: 20px;
   border: none; background: var(--bg); color: var(--ink); cursor: pointer; line-height: 1;
   transition: transform .08s, background .15s;
 }

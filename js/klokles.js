@@ -15,7 +15,7 @@
    "half 4" is half past THREE, not four: that is the mistake this teaches. */
 
 const Klokles = (() => {
-  const ROUND_SECS = 60, LEAGUE_SECS = 30, N = 10;
+  const ROUND_SECS = 120, LEAGUE_SECS = 30, N = 10;
   const MINUTES = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55];
   const C = 110, R = 104;                       // svg geometry, viewBox 220
 
@@ -89,13 +89,6 @@ const Klokles = (() => {
     set("kl-m", md, R * 0.8);
   }
 
-  /* the hour and minute values shown in the controls below the clock */
-  function showValues() {
-    const h = KL && KL.cur ? KL.cur.h : 12, m = KL && KL.cur ? KL.cur.m : 0;
-    $("kl-h-val").textContent = h;
-    $("kl-m-val").textContent = String(m).padStart(2, "0");
-  }
-
   /* ---- the timer strip ---- */
   function startTimer(secs) {
     clearInterval(timer);
@@ -147,7 +140,6 @@ const Klokles = (() => {
     if (which === "h") KL.cur.h = ((KL.cur.h - 1 + step + 12) % 12) + 1;
     else KL.cur.m = (KL.cur.m + step * 5 + 60) % 60;
     placeHands(KL.cur.h, KL.cur.m);
-    showValues();
   }
 
   function renderQ() {
@@ -159,7 +151,6 @@ const Klokles = (() => {
     $("kl-face").innerHTML = faceSVG(KL.cur.h, KL.cur.m, q.type === "set");
     if (q.type === "set") {
       placeHands(KL.cur.h, KL.cur.m);
-      showValues();
       $("kl-text").textContent = q.text;
       $("kl-opts").innerHTML = "";
       $("kl-check").classList.remove("hidden");
@@ -267,7 +258,7 @@ const Klokles = (() => {
     panel({
       kicker: "Klok",
       title: "Lees de klok, of zet de wijzers",
-      text: "10 klokken, elk 1 minuut. Kies de juiste tekst, of draai de wijzers naar de tijd. Alles goed? Dan de Kampioenenliga!",
+      text: "10 klokken, elk 2 minuten. Kies de juiste tekst, of draai de wijzers naar de tijd. Alles goed? Dan de Kampioenenliga!",
       go: "Start", onGo: () => begin(false)
     });
   }
