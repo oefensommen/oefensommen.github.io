@@ -16,11 +16,8 @@
 
 const Sprint = {
   N: 10,            // ten facts a round — the tafel half of a day's pakket
-  SECS: 3,          // three seconds a tafel, the som and its answers together
   OPTS: 4,          // four answers, and the wrong ones are neighbours in the
                     // table — near enough that only knowing it settles it
-  CHAMP_SECS: 2,    // the Kampioensliga: ten out of ten in the sprint opens it
-  SUPER_SECS: 1,    // the Dinozorenliga: ten out of ten there opens this one
   PASS: 1,          // all ten right — in every round — to go on to the next
   MIN: 2, MAX: 9,    // no 1s and no 10s: they are too easy and are never asked.
 
@@ -77,7 +74,7 @@ const Sprint = {
   },
 
   /* seconds a tafel gets: 0 the sprint, 1 the kampioensronde, 2 the superfinale */
-  secsFor(level) { return [this.SECS, this.CHAMP_SECS, this.SUPER_SECS][level || 0]; },
+  secsFor(level) { return window.secsOf("tafels", level || 0); },
 
   /* how many right it takes, out of n, and whether that was enough */
   need(n) { return Math.ceil(this.PASS * n - 1e-9); },

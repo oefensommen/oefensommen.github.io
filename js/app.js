@@ -510,7 +510,7 @@ function startSprint(then) {
   Live.startHeartbeat();
   gameDelen = false;
   sprint.level = 0;
-  introSprint(t("sprint_ready").replace("{n}", Sprint.N).replace("{s}", fmtSecs(Sprint.SECS)));
+  introSprint(t("sprint_ready").replace("{n}", Sprint.N).replace("{s}", fmtSecs(secsOf("tafels", 0))));
 }
 
 /* the league's name and its seconds, in one framed line in the header */
@@ -656,7 +656,7 @@ function showBeat() {
 function renderSprint() {
   const q = sprint.qs[sprint.i];
   sprint.locked = false;
-  $("sprint-progress").textContent = `${sprint.i + 1} / ${sprint.qs.length} ${t("questions_word")}`;
+  $("sprint-progress").textContent = `${Math.min(sprint.i + 1, sprintN())} / ${sprintN()} ${t("questions_word")}`;
   $("sprint-question").textContent = q.text || `${q.a} × ${q.b}`;
   ["sprint-sep", "sprint-count", "sprint-unit"].forEach(id => $(id).classList.remove("hidden"));
 
@@ -678,7 +678,7 @@ function renderSprint() {
 
 /* the whole round beside the tafel, exactly as the sommen have it */
 function renderSprintMarks() {
-  const marks = sprint.qs.map((_, i) => {
+  const marks = sprint.qs.filter(q => q.redo == null).map((_, i) => {
     const ch = sprint.tiles[i];
     return ch === "o" ? "ok" : ch === "n" ? "no" : ch === "t" ? "skip" : "";
   });
@@ -793,12 +793,23 @@ function markRightOption() {
   if (btns[q.answerIdx]) btns[q.answerIdx].classList.add("right");
 }
 
+/* How many tafels the round really has: the clones that come back for a second
+   try are not extra tafels, they answer one that is already on the tiles. */
+function sprintN(qs) {
+  return (qs || sprint.qs).filter(q => q.redo == null).length;
+}
+
 function settleSprintQ(tile, msg, ok) {
   if (sprint.settled) return;
   sprint.settled = true;
   clearInterval(sprint.tick);                 // no tick may reopen a settled som
   const q = sprint.qs[sprint.i];
-  sprint.tiles += tile;
+  if (q.redo != null) {
+    // asked again: a right second answer turns its tile green, a wrong one stays as it was
+    if (tile === "o") sprint.tiles = sprint.tiles.slice(0, q.redo) + "o" + sprint.tiles.slice(q.redo + 1);
+  } else {
+    sprint.tiles += tile;
+  }
   renderSprintMarks();
   sprint.facts.push(`${q.a}x${q.b}`);
   if (!gameDelen) Sprint.remember(data, q, ok);   // every league remembers what was missed
@@ -817,6 +828,16 @@ function nextSprint() {
   sprint.settled = false;
   sprint.i++;
   if (sprint.i < sprint.qs.length) return renderSprint();
+  // the round's last tafel is answered: the wrong ones come back once, in order
+  const asked = new Set(sprint.qs.filter(q => q.redo != null).map(q => q.redo));
+  const again = [];
+  for (let k = 0; k < sprintN(); k++) {
+    if (!asked.has(k) && "nt".includes(sprint.tiles[k])) again.push(k);
+  }
+  if (again.length) {
+    again.forEach(k => sprint.qs.push(Object.assign({}, sprint.qs[k], { redo: k })));
+    return renderSprint();
+  }
   finishSprint();
 }
 
@@ -831,8 +852,8 @@ function bookSprintRound(qs, tiles, facts, secs) {
   const day = data.days[ds] || { solved: 0, firstCorrect: 0, done100: false, cats: {} };
   if (data.actives) delete data.actives.tafels;
   day.sprints = sprintRounds(ds).slice();
-  day.sprints.push({ n: qs.length, right, tiles, facts, secs });
-  addLv(day, "tafels", 0, qs.length, right);
+  day.sprints.push({ n: sprintN(qs), right, tiles, facts, secs });
+  addLv(day, "tafels", 0, sprintN(qs), right);
   delete day.sprint; delete day.sprintEnd;        // the two old slots, folded in
   addDaySecs(day, "tafels", secs);
   data.days[ds] = day;
@@ -857,25 +878,25 @@ function finishSprint() {
   if (gameDelen) {
     right = sprint.tiles.split("").filter(c => c === "o").length;
     const ds = todayStr(), day = dayFor(ds);
-    addLv(day, "delen", 0, sprint.qs.length, right);
+    addLv(day, "delen", 0, sprintN(), right);
     data.days[ds] = day;
     Store.save(data);
   } else {
     right = bookSprintRound(sprint.qs, sprint.tiles, sprint.facts, sprintSecs());
   }
 
-  const all = right === sprint.qs.length;
-  const chance = G().passed(right, sprint.qs.length);      // ten out of ten: the cup is on offer
+  const all = right === sprintN();
+  const chance = G().passed(right, sprintN());      // ten out of ten: the cup is on offer
   if (chance) {
     // ten out of ten in the kikkerliga: the frog cup, then on to the kampioensliga
     clearInterval(sprint.tick);
     sprint.tick = null;
     const then = sprint.then;
-    return showChampWin(right, sprint.qs.length, 0,
+    return showChampWin(right, sprintN(), 0,
                         () => { sprint = null; then(); },
                         () => { sprint = null; startChampRound(then, 1); });
   }
-  $("sprint-question").textContent = `${right}/${sprint.qs.length}`;
+  $("sprint-question").textContent = `${right}/${sprintN()}`;
   $("sprint-answers").innerHTML = "";
   renderSprintMarks();
   // Ten tafels under a clock, and the score used to be on screen for 1400ms
@@ -926,7 +947,7 @@ function startChampRound(then, level) {
 }
 
 function finishChamp() {
-  const n = sprint.qs.length;
+  const n = sprintN();
   const level = sprint.level;
   const right = sprint.tiles.split("").filter(c => c === "o").length;
   const won = G().passed(right, n);
@@ -1083,7 +1104,20 @@ let opening = false;              // a door is being opened right now
    second chance — only the bank the ten are drawn from differs. */
 /* The leagues for the opdrachten: a story som gets three, two or one minutes.
    A clock question (a dial) is not read, so it keeps the open-ended round. */
-const TASK_SECS = [180, 120, 60];
+/* Seconds a question gets, per category and league (0 kikker, 1 champions,
+   2 dinozaur). These are the defaults; the parent sets them in the rapport and
+   they travel with the child's record as data.secs. */
+const SECS_DEFAULT = {
+  tafels: [3, 2, 1], delen: [10, 8, 6], sommen: [180, 120, 60],
+  klok: [180, 120, 60], klokles: [40, 30, 20]
+};
+function secsOf(cat, lvl) {
+  const o = data && data.secs && data.secs[cat];
+  const v = o && o[lvl];
+  return typeof v === "number" && v > 0 ? v : SECS_DEFAULT[cat][lvl];
+}
+window.secsOf = secsOf;
+function taskCat(kind) { return (kind || (session && session.kind)) === "klok" ? "klok" : "sommen"; }
 let qInt = null;
 
 function taskLeague() { return session && session.league ? session.league : 0; }
@@ -1100,7 +1134,7 @@ function stopQClock() {
 function tickQClock() {
   const q = currentQ();
   if (!q || finished(q) || session.review || session.midRetry) return stopQClock();
-  const limit = TASK_SECS[taskLeague()] * 1000;
+  const limit = secsOf(taskCat(), taskLeague()) * 1000;
   const left = Math.max(0, q.qEnd - Date.now());
   const frac = left / limit;
   const fill = $("task-qfill");
@@ -1113,7 +1147,7 @@ function startQClock(q) {
   stopQClock();
   const tp = tplOf(q);
   if (!session || session.review || session.midRetry || finished(q) || (tp && tp.face)) return;
-  if (q.qLeft == null) q.qLeft = TASK_SECS[taskLeague()] * 1000;
+  if (q.qLeft == null) q.qLeft = secsOf(taskCat(), taskLeague()) * 1000;
   q.qEnd = Date.now() + q.qLeft;
   $("task-qbar").classList.remove("hidden");
   tickQClock();
@@ -1152,7 +1186,7 @@ function startTask(kind, league) {
   session.queue = session.questions.map((_, i) => i);
   saveActive();                   // resumable from the very first som
   Live.startHeartbeat();          // keep the parent's mirror alive while thinking
-  introReady(kind === "klok" ? "klok_word" : "sommen_word", league, TASK_N, `${TASK_SECS[league] / 60} min`, () => runCountdown(() => {
+  introReady(kind === "klok" ? "klok_word" : "sommen_word", league, TASK_N, `${fmtSecs(secsOf(taskCat(kind), league))} s`, () => runCountdown(() => {
     // walking out during the countdown puts the round down; what is counted
     // in then belongs to nothing
     if (!session || session.kind !== kind || sprint) return;
@@ -1581,13 +1615,27 @@ function answer(i, btn) {
   // Redactiesommen and Klokkijken give two tries at every question: a wrong
   // first answer is marked, the others come back, and a right second answer
   // counts as right. The second wrong one settles it as before.
+  // A wrong first answer waits: the round carries on to its last som, and the
+  // wrong ones are asked again at the end. Right the second time counts as right.
   if (!correct && !q.retry1 && flexibleTask()) {
     q.retry1 = true;
+    q.pendingRetry = true;
+    q.chosen = i;
+    q.tries = 1;
+    q.correctFirst = false;
     btn.classList.add("wrong");
-    btn.disabled = true;
-    document.querySelectorAll(".answer").forEach(b => { if (b !== btn) b.disabled = false; });
-    showExplainBox(`<p class="fix-hint">${esc(t("try_again"))}</p>`, false);
-    startQClock(q);
+    document.querySelectorAll(".answer").forEach(b => b.disabled = true);
+    $("btn-skip").disabled = true;
+    $("btn-pause").disabled = true;
+    renderTaskMarks();
+    Live.push("task");
+    session.hopping = true;
+    const mine = session;
+    setTimeout(() => {
+      if (session !== mine) return;
+      session.hopping = false;
+      advance();
+    }, 1100);
     return;
   }
 
@@ -1864,6 +1912,19 @@ function maybeExtend() {
 }
 
 function finishPass() {
+  // the wrong ones of the round are asked again, once, after the last som
+  const again = session.questions.map((q, i) => i).filter(i => session.questions[i].pendingRetry);
+  if (again.length) {
+    const start = session.queue.length;
+    again.forEach(i => { const q = session.questions[i]; q.pendingRetry = false; q.qLeft = null; });
+    session.queue = session.queue.concat(again);
+    session.idx = start;
+    saveActive();
+    ensureTimer();
+    renderQuestion();
+    show("screen-task");
+    return;
+  }
   // only soms that were put aside can still be done; a failed one is settled
   const open = session.questions.map((q, i) => i).filter(i => !finished(session.questions[i]));
 
@@ -1915,7 +1976,7 @@ function winTask() {
   showChampWin(n, n, lvl,
     () => openReportAt(todayStr()),
     last ? null : () => startTask(kind),
-    `${TASK_SECS[lvl] / 60} min`);
+    `${fmtSecs(secsOf(taskCat(kind), lvl))} s`);
 }
 
 /* Close the books on a whole opdracht: the time it took, the level and the
@@ -2264,6 +2325,51 @@ function renderOnePager(ds) {
       <tbody>${rows}</tbody>
       <tfoot>${totals}</tfoot>
     </table></div>`;
+  if (Store.isParent()) {
+    box.insertAdjacentHTML("beforeend", secsPanelHTML());
+    const save = $("secs-save");
+    if (save) save.addEventListener("click", saveSecs);
+  }
+}
+
+/* The parent's panel: seconds a question gets, one row per category and one
+   column per league, the same shape as the table above it. */
+function secsPanelHTML() {
+  const rows = OP_CATS.map(c => `<tr><th scope="row">${esc(c.name)}</th>${[0, 1, 2].map(l =>
+    `<td><input type="number" inputmode="numeric" min="1" max="600" step="1"
+                data-cat="${c.key}" data-lvl="${l}" value="${secsOf(c.key, l)}" aria-label="${esc(c.name)} ${l + 1}"></td>`
+  ).join("")}</tr>`).join("");
+  return `<details class="secs-panel">
+    <summary>⏱ ${esc(t("secs_btn"))}</summary>
+    <div class="op-wrap"><table class="secs-table">
+      <thead><tr><th></th><th>🐸</th><th>🏆</th><th>🦖</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>
+    <p class="secs-note">${esc(t("secs_note"))}</p>
+    <div class="secs-actions"><button id="secs-save" class="btn primary">${esc(t("secs_save"))}</button>
+      <span id="secs-msg" class="secs-msg"></span></div>
+  </details>`;
+}
+
+async function saveSecs() {
+  const msg = $("secs-msg");
+  const { u, p } = Store.creds();
+  const out = {};
+  let bad = false;
+  document.querySelectorAll(".secs-table input").forEach(i => {
+    const v = Math.round(+i.value);
+    if (!(v >= 1 && v <= 600)) { bad = true; return; }
+    (out[i.dataset.cat] = out[i.dataset.cat] || [])[+i.dataset.lvl] = v;
+  });
+  if (bad) { msg.textContent = t("secs_bad"); return; }
+  if (!u || !p) return;
+  try {
+    const fresh = await Cloud.setSecs(u, p, out);
+    if (fresh) { data = Store.dress(fresh); Store.saveLocal(data); }
+    msg.textContent = t("secs_saved");
+  } catch (e) {
+    msg.textContent = t("secs_offline");
+  }
 }
 
 let reportDay = null;

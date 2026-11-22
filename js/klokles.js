@@ -17,7 +17,7 @@
 
 const Klokles = (() => {
   const N = 10;
-  const SECS = [40, 30, 20];                      // seconds a clock gets, per level
+  const sec = tier => window.secsOf("klokles", tier);   // seconds a clock gets, per level (set in the rapport)
   // the level names are the tafels' own: Wandelliga, Kampioensronde, Dinozorenliga
   const tierName = i => [t("sprint_title"), t("champ_title"), t("super_title")][i];
   const MINUTES = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55];
@@ -270,7 +270,7 @@ const Klokles = (() => {
 
   /* the tiles on the right: the same marks the sprint shows */
   function renderMarks() {
-    const marks = KL.qs.map((_, i) => {
+    const marks = KL.qs.filter(q => q.redo == null).map((_, i) => {
       const ch = KL.tiles[i];
       return ch === "o" ? "ok" : ch === "n" ? "no" : ch === "t" ? "skip" : "";
     });
@@ -299,7 +299,7 @@ const Klokles = (() => {
     const q = KL.qs[KL.i];
     KL.q = q; KL.locked = false;
     KL.cur = q.type === "set" ? startPosition(q) : { h: q.h, m: q.m };
-    $("kl-progress").textContent = `${KL.i + 1} / ${N}`;
+    $("kl-progress").textContent = `${Math.min(KL.i + 1, N)} / ${N}`;
     $("kl-title").textContent = tierName(KL.tier);
     setLevelTheme(KL.tier);                                  // the same background and pictures as the tafels level
     $("kl-face").innerHTML = faceSVG(KL.cur.h, KL.cur.m, q.type === "set");
@@ -332,7 +332,7 @@ const Klokles = (() => {
     $("kl-next").classList.add("hidden");
     show_panel(false);
     renderMarks();
-    startTimer(SECS[KL.tier]);
+    startTimer(sec(KL.tier));
   }
 
   /* answered (or ran out): show it, explain a miss, then the next one */
@@ -343,7 +343,11 @@ const Klokles = (() => {
     const q = KL.q;
     if (ok) KL.right++;
     if (window.recordKlokLv) window.recordKlokLv(KL.tier, ok);   // the rapport counts it
-    KL.tiles += ok ? "o" : how === "late" ? "t" : "n";
+    if (q.redo != null) {
+      if (ok) KL.tiles = KL.tiles.slice(0, q.redo) + "o" + KL.tiles.slice(q.redo + 1);
+    } else {
+      KL.tiles += ok ? "o" : how === "late" ? "t" : "n";
+    }
     if (q.type === "pick") {
       $("kl-opts").querySelectorAll(".kl-opt").forEach(b => {
         const o = q.opts[+b.dataset.i]; b.disabled = true;
@@ -373,7 +377,17 @@ const Klokles = (() => {
   function next() {
     if (!KL) return;
     KL.i++;
-    if (KL.i < N) return renderQ();
+    if (KL.i < KL.qs.length) return renderQ();
+    // the ten clocks are done: the wrong ones come back once, in order
+    const asked = new Set(KL.qs.filter(q => q.redo != null).map(q => q.redo));
+    const again = [];
+    for (let k = 0; k < N; k++) {
+      if (!asked.has(k) && "nt".includes(KL.tiles[k])) again.push(k);
+    }
+    if (again.length) {
+      again.forEach(k => KL.qs.push(Object.assign({}, KL.qs[k], { redo: k })));
+      return renderQ();
+    }
     endRound();
   }
 
@@ -425,7 +439,7 @@ const Klokles = (() => {
     $("kl-face").innerHTML = ""; $("kl-text").textContent = ""; $("kl-opts").innerHTML = "";
     $("kl-nudge").classList.add("hidden");
     $("kl-final").classList.add("hidden");
-    introReady("klok_word", 0, 10, `${SECS[0]} s`, () => { show("screen-klokles"); begin(0); });
+    introReady("klok_word", 0, 10, `${sec(0)} s`, () => { show("screen-klokles"); begin(0); });
   }
 
   /* a level is won: the tafels' own win screen, with the way on or out */
@@ -434,7 +448,7 @@ const Klokles = (() => {
     $("kl-face").innerHTML = ""; show_panel(false);
     const last = tier === 2;
     showChampWin(10, 10, tier, exit, last ? null : () => begin(tier + 1));
-    $("champ-win-score").textContent = `10 van 10 goed, ${SECS[tier]} seconden per klok`;
+    $("champ-win-score").textContent = `10 van 10 goed, ${sec(tier)} seconden per klok`;
   }
 
   function exit() {

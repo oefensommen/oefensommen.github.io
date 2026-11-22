@@ -10,11 +10,10 @@
 
 const Delen = {
   N: 10,                       // ten sums a round
-  SECS: [10, 8, 6],            // seconds a sum, per league: 0 kikker, 1 champions, 2 dinozaur
   OPTS: 4,
   MIN: 2, MAX: 10,             // divisor and quotient: 2 to 10, so 4 to 100 as dividend
 
-  secsFor(level) { return this.SECS[level || 0]; },
+  secsFor(level) { return window.secsOf("delen", level || 0); },
 
   /* how many right it takes, out of n, and whether that was enough: the same
      rule as the tafels — every one of them */

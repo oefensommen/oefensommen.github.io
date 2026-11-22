@@ -57,5 +57,10 @@ const Cloud = {
 
   setTuning(u, p, tpl, verdict) {
     return this.rpc("set_tuning", { u, p, tpl, verdict });
+  },
+
+  /* the parent sets the seconds per question, per category and league */
+  setSecs(u, p, secs) {
+    return this.rpc("set_secs", { u, p, secs });
   }
 };
