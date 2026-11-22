@@ -1244,23 +1244,24 @@ body.super::before {
 #screen-klokles button, #screen-klokles .klok-face { -webkit-touch-callout: none; }
 /* the clock itself: sized by the screen, not by a fixed pixel size, so it fills
    an iPad in landscape and stays whole on a phone */
-.kl-face { width: min(72vw, 320px); height: auto; aspect-ratio: 1 / 1; margin: 0 auto; display: block; }
+.kl-face { width: min(40vw, 300px); height: auto; aspect-ratio: 1 / 1; margin: 0 auto; display: block; }
 @media (min-width: 700px) {
-  .kl-face { width: min(42vh, 380px); }
+  .kl-face { width: min(40vh, 320px); }
   .kl-card { padding: 22px 26px 26px; }
-  .kl-text { font-size: 2.4rem; }
-  .kl-opt { font-size: 1.7rem; min-height: 84px; }
+  .kl-opt { font-size: 1.5rem; min-height: 64px; }
 }
 .kl-face { cursor: default; }
 /* the two hands, told apart at a glance: the short red hour, the long blue minute */
-.kl-live .klok-hand.hour { stroke: #e0484d; stroke-width: 7; }
-.kl-live .klok-hand.minute { stroke: #3b6ef6; stroke-width: 4.5; }
+.kl-live .klok-hand.hour { stroke: #e0484d; stroke-width: 8; }
+.kl-case { stroke: #fff; stroke-width: 10; stroke-linecap: round; }
+.kl-live .klok-hand.minute { stroke: #3b6ef6; stroke-width: 4.5; stroke-linecap: round; }
+.kl-live .klok-hand.hour { stroke-linecap: round; }
 .kl-live .klok-pin { fill: #1d2433; }
-.kl-nudge { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 16px auto 0; max-width: 560px; }
+.kl-nudge { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 0 auto; width: 100%; max-width: 560px; }
 .kl-nudge.hidden { display: none; }
 .kl-card-ctl {
-  display: flex; flex-direction: column; align-items: stretch; gap: 10px;
-  background: var(--card); border-radius: 22px; padding: 14px 12px 12px;
+  display: flex; flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px 10px;
+  background: var(--card); border-radius: 18px; padding: 8px 10px;
   border: 2.5px solid var(--line); transition: opacity .25s, box-shadow .25s, border-color .25s;
 }
 .kl-ctl-m { border-color: rgba(59, 110, 246, .45); }
@@ -1272,9 +1273,10 @@ body.super::before {
 .kl-dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; flex: none; }
 .kl-dot-h { background: #e0484d; }
 .kl-dot-m { background: #3b6ef6; }
-.kl-ctl-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.kl-ctl-btns { display: flex; gap: 8px; }
+.kl-ctl-btns button { width: 64px; }
 .kl-step-btn {
-  font-family: inherit; font-size: 2.4rem; font-weight: 800; height: 76px; border-radius: 20px;
+  font-family: inherit; font-size: 2rem; font-weight: 800; height: 56px; border-radius: 14px;
   border: none; background: var(--bg); color: var(--ink); cursor: pointer; line-height: 1;
   transition: transform .08s, background .15s;
 }
@@ -1286,20 +1288,30 @@ body.super::before {
   border: none; background: var(--accent); color: #fff; cursor: pointer;
 }
 .kl-ok.hidden { display: none; }
-.kl-ok-row { display: flex; justify-content: center; align-items: center; gap: 10px; min-height: 56px; }
+.kl-ok-row { display: flex; justify-content: center; align-items: center; gap: 8px; }
 .kl-ok-row .hidden { display: none; }
 .kl-tick, .kl-back {
-  font-family: inherit; font-size: 1.8rem; font-weight: 800; width: 64px; height: 56px; border-radius: 16px;
+  font-family: inherit; font-size: 1.5rem; font-weight: 800; width: 56px; height: 48px; border-radius: 14px;
   border: none; cursor: pointer; line-height: 1;
 }
 .kl-tick { background: #3b6ef6; color: #fff; }
 .kl-ctl-h .kl-tick { background: #e0484d; }
-.kl-back { background: var(--bg); color: var(--muted); width: 52px; height: 52px; font-size: 1.6rem; }
+.kl-back { background: var(--bg); color: var(--muted); width: 44px; height: 48px; font-size: 1.4rem; }
 .kl-back:hover { background: var(--accent-soft); }
 .kl-tick:disabled, .kl-back:disabled { background: var(--line); color: var(--muted); cursor: default; }
 .kl-ctl-h .kl-ok { background: #e0484d; }
 .kl-ok:disabled { background: var(--line); color: var(--muted); }
-.kl-body { text-align: center; min-width: 0; }
+.kl-body {
+  text-align: center; min-width: 0;
+  display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: center;
+  grid-template-areas: "face text" "ctl ctl" "check check" "flash flash"; gap: 10px 18px;
+}
+#kl-face { grid-area: face; }
+#kl-text { grid-area: text; text-align: left; margin: 0; font-size: 1.6rem; }
+#kl-opts { grid-area: ctl; }
+#kl-nudge { grid-area: ctl; }
+#kl-check { grid-area: check; margin: 0 auto; min-width: 200px; }
+#kl-flash { grid-area: flash; margin: 0; }
 .kl-text { font-size: 2rem; font-weight: 800; margin: 14px 0 6px; min-height: 1.2em; }
 .kl-opts { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; max-width: 420px; margin: 16px auto 0; }
 .kl-opt {
@@ -1307,11 +1319,6 @@ body.super::before {
   border: 1.5px solid var(--line); background: var(--card); color: var(--ink); cursor: pointer;
 }
 .kl-opt:disabled { cursor: default; }
-/* two readings, blue and red, like the hour and minute */
-.kl-opt.kl-opt-b { border-color: #3b6ef6; background: #eef3ff; color: #2446b8; }
-.kl-opt.kl-opt-r { border-color: #e0484d; background: #fff0f0; color: #b8262b; }
-.kl-opt.kl-opt-b:hover:not(:disabled) { background: #dfe8ff; }
-.kl-opt.kl-opt-r:hover:not(:disabled) { background: #ffe0e0; }
 .kl-opt:disabled:not(.right):not(.wrong) { opacity: .45; }
 .kl-why { display: inline-block; margin-top: 6px; font-weight: 600; color: var(--ink); text-align: left; max-width: 420px; }
 .kl-opt.right { background: var(--green-soft) !important; border-color: var(--green) !important; color: var(--green) !important; }

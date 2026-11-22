@@ -89,12 +89,12 @@ const Klokles = (() => {
       nums += `<text x="${(C + r * Math.sin(a)).toFixed(1)}" y="${(C - r * Math.cos(a)).toFixed(1)}"
                  text-anchor="middle" dominant-baseline="central" class="klok-num">${n}</text>`;
     }
-    return `<svg viewBox="0 0 220 220" class="klok-face kl-face ${live ? "kl-live" : ""}" role="img"
-              aria-label="klok">
+    return `<svg viewBox="0 0 220 220" class="klok-face kl-face kl-live" role="img" aria-label="klok">
       <circle cx="${C}" cy="${C}" r="${R}" class="klok-rim"/>
       <g class="klok-ticks">${ticks}</g>${nums}
-      <line id="kl-h" x1="${C}" y1="${C}" class="klok-hand hour"/>
-      <line id="kl-m" x1="${C}" y1="${C}" class="klok-hand minute"/>
+      <line id="kl-h" x1="${C}" y1="${C}" x2="${C}" y2="${C}" class="klok-hand hour"/>
+      <line id="kl-m-c" x1="${C}" y1="${C}" x2="${C}" y2="${C}" class="kl-case"/>
+      <line id="kl-m" x1="${C}" y1="${C}" x2="${C}" y2="${C}" class="klok-hand minute"/>
       <circle cx="${C}" cy="${C}" r="4.5" class="klok-pin"/>
     </svg>`;
   }
@@ -109,6 +109,7 @@ const Klokles = (() => {
       el.setAttribute("y2", (C - len * Math.cos(a)).toFixed(1));
     };
     set("kl-h", hd, R * 0.5);
+    set("kl-m-c", md, R * 0.8);
     set("kl-m", md, R * 0.8);
   }
 
@@ -150,7 +151,6 @@ const Klokles = (() => {
       const q = { h, m, type, text: phrase(h, m) };
       if (type === "pick") {
         const w = wrongTime(h, m);
-        // position 0 is always blue, position 1 always red
         q.opts = shuffle([{ t: q.text, ok: true }, { t: phrase(w.h, w.m), ok: false }]);
       }
       qs.push(q);
@@ -224,9 +224,10 @@ const Klokles = (() => {
       KL.stage = "m";                                  // minutes first, then the hour
       applyStage();
     } else {
+      placeHands(KL.cur.h, KL.cur.m);
       $("kl-text").textContent = "";
       $("kl-opts").innerHTML = q.opts.map((o, i) =>
-        `<button class="kl-opt ${i === 0 ? "kl-opt-b" : "kl-opt-r"}" data-i="${i}">${esc(o.t)}</button>`).join("");
+        `<button class="kl-opt" data-i="${i}">${esc(o.t)}</button>`).join("");
       $("kl-opts").querySelectorAll(".kl-opt").forEach(b =>
         b.addEventListener("click", () => settle(q.opts[+b.dataset.i].ok, "pick", b)));
       $("kl-nudge").classList.add("hidden");
