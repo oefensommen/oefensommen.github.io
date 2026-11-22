@@ -2222,8 +2222,17 @@ function calShow(ds) {
 /* A pupil gets at most ONE cup per category per day. A cup is granted the
    first time a category is won 100% on all three leagues that day; any later
    win in that category that day is played but earns no second cup. */
+/* A category's cup for a day. Winning the dinozorenliga gives it, so this is
+   called only from a dinozor win. A tafels dinozor win written before this
+   rule is counted from day.champs. */
+function cupsOf(ds) {
+  const day = data.days[ds] || {};
+  const cups = Object.assign({}, day.cups || {});
+  if ((day.champs || []).some(c => c.lvl === 2 && c.won)) cups.tafels = true;
+  return cups;
+}
+
 function grantCup(ds, cat) {
-  if (!categoryWon(ds, cat)) return false;
   const day = dayFor(ds);
   day.cups = day.cups || {};
   if (day.cups[cat]) return false;                 // already had today's cup
@@ -2240,8 +2249,8 @@ function categoryWon(ds, cat) {
 
 /* how many categories were won 100% on all three leagues that day */
 function dayCups(ds) {
-  const lv = (data.days[ds] && data.days[ds].lv) || {};
-  return OP_CATS.filter(c => [0, 1, 2].every(l => { const x = lv[c.key + "|" + l]; return x && x.n && x.c === x.n; })).length;
+  const cups = cupsOf(ds);
+  return OP_CATS.filter(c => cups[c.key]).length;
 }
 
 /* the kerstvakantie goal: 130 cups, counted from tomorrow on */
@@ -2311,7 +2320,7 @@ function renderOnePager(ds) {
   let cups = 0;
   const tot = [0, 1, 2].map(() => ({ n: 0, c: 0 }));
   const rows = OP_CATS.map(c => {
-    const won = [0, 1, 2].every(l => { const x = lv[c.key + "|" + l]; return x && x.n && x.c === x.n; });
+    const won = !!cupsOf(ds)[c.key];
     if (won) cups++;
     [0, 1, 2].forEach(l => { const x = lv[c.key + "|" + l]; if (x) { tot[l].n += x.n; tot[l].c += x.c; } });
     return `<tr><th scope="row">${esc(c.name)}</th>${[0, 1, 2].map(l => cell(c.key, l)).join("")}
